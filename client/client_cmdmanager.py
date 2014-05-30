@@ -9,29 +9,11 @@ import re
 sys.path.insert(0, 'test/')
 import fakerequests as requests
 
-class Message(object):
-	_message_type = {
-	 	'HEADER': '\033[95m',
-		'INFO': '\033[94m',
-		'SUCCESS': '\033[92m',
-		'WARNING': '\033[93m',
-		'ERROR': '\033[91m',
-		'ENDC': '\033[0m',
-	}
-
-	def __init__(self, color = None, message = None):
-		if color and message:
-			if color in Message._message_type:
-				print Message._message_type[color] , message , Message._message_type['ENDC']
-			else: print message
-
-	def color(self, color, message):
-		if color in Message._message_type:
-			return Message._message_type[color] + message + Message._message_type['ENDC']
-		else: print message
+sys.path.insert(0, 'utility/')
+from colorMessage import Message
 
 class RawBoxCmd(cmd.Cmd):
-	"""RawBox command line interface."""
+	"""RawBox command line interface"""
 
 	def _create_user(self, username = None):
 		"""create user if not exists"""
