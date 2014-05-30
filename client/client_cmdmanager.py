@@ -30,8 +30,8 @@ class Message(object):
 			return Message._message_type[color] + message + Message._message_type['ENDC']
 		else: print message
 
-class RowBoxCmd(cmd.Cmd):
-	"""RowBox command line interface."""
+class RawBoxCmd(cmd.Cmd):
+	"""RawBox command line interface."""
 
 	def _create_user(self, username = None):
 		"""create user if not exists"""
@@ -123,9 +123,9 @@ class RowBoxCmd(cmd.Cmd):
 def main():
 	intro = Message().color('INFO','##### Hello guy!... or maybe girl, welcome to RawBox ######\ntype help to start\n\n')
 	try:
-		rowboxcmd = RowBoxCmd()
-		rowboxcmd.prompt = Message().color('HEADER', '(RowBox) ')
-		rowboxcmd.cmdloop(intro = intro)
+		rawboxcmd = RawBoxCmd()
+		rawboxcmd.prompt = Message().color('HEADER', '(RawBox) ')
+		rawboxcmd.cmdloop(intro = intro)
 	except KeyboardInterrupt:
 		print 'Exit.'
 
