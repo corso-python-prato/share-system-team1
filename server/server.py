@@ -2,24 +2,18 @@
 #-*- coding: utf-8 -*-
 
 import datetime
-from flask import Flask
-from flask import request
+from flask import Flask, request, abort
 from flask.ext.httpauth import HTTPBasicAuth
+from passlib.hash import md5_crypt
 
 app = Flask(__name__)
 auth = HTTPBasicAuth()
 
-# username : password
-users = {
-	"testUser" : "propropro",
-}
+users = {}		# username : encoded_password
 
-@auth.get_password
-def get_pw(username):
-	print username
-	if username in users:
-		return users[username]
-	return None
+@auth.verify_password
+def verify_password(username, password):
+	return md5_crypt.verify(password, users[username])
 
 @app.route("/hidden_page")
 @auth.login_required
@@ -29,13 +23,15 @@ def hidden_page():
 @app.route("/create_user", methods=["POST"])
 # this method takes only 'user' and 'psw' as POST variables
 def create_user():
-	if not ("user" in request.form and "psw" in request.form):
-		return "400 Bad Request"
+	if not ("user" in request.form 
+			and "psw" in request.form
+			and len(request.form) == 2):
+		abort(400)		# Bad Request
 	if request.form["user"] in users:
-		return "Error! Another user has your nickname\n" 	# TODO: code?
-	
-	users[request.form["user"]] = request.form["psw"]
-	return "User created!\n"
+		abort(409) 		# Conflict
+	psw_hash = md5_crypt.encrypt(request.form["psw"])
+	users[request.form["user"]] = psw_hash
+	return "User created!\n", 201
 
 @app.route("/")
 def welcome():
@@ -44,7 +40,7 @@ def welcome():
 	return "Welcome on the Server!\n{}\n".format(formatted_time)
 
 def main():
-	app.run()
+	app.run(debug=True)			# TODO: remove debug=True
 
 if __name__ == '__main__':
 	main()
