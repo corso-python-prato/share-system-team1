@@ -1,14 +1,10 @@
 #!/usr/bin/env python
 #-*- coding: utf-8 -*-
-#	30/05/2014
-#
-#	(c) marco p , francesco m
-#
 
 import cmd
 
-class HelloWorld(cmd.Cmd):
-	"""Simple command processor example."""
+class RowBoxCmd(cmd.Cmd):
+	"""RowBox command line interface."""
 	
 	def _create_user(self, *args):
 		"""create user/s"""
@@ -65,9 +61,11 @@ class HelloWorld(cmd.Cmd):
 def main():
 	intro = "##### Hello guy!... or maybe girl, welcome to RawBox ######\ntype help to start\n\n"
 	try:
-		HelloWorld().cmdloop(intro = intro)
+		rowboxcmd = RowBoxCmd()
+		rowboxcmd.prompt = "(RowBox) "
+		rowboxcmd.cmdloop(intro = intro)
 	except KeyboardInterrupt:
-		print 'Exit'
+		print 'Exit.'
 
 if __name__ == '__main__':
 	main()
