@@ -13,7 +13,7 @@ sys.path.insert(0, 'utility/')
 from colorMessage import Message
 
 class RawBoxCmd(cmd.Cmd):
-	"""RawBox command line interface."""
+	"""RawBox command line interface"""
 
 	def _create_user(self, username = None):
 		"""create user if not exists"""
