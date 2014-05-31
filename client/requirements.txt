@@ -10,3 +10,4 @@ pathtools==0.1.2
 requests==2.3.0
 watchdog==0.7.1
 wsgiref==0.1.2
+colorama==0.3.1
