@@ -18,7 +18,7 @@ class Message(object):
 	}
 	_default_color = {
 		'MAGENTA': 	{'Linux': '\033[95m', 'Windows': '\x1b[35m'},
-		'BLUE': 	{'Linux': '\033[94m', 'Windows': '\x1b[34m'},
+		'BLUE': 	{'Linux': '\033[94m', 'Windows': '\x1b[36m'},
 		'GREEN': 	{'Linux': '\033[92m', 'Windows': '\x1b[32m'},
 		'YELLOW': 	{'Linux': '\033[93m', 'Windows': '\x1b[33m'},
 		'RED': 		{'Linux': '\033[91m', 'Windows': '\x1b[31m'},
@@ -44,7 +44,9 @@ class Message(object):
 		"""Print a color according to the message"""
 		if color in Message.message_color:
 			pcolor, endpcolor = Message.message_color[color],  Message.message_color['ENDC']
-			print Message._default_color[pcolor][self.platform] , message , Message._default_color[endpcolor][self.platform]
+			print Message._default_color[pcolor][self.platform]
+			print message
+			print Message._default_color[endpcolor][self.platform]
 		else: print message
 
 	def color(self, color, message):
