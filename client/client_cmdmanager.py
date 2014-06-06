@@ -126,7 +126,7 @@ def main():
 	try:
 		RawBoxCmd().cmdloop()
 	except KeyboardInterrupt:
-		print RawBoxCmd().do_quit()
+		print "[exit]"
 
 if __name__ == '__main__':
 	main()
