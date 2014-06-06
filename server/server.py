@@ -79,7 +79,6 @@ class IdCreator(object):
         cls.counter_id += 1    
         return  new_id
 
-
 @auth.verify_password
 def verify_password(username, password):
     return sha256_crypt.verify(password, users[username]['psw'])
@@ -133,6 +132,8 @@ def welcome():
 
 
 def main():
+    if not os.path.isdir(USERS_DIRECTORIES):
+        os.mkdir(USERS_DIRECTORIES)
     app.run(debug=True)         # TODO: remove debug=True
 
 if __name__ == '__main__':
