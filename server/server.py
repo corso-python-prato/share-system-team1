@@ -5,7 +5,6 @@ from flask import Flask, request, abort
 from flask.ext.httpauth import HTTPBasicAuth
 from passlib.hash import sha256_crypt
 import datetime
-import time
 import os
 from flask.ext.restful import reqparse, abort, Api, Resource
 
