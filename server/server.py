@@ -30,15 +30,18 @@ class IdCreator(object):
         cls.counter_id += 1    
         return  new_id
 
+
 @auth.verify_password
 def verify_password(username, password):
+    if username not in users:
+        return False
     return sha256_crypt.verify(password, users[username]['psw'])
 
 
 @app.route("/hidden_page")
 @auth.login_required
 def hidden_page():
-    return "Hello {}".format(auth.username())
+    return "Hello {}\n".format(auth.username())
 
 
 @app.route("/create_user", methods=["POST"])
@@ -53,11 +56,15 @@ def create_user():
     psw_hash = sha256_crypt.encrypt(request.form["psw"])
 
     dir_id = IdCreator.get_id()
-    os.mkdir(os.path.join(USERS_DIRECTORIES, dir_id))
+    dir_path = os.path.join(USERS_DIRECTORIES, dir_id)
+    try:
+        os.mkdir(dir_path)
+    except OSError:
+        abort(409)      # Conflict: the directory already exists
     
     users[request.form["user"]] = { 
-        psw: psw_hash,
-        paths : [dir_id]
+        "psw": psw_hash,
+        "paths" : [dir_id]
     }
     return "User created!\n", 201
 
