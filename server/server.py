@@ -45,21 +45,20 @@ def welcome():
     return "Welcome on the Server!\n{}\n".format(formatted_time)
 
 
-@app.route("/download")
-def download():
+@app.route("/download/<file_name>")
+def download(file_name):
     """this function return file content as string by get"""
-    if os.path.exists("prova.txt"):
-        with open("prova.txt", "r") as tmp:
+    if os.path.exists(file_name):
+        with open(file_name, "r") as tmp:
             return tmp.read()
 
 
 @app.route("/upload", methods=["POST"])
 def upload():
     """this function load file by POST"""
-    if request.method == "POST":
-        f = request.files['data']
-        f.save("file.txt")
-        return "", 201
+    f = request.files['data']
+    f.save(f.filename)
+    return "", 201
 
 
 def main():
