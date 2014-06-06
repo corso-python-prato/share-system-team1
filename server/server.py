@@ -3,7 +3,7 @@
 
 from flask import Flask, request, abort
 from flask.ext.httpauth import HTTPBasicAuth
-from passlib.hash import md5_crypt
+from passlib.hash import sha256_crypt
 import datetime
 import os
 
@@ -15,7 +15,7 @@ users = {}      # username : encoded_password
 
 @auth.verify_password
 def verify_password(username, password):
-    return md5_crypt.verify(password, users[username])
+    return sha256_crypt.verify(password, users[username])
 
 
 @app.route("/hidden_page")
@@ -33,7 +33,7 @@ def create_user():
         abort(400)      # Bad Request
     if request.form["user"] in users:
         abort(409)      # Conflict
-    psw_hash = md5_crypt.encrypt(request.form["psw"])
+    psw_hash = sha256_crypt.encrypt(request.form["psw"])
     users[request.form["user"]] = psw_hash
     return "User created!\n", 201
 
@@ -46,6 +46,7 @@ def welcome():
 
 
 @app.route("/download/<file_name>")
+@auth.login_required
 def download(file_name):
     """this function return file content as string by get"""
     if os.path.exists(file_name):
@@ -54,6 +55,7 @@ def download(file_name):
 
 
 @app.route("/upload", methods=["POST"])
+@auth.login_required
 def upload():
     """this function load file by POST"""
     f = request.files['data']
