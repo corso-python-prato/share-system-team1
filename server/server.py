@@ -20,7 +20,9 @@ users = {}
 # }
 
 
+
 class IdCreator(object):
+    ''' creates univoque IDs, used as users' directories name '''
     last_id = None
 
     @classmethod

@@ -1,0 +1,20 @@
+# welcome
+curl localhost:5000/
+
+
+# examples of user creation
+curl --data "user=UserName&psw=password" 127.0.0.1:5000/create_user
+
+(it's a POST request, as you have to do)
+
+
+# access to restricted area
+curl  localhost:5000/hidden_page -u UserName:password
+
+
+# example of upload
+curl --form "data=@FileName" localhost:5000/upload -u UserName:password
+
+
+# download
+curl localhost:5000/download/FileName -u UserName:password
