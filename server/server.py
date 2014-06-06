@@ -3,8 +3,9 @@
 
 from flask import Flask, request, abort
 from flask.ext.httpauth import HTTPBasicAuth
-from passlib.hash import sha256_crypt, md5_crypt
+from passlib.hash import sha256_crypt
 import datetime
+import time
 import os
 
 app = Flask(__name__)
@@ -19,25 +20,20 @@ users = {}
 #     }
 # }
 
-
-
 class IdCreator(object):
     ''' creates univoque IDs, used as users' directories name '''
-    last_id = None
+    counter_id = 0
 
     @classmethod
     def get_id(cls):
-        new_id = md5_crypt(datetime.datetime.now())
-        if new_id == cls.last_id:
-            return id_creator
-        else:
-            cls.last_id = new_id
-            return  new_id
+        new_id = hex(cls.counter_id)[2:]
+        cls.counter_id += 1    
+        return  new_id
 
 
 @auth.verify_password
 def verify_password(username, password):
-    return sha256_crypt.verify(password, users[username][psw])
+    return sha256_crypt.verify(password, users[username]['psw'])
 
 
 @app.route("/hidden_page")
