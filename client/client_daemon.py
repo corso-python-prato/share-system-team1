@@ -12,11 +12,37 @@ import time
 import requests
 import json
 
+def req_post(*args, **kwargs):
+    return requests.post(*args, **kwargs)
+
 
 class ServerCommunicator(object):
 
     def __init__(self, server_url):
         self.server_url = server_url
+
+    """   
+    def get(self, dst_path):
+        r = requests.get(self.server_url)
+    """
+
+    def post(self, dst_path, login_credential):
+        file_name = dst_path.split('/')[-1]
+        file_content = ''
+        
+        with open(dst_path, 'r') as f:
+            file_content =  f.read()
+
+        upload = {
+                    'username': login_credential['user'],
+                    'password': login_credential['psw'],
+                    'file_name': file_name,
+                    'file_content': file_content
+                 }
+
+        server_url = "{}/files/{}".format(self.server_url, dst_path)
+ 
+        req_post(server_url, upload)
 
     def put(self, dst_path):
         r = requests.get(self.server_url)
@@ -35,6 +61,7 @@ class DirectoryEventHandler(FileSystemEventHandler):
 
     def __init__(self, cmd):
         self.cmd = cmd
+        self.credential = {"psw": "marco", "user": "marco"}
 
     # def on_any_event(self, event):
         # request = requests.get(self.server_url)
@@ -48,7 +75,7 @@ class DirectoryEventHandler(FileSystemEventHandler):
             :class:`DirMovedEvent` or :class:`FileMovedEvent`
         """
         self.cmd.delete(event.src_path)
-        self.cmd.put(event.dest_path)
+        self.cmd.post(event.dest_path)
 
     def on_created(self, event):
         """Called when a file or directory is created.
@@ -58,7 +85,7 @@ class DirectoryEventHandler(FileSystemEventHandler):
         :type event:
             :class:`DirCreatedEvent` or :class:`FileCreatedEvent`
         """
-        self.cmd.put(event.src_path)
+        self.cmd.post(event.src_path, self.credential)
 
     def on_deleted(self, event):
         """Called when a file or directory is deleted.
