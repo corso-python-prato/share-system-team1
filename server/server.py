@@ -7,10 +7,14 @@ from passlib.hash import sha256_crypt
 import datetime
 import time
 import os
+from flask.ext.restful import reqparse, abort, Api, Resource
+
 
 app = Flask(__name__)
 auth = HTTPBasicAuth()
 USERS_DIRECTORIES = "user_dirs/"
+api = Api(app)
+
 
 users = {}
 # { 
@@ -19,6 +23,51 @@ users = {}
 #            paths : list_of_path
 #     }
 # }
+
+
+parser = reqparse.RequestParser()
+parser.add_argument('task', type=str)
+
+#todo
+class Methods(Resource):
+    @app.route("/files/<path>")
+    @auth.login_required
+    def get(self, path):
+    """this function return file content as string by get"""
+        access_permission(auth.username())
+        if os.path.exists(path):
+            with open(path, "r") as tmp:
+                return tmp.read()
+        else:
+            return abort(404)
+
+    @app.route("/files/<path>")
+    @auth.login_required
+    def delete(self, path):
+        
+        return '', 204
+    
+    @app.route("/files/<path>")
+    @auth.login_required
+    def put(self, path):
+        """this function modify file by PUT"""
+        access_permission(auth.username())
+        if os.path.exists(path):
+            return "",201
+        else:
+            return abort(404)
+        
+
+    @app.route("/files/<path>")
+    @auth.login_required
+    def post(self, post, json):
+        """this function load file by POST"""
+        access_permission(auth.username())
+        f = request.files['data']
+        f.save(f.filename)
+        return "", 201
+
+
 
 class IdCreator(object):
     ''' creates univoque IDs, used as users' directories name '''
@@ -42,6 +91,7 @@ def verify_path(username, path):
         if p == path:
             return True
     else: return False
+
 
 def access_permission(username,path):
     if  not verify_path(username, path):
@@ -69,8 +119,8 @@ def create_user():
     os.mkdir(os.path.join(USERS_DIRECTORIES, dir_id))
     
     users[request.form["user"]] = { 
-        psw: psw_hash,
-        paths : [dir_id]
+        "psw": psw_hash,
+        "paths" : [dir_id]
     }
     return "User created!\n", 201
 
@@ -81,38 +131,6 @@ def welcome():
     formatted_time = local_time.strftime("%Y-%m-%d %H:%M")
     return "Welcome on the Server!\n{}\n".format(formatted_time)
 
-
-@app.route("/download/<path>")
-@auth.login_required
-def download(path):
-    """this function return file content as string by get"""
-    access_permission(auth.username())
-    if os.path.exists(path):
-        with open(path, "r") as tmp:
-            return 200, tmp.read()
-    else:
-        return abort(404)
-
-
-@app.route("/upload/<path>", methods=["POST"])
-@auth.login_required
-def upload(path):
-    """this function load file by POST"""
-    access_permission(auth.username())
-    f = request.files['data']
-    f.save(f.filename)
-    return "", 201
-
-
-@app.route("/modify/<path>", methods=["PUT"])
-@auth.login_required
-def modify(path):
-    """this function modify file by PUT"""
-    access_permission(auth.username())
-    if os.path.exists(path):
-        upload(path)
-    else:
-        return abort(404)
 
 def main():
     app.run(debug=True)         # TODO: remove debug=True
