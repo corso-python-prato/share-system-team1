@@ -10,7 +10,7 @@ import os
 
 app = Flask(__name__)
 auth = HTTPBasicAuth()
-USERS_DIRECTORIES = "user_dirs/"
+USERS_DIRECTORIES = "users_dirs/"
 
 users = {}
 # { 
@@ -29,7 +29,6 @@ class IdCreator(object):
         new_id = hex(cls.counter_id)[2:]
         cls.counter_id += 1    
         return  new_id
-
 
 @auth.verify_password
 def verify_password(username, password):
@@ -87,8 +86,9 @@ def upload():
     f.save(f.filename)
     return "", 201
 
-
 def main():
+    if not os.path.isdir(USERS_DIRECTORIES):
+        os.mkdir(USERS_DIRECTORIES)
     app.run(debug=True)         # TODO: remove debug=True
 
 if __name__ == '__main__':
