@@ -17,6 +17,12 @@ users = {}      # username : encoded_password
 def verify_password(username, password):
     return sha256_crypt.verify(password, users[username])
 
+def access_permission(f):
+    def verify_path(username, path):
+        for p in users[username]['paths']:
+            if p == path:
+                return f(username, path)
+        else: raise access_denied('you are not allowed to access to this directory')
 
 @app.route("/hidden_page")
 @auth.login_required
@@ -54,9 +60,9 @@ def download(file_name):
             return tmp.read()
 
 
-@app.route("/upload", methods=["POST"])
+@app.route("/upload/<username>", methods=["POST"])
 @auth.login_required
-def upload():
+def upload(username):
     """this function load file by POST"""
     f = request.files['data']
     f.save(f.filename)
