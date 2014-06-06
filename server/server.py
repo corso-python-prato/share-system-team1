@@ -7,10 +7,14 @@ from passlib.hash import sha256_crypt
 import datetime
 import time
 import os
+from flask.ext.restful import reqparse, abort, Api, Resource
+
 
 app = Flask(__name__)
 auth = HTTPBasicAuth()
-USERS_DIRECTORIES = "users_dirs/"
+USERS_DIRECTORIES = "user_dirs/"
+api = Api(app)
+
 
 users = {}
 # { 
@@ -19,6 +23,51 @@ users = {}
 #            paths : list_of_path
 #     }
 # }
+
+
+parser = reqparse.RequestParser()
+parser.add_argument('task', type=str)
+
+#todo
+class Methods(Resource):
+    @app.route("/files/<path>")
+    @auth.login_required
+    def get(self, path):
+    """this function return file content as string by get"""
+        access_permission(auth.username())
+        if os.path.exists(path):
+            with open(path, "r") as tmp:
+                return tmp.read()
+        else:
+            return abort(404)
+
+    @app.route("/files/<path>")
+    @auth.login_required
+    def delete(self, path):
+        
+        return '', 204
+    
+    @app.route("/files/<path>")
+    @auth.login_required
+    def put(self, path):
+        """this function modify file by PUT"""
+        access_permission(auth.username())
+        if os.path.exists(path):
+            return "",201
+        else:
+            return abort(404)
+        
+
+    @app.route("/files/<path>")
+    @auth.login_required
+    def post(self, post, json):
+        """this function load file by POST"""
+        access_permission(auth.username())
+        f = request.files['data']
+        f.save(f.filename)
+        return "", 201
+
+
 
 class IdCreator(object):
     ''' creates univoque IDs, used as users' directories name '''
@@ -37,6 +86,19 @@ def verify_password(username, password):
         return False
     return sha256_crypt.verify(password, users[username]['psw'])
 
+
+def verify_path(username, path):
+    #verify if the path is in the user accesses
+    for p in users[username]['paths']:
+        if p == path:
+            return True
+    else: return False
+
+
+def access_permission(username,path):
+    if  not verify_path(username, path):
+        abort(500)
+    
 
 @app.route("/hidden_page")
 @auth.login_required
@@ -75,23 +137,6 @@ def welcome():
     formatted_time = local_time.strftime("%Y-%m-%d %H:%M")
     return "Welcome on the Server!\n{}\n".format(formatted_time)
 
-
-@app.route("/download/<file_name>")
-@auth.login_required
-def download(file_name):
-    """this function return file content as string by get"""
-    if os.path.exists(file_name):
-        with open(file_name, "r") as tmp:
-            return tmp.read()
-
-
-@app.route("/upload", methods=["POST"])
-@auth.login_required
-def upload():
-    """this function load file by POST"""
-    f = request.files['data']
-    f.save(f.filename)
-    return "", 201
 
 def main():
     if not os.path.isdir(USERS_DIRECTORIES):
