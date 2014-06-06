@@ -3,19 +3,39 @@
 
 from flask import Flask, request, abort
 from flask.ext.httpauth import HTTPBasicAuth
-from passlib.hash import sha256_crypt
+from passlib.hash import sha256_crypt, md5_crypt
 import datetime
 import os
 
 app = Flask(__name__)
 auth = HTTPBasicAuth()
+USERS_DIRECTORIES = "user_dirs/"
 
-users = {}      # username : encoded_password
+users = {}
+# { 
+#     username : { 
+#            psw : encoded_password,
+#            paths : list_of_path
+#     }
+# }
+
+
+class IdCreator(object):
+    last_id = None
+
+    @classmethod
+    def get_id(cls):
+        new_id = md5_crypt(datetime.datetime.now())
+        if new_id == cls.last_id:
+            return id_creator
+        else:
+            cls.last_id = new_id
+            return  new_id
 
 
 @auth.verify_password
 def verify_password(username, password):
-    return sha256_crypt.verify(password, users[username])
+    return sha256_crypt.verify(password, users[username][psw])
 
 
 @app.route("/hidden_page")
@@ -34,7 +54,14 @@ def create_user():
     if request.form["user"] in users:
         abort(409)      # Conflict
     psw_hash = sha256_crypt.encrypt(request.form["psw"])
-    users[request.form["user"]] = psw_hash
+
+    dir_id = IdCreator.get_id()
+    os.mkdir(os.path.join(USERS_DIRECTORIES, dir_id))
+    
+    users[request.form["user"]] = { 
+        psw: psw_hash,
+        paths : [dir_id]
+    }
     return "User created!\n", 201
 
 
@@ -45,12 +72,12 @@ def welcome():
     return "Welcome on the Server!\n{}\n".format(formatted_time)
 
 
-@app.route("/download")
+@app.route("/download/<file_name>")
 @auth.login_required
-def download():
+def download(file_name):
     """this function return file content as string by get"""
-    if os.path.exists("prova.txt"):
-        with open("prova.txt", "r") as tmp:
+    if os.path.exists(file_name):
+        with open(file_name, "r") as tmp:
             return tmp.read()
 
 
@@ -58,10 +85,9 @@ def download():
 @auth.login_required
 def upload():
     """this function load file by POST"""
-    if request.method == "POST":
-        f = request.files['data']
-        f.save("file.txt")
-        return "", 201
+    f = request.files['data']
+    f.save(f.filename)
+    return "", 201
 
 
 def main():
