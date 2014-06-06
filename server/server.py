@@ -37,13 +37,18 @@ class IdCreator(object):
 def verify_password(username, password):
     return sha256_crypt.verify(password, users[username][psw])
 
-def access_permission(f):
-    username = auth.username()
-    def verify_path(username, path):
-        for p in users[username]['paths']:
-            if p == path:
-                return f(path)
-        else: abort(500)
+
+def verify_path(username, path):
+    #verify if the path is in the user accesses
+    for p in users[username]['paths']:
+        if p == path:
+            return True
+    else: return False
+
+def access_permission(username,path):
+    if  not verify_path(username, path):
+        abort(500)
+    
 
 @app.route("/hidden_page")
 @auth.login_required
@@ -81,9 +86,9 @@ def welcome():
 
 @app.route("/download/<path>")
 @auth.login_required
-@access_permission
 def download(path):
     """this function return file content as string by get"""
+    access_permission(auth.username())
     if os.path.exists(path):
         with open(path, "r") as tmp:
             return 200, tmp.read()
@@ -93,9 +98,9 @@ def download(path):
 
 @app.route("/upload/<path>", methods=["POST"])
 @auth.login_required
-@access_permission
 def upload(path):
     """this function load file by POST"""
+    access_permission(auth.username())
     f = request.files['data']
     f.save(f.filename)
     return "", 201
@@ -103,9 +108,9 @@ def upload(path):
 
 @app.route("/modify/<path>", methods=["PUT"])
 @auth.login_required
-@access_permission
 def modify(path):
     """this function modify file by PUT"""
+    access_permission(auth.username())
     if os.path.exists(path):
         upload(path)
     else:
