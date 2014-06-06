@@ -1,0 +1,31 @@
+//deamon adn client socket comunication protocol
+[
+	{
+		"type" : "syncronized",
+		"body" :	{
+						"request":  {}, 
+						"response": {"yes": 201, "no": 300}
+					}
+	},
+	{
+		"type" : "share_user",   
+		"body" :		{	
+							"request":  {"user":"...","path":"..."},
+							"response": {"ok":201, "exists":409, "incorrect":400}
+						}
+	},
+	{
+		"type" : "delete_share",
+		"body" :		{
+							"request":  {"path":"..."},
+							"response": {"ok":201, "already_deleted":409, "incorrect":400}
+						}
+	}
+	{
+		"type" : "delete_share_user",
+		"body" : 		{
+							"request":  {"user":"...","path":"..."},
+							"response": {"ok":201, "already_deleted":409, "incorrect":400}
+						}
+	}
+]
