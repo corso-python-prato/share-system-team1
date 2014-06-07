@@ -33,7 +33,6 @@ class ServerCommunicator(object):
 			with open(dst_path, 'r') as f:
 				file_content =  f.read()
 		except IOError:
-			print dst_path
 			#Atomic create and delete error!
 			return False
 
