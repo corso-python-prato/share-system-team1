@@ -1,21 +1,13 @@
 from httmock import all_requests, HTTMock
+import client_daemon
 import unittest
 import requests
 import sys
 
-sys.path.insert(0, '../../client')
-import client_daemon
 
 @all_requests
-def response_201(url, request):
-	"""Upload OK"""
-
+def response_xxx(url, request):
 	return {'status_code': 201}
-
-def response_300(url, request):
-	"""Access Denied"""
-	return {'status_code': 300}
-
 
 class ClientDaemonTest(unittest.TestCase):
 	def setup(self):
@@ -35,13 +27,13 @@ class ClientDaemonTest(unittest.TestCase):
 		
 		mock_auth_user = 'userMarco'
 		mock_auth_psw = 'pswMarco'
-		mock_url = 'http://www.mioserver.it/files/mock_file/prova.txt' 
+		mock_url = 'http://127.0.0.1:5000/API/v1/files/mock_file/prova.txt' 
 		mock_data = {
 				'file_name': 'prova.txt', 
 				'file_content': 'LOREM IPSIUM!'
 			}
 
-		client_daemon.ServerCommunicator("http://www.mioserver.it").post(path, login)
+		client_daemon.ServerCommunicator('http://127.0.0.1:5000/API/v1').post(path, login)
 
 		#check if username is equals
 		self.assertEqual(upload_auth.username, mock_auth_user)
@@ -70,7 +62,6 @@ class ClientDaemonTest(unittest.TestCase):
 	def test_on_modified(self):
 		pass
 
-		
 
 if __name__ == '__main__':
 	unittest.main()

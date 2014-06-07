@@ -30,12 +30,12 @@ class ServerCommunicator(object):
 		file_content = ''
 		
 		try:
-			with open("dst_path", 'r') as f:
+			with open(dst_path, 'r') as f:
 				file_content =  f.read()
 		except IOError:
 			#Atomic create and delete error!
 			return False
-			
+
 		upload = {
 					'file_name': file_name,
 					'file_content': file_content

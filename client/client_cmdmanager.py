@@ -8,7 +8,7 @@ import sys
 import re
 import os
 
-sys.path.insert(0, 'test/')
+sys.path.insert(0, 'temp_mock/')
 import fakerequests as requests
 
 sys.path.insert(0, 'utility/')
