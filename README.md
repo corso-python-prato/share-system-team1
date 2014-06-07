@@ -1,5 +1,7 @@
 share-system-team1
 ==================
 
-install dependencies typing 
+install dependencies typing
+
     pip install -r requirements.txt
+
