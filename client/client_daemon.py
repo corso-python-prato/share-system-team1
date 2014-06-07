@@ -10,8 +10,10 @@ from watchdog.observers.polling import PollingObserver as Observer
 from watchdog.events import FileSystemEventHandler
 from requests.auth import HTTPBasicAuth
 import requests
+import base64
 import time
 import json
+import os
 
 def req_post(*args, **kwargs):
 	return requests.post(*args, **kwargs)
@@ -19,14 +21,17 @@ def req_post(*args, **kwargs):
 
 class ServerCommunicator(object):
 
-	def __init__(self, server_url):
+	def __init__(self, server_url, username, password):
 		self.server_url = server_url
+		self.auth = HTTPBasicAuth(
+			base64.encodestring(username), 
+			base64.encodestring(password))
 
 	def get(self, dst_path):
 		r = requests.get(self.server_url)
 	
-	def post(self, dst_path, login_credential):
-		file_name = dst_path.split('/')[-1]
+	def post(self, dst_path):
+		file_name = dst_path.split(os.path.sep)[-1]
 		file_content = ''
 		
 		try:
@@ -40,13 +45,12 @@ class ServerCommunicator(object):
 					'file_name': file_name,
 					'file_content': file_content
 				 }
-		auth = HTTPBasicAuth(
-					login_credential['user'],
-					login_credential['psw'])
 
-		server_url = "{}/files/{}".format(self.server_url, dst_path)
+		server_url = "{}/files/{}".format(
+				self.server_url, 
+				dst_path.replace(os.path.sep, '/'))
 
-		req_post(server_url, data = upload, auth = auth)
+		req_post(server_url, data = upload, auth = self.auth)
 
 	def put(self, dst_path):
 		r = requests.get(self.server_url)
@@ -65,8 +69,7 @@ class DirectoryEventHandler(FileSystemEventHandler):
 
 	def __init__(self, cmd):
 		self.cmd = cmd
-		self.credential = {"psw": "marco", "user": "marco"}
-
+		
 	# def on_any_event(self, event):
 		# request = requests.get(self.server_url)
 
@@ -89,7 +92,7 @@ class DirectoryEventHandler(FileSystemEventHandler):
 		:type event:
 			:class:`DirCreatedEvent` or :class:`FileCreatedEvent`
 		"""
-		self.cmd.post(event.src_path, self.credential)
+		self.cmd.post(event.src_path)
 
 	def on_deleted(self, event):
 		"""Called when a file or directory is deleted.
@@ -115,7 +118,12 @@ class DirectoryEventHandler(FileSystemEventHandler):
 
 def main():
 	config = load_config()
-	server_com = ServerCommunicator(config['server_url'])
+
+	server_com = ServerCommunicator(
+		server_url = config['server_url'], 
+		username = config['username'],
+		password = config['password'])
+
 	event_handler = DirectoryEventHandler(server_com)
 	observer = Observer()
 	observer.schedule(event_handler, config['dir_path'], recursive=True)

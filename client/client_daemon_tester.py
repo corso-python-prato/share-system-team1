@@ -3,6 +3,7 @@ import client_daemon
 import unittest
 import requests
 import sys
+import os
 
 
 @all_requests
@@ -22,19 +23,26 @@ class ClientDaemonTest(unittest.TestCase):
 
 		client_daemon.req_post = mock_req_post
 
-		login = {"psw": "pswMarco", "user": "userMarco"}
-		path = "test_mock/prova.txt"
+		password = "passwordSegretissima"
+		username = "usernameFarlocco"
 		
-		mock_auth_user = 'userMarco'
-		mock_auth_psw = 'pswMarco'
+		path = os.path.join("test_mock", "prova.txt")
+
+		mock_file_content = open(path, 'r').read()
+		mock_auth_user = client_daemon.base64.encodestring(username)
+		mock_auth_psw = client_daemon.base64.encodestring(password)
 		mock_url = 'http://127.0.0.1:5000/API/v1/files/test_mock/prova.txt' 
 		mock_data = {
 				'file_name': 'prova.txt', 
-				'file_content': 'LOREM IPSIUM!'
+				'file_content': mock_file_content
 			}
 
-		client_daemon.ServerCommunicator('http://127.0.0.1:5000/API/v1').post(path, login)
 
+		client_daemon.ServerCommunicator(
+			'http://127.0.0.1:5000/API/v1', 
+			username, 
+			password).post(path)
+		
 		#check if username is equals
 		self.assertEqual(upload_auth.username, mock_auth_user)
 		#check if password is equals
