@@ -23,11 +23,11 @@ class ClientDaemonTest(unittest.TestCase):
 		client_daemon.req_post = mock_req_post
 
 		login = {"psw": "pswMarco", "user": "userMarco"}
-		path = "mock_file/prova.txt"
+		path = "test_mock/prova.txt"
 		
 		mock_auth_user = 'userMarco'
 		mock_auth_psw = 'pswMarco'
-		mock_url = 'http://127.0.0.1:5000/API/v1/files/mock_file/prova.txt' 
+		mock_url = 'http://127.0.0.1:5000/API/v1/files/test_mock/prova.txt' 
 		mock_data = {
 				'file_name': 'prova.txt', 
 				'file_content': 'LOREM IPSIUM!'
