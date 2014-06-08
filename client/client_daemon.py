@@ -16,21 +16,69 @@ import json
 import os
 
 def req_post(*args, **kwargs):
-	return requests.post(*args, **kwargs)
+	try:
+		return requests.post(*args, **kwargs)
+	except requests.exceptions.RequestException:
+		return True # TODO True x test | use False
+
+def req_get(*args, **kwargs):
+	try:
+		return requests.get(*args, **kwargs)
+	except requests.exceptions.RequestException:
+		return True # TODO True x test | use False
+
+def req_put(*args, **kwargs):
+	try:
+		return requests.put(*args, **kwargs)
+	except requests.exceptions.RequestException:
+		return True # TODO True x test | use False
+
+def req_delete(*args, **kwargs):
+	try:
+		return requests.delete(*args, **kwargs)
+	except requests.exceptions.RequestException:
+		return True # TODO True x test | use False
 
 
 class ServerCommunicator(object):
 
 	def __init__(self, server_url, username, password):
 		self.server_url = server_url
+		self.retry_delay = 2
 		self.auth = HTTPBasicAuth(
 			base64.encodestring(username), 
 			base64.encodestring(password))
 
-	def get(self, dst_path):
-		r = requests.get(self.server_url)
-	
-	def post(self, dst_path):
+	def _try_request(self, callback, success = '', error = '', *args, **kwargs):
+		""" try a request until it's a success """
+
+		request_result = callback(*args, **kwargs)
+		while not request_result:
+			print error
+			time.sleep(self.retry_delay)
+			request_result = callback(*args, **kwargs)
+
+		print success
+		return request_result
+
+	def download_file(self, dst_path):
+		""" download a file from server"""
+
+		error_log = "ERROR on download request " + dst_path
+		success_log = "file downloaded! " + dst_path
+
+		server_url = "{}/diffs/".format(self.server_url)
+
+		request = {
+			"url": server_url,
+			"data": 'timestamp', #TODO
+			"auth": self.auth
+		}
+		download = self._try_request(req_get, success_log, error_log, **request)
+
+	def upload_file(self, dst_path, put_file = False):
+		""" upload a file to server """
+
 		file_name = dst_path.split(os.path.sep)[-1]
 		file_content = ''
 		
@@ -38,8 +86,7 @@ class ServerCommunicator(object):
 			with open(dst_path, 'r') as f:
 				file_content =  f.read()
 		except IOError:
-			#Atomic create and delete error!
-			return False
+			return False #Atomic create and delete error!
 
 		upload = {
 					'file_name': file_name,
@@ -50,13 +97,35 @@ class ServerCommunicator(object):
 				self.server_url, 
 				dst_path.replace(os.path.sep, '/'))
 
-		req_post(server_url, data = upload, auth = self.auth)
+		error_log = "ERROR upload request " + dst_path
+		success_log = "file uploaded! " + dst_path
+		
+		request = {
+			"url": server_url,
+			"data": upload,
+			"auth": self.auth
+		}
+		if put_file:
+			self._try_request(req_put, success_log, error_log, **request)
+		else:
+			self._try_request(req_post, success_log, error_log, **request)
 
-	def put(self, dst_path):
-		r = requests.get(self.server_url)
+	def delete_file(self, dst_path):
+		""" send to server a message of file delete """
 
-	def delete(self, dst_path):
-		r = requests.get(self.server_url)
+		error_log = "ERROR delete request " + dst_path
+		success_log = "file deleted! " + dst_path
+
+		server_url = "{}/files/{}".format(
+				self.server_url, 
+				dst_path.replace(os.path.sep, '/'))
+
+		request = {
+			"url": server_url,
+			"auth": self.auth
+		}
+		self._try_request(req_delete, success_log, error_log, **request)
+
 
 
 def load_config():
@@ -81,8 +150,8 @@ class DirectoryEventHandler(FileSystemEventHandler):
 		:type event:
 			:class:`DirMovedEvent` or :class:`FileMovedEvent`
 		"""
-		self.cmd.delete(event.src_path)
-		self.cmd.post(event.dest_path)
+		self.cmd.delete_file(event.src_path)
+		self.cmd.upload_file(event.dest_path)
 
 	def on_created(self, event):
 		"""Called when a file or directory is created.
@@ -92,7 +161,7 @@ class DirectoryEventHandler(FileSystemEventHandler):
 		:type event:
 			:class:`DirCreatedEvent` or :class:`FileCreatedEvent`
 		"""
-		self.cmd.post(event.src_path)
+		self.cmd.upload_file(event.src_path)
 
 	def on_deleted(self, event):
 		"""Called when a file or directory is deleted.
@@ -102,7 +171,7 @@ class DirectoryEventHandler(FileSystemEventHandler):
 		:type event:
 			:class:`DirDeletedEvent` or :class:`FileDeletedEvent`
 		"""
-		self.cmd.delete(event.src_path)
+		self.cmd.delete_file(event.src_path)
 
 	def on_modified(self, event):
 		"""Called when a file or directory is modified.
@@ -113,7 +182,7 @@ class DirectoryEventHandler(FileSystemEventHandler):
 			:class:`DirModifiedEvent` or :class:`FileModifiedEvent`
 		"""
 		if not event.is_directory:
-			self.cmd.put(event.src_path)
+			self.cmd.upload_file(event.src_path, put_file = True)
 
 
 def main():

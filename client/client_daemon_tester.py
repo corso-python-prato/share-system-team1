@@ -14,12 +14,13 @@ class ClientDaemonTest(unittest.TestCase):
 	def setup(self):
 		pass
 
-	def test_upload(self):
+	def test_upload(self, put_file = False):
 		def mock_req_post(*args, **kwargs):
 			global upload_auth, upload_data, upload_url
 			upload_auth = kwargs['auth']
 			upload_data = kwargs['data']
-			upload_url = args[0]
+			upload_url = kwargs['url']
+			return True
 
 		client_daemon.req_post = mock_req_post
 
@@ -41,7 +42,7 @@ class ClientDaemonTest(unittest.TestCase):
 		client_daemon.ServerCommunicator(
 			'http://127.0.0.1:5000/API/v1', 
 			username, 
-			password).post(path)
+			password).upload_file(path, put_file)
 		
 		#check if username is equals
 		self.assertEqual(upload_auth.username, mock_auth_user)
@@ -52,8 +53,8 @@ class ClientDaemonTest(unittest.TestCase):
 		#check if url is equals
 		self.assertEqual(upload_url, mock_url)   
 
-	def test_put(self):
-		pass
+	def test_upload_put(self):
+		self.test_upload(put_file = True)
 
 	def test_delete(self):
 		pass
