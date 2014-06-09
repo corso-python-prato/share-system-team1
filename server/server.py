@@ -28,47 +28,53 @@ parser = reqparse.RequestParser()
 parser.add_argument("task", type=str)
 
 #todo
-class Methods(Resource):
-    @app.route("/files/<path>")
-    @auth.login_required
+class Files(Resource):
+    #@auth.login_required
     def get(self, path):
         """Download
         this function return file content as string using GET"""
-        access_permission(auth.username())
-        if os.path.exists(path):
-            with open(path, "r") as tmp:
+        user_dir = "0"
+        full_path = os.path.join("user_dirs", user_dir, path)
+        if os.path.exists(full_path):
+            with open(full_path, "r") as tmp:
                 return tmp.read()
         else:
             return abort(404)
 
-    @app.route("/files/<path>")
-    @auth.login_required
-    def delete(self, path):
-        """Delete
-        """
-        return "", 204
+    # @app.route(`"/files/<path>")
+    # @auth.login_required
+    # def delete(self, path):
+    #     """Delete
+    #     """
+    #     return "", 204
     
-    @app.route("/files/<path>")
-    @auth.login_required
-    def put(self, path):
-        """Update
-        this function modify file using PUT"""
-        access_permission(auth.username())
-        if os.path.exists(path):
-            return "",201
-        else:
-            return abort(404)
-        
+    # @app.route("/files/<path>")
+    # @auth.login_required
+    # def put(self, path):
+    #     """Update
+    #     this function modify file using PUT"""
+    #     if os.path.exists(path):
+    #         return "",201
+    #     else:
+    #         return abort(404)
+    
 
-    @app.route("/files/<path>")
-    @auth.login_required
-    def post(self, post, json):
+    #@auth.login_required
+    def post(self, path):
         """Upload
         this function load file using POST"""
-        access_permission(auth.username())
-        f = request.files["data"]
-        f.save(f.filename)
-        return "", 201
+        user_dir = "0"
+        full_path = os.path.join("user_dirs", user_dir, request.form["file_name"])
+        print full_path
+        if os.path.exists(full_path):
+            return "file gia' esistente", 409
+        else:
+            f = request.files["file_content"]
+            os.chdir("user_dirs/0")
+            f.save(request.form["file_name"])
+            os.chdir(os.pardir)
+            os.chdir(os.pardir)
+            return "file upload done", 201
 
 
 
@@ -96,11 +102,6 @@ def verify_path(username, path):
         if p == path:
             return True
     else: return False
-
-
-def access_permission(username,path):
-    if  not verify_path(username, path):
-        abort(500)
     
 
 @app.route("/hidden_page")
@@ -117,6 +118,7 @@ def create_user():
             and len(request.form) == 2):
         abort(400)      # Bad Request
     if request.form["user"] in users:
+        print "user esiste gia'"
         abort(409)      # Conflict
     psw_hash = sha256_crypt.encrypt(request.form["psw"])
 
@@ -125,6 +127,7 @@ def create_user():
     try:
         os.mkdir(dir_path)
     except OSError:
+        print "la cartella esiste"
         abort(409)      # Conflict: the directory already exists
     
     users[request.form["user"]] = { 
@@ -144,10 +147,10 @@ def welcome():
 def main():
     if not os.path.isdir(USERS_DIRECTORIES):
         os.mkdir(USERS_DIRECTORIES)
-    app.run(debug=True)         # TODO: remove debug=True
+    app.run(host="0.0.0.0",debug=True)         # TODO: remove debug=True
 
 
-api.add_resource(Methods, "/files/<path>")
+api.add_resource(Files, "/files/<path:path>")
 
 if __name__ == "__main__":
     main()
