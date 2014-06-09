@@ -15,6 +15,13 @@ curl  localhost:5000/hidden_page -u UserName:password
 # example of upload
 curl --form "data=@FileName" localhost:5000/upload -u UserName:password
 
+# example of post and put request from daemon
+{'url': 'http://127.0.0.1:5000/API/v1/files/test_mock/prova.txt', 'data': {'file_content': 'LOREM IPSIUM!', 'file_name': 'prova.txt'}, 'auth': <requests.auth.HTTPBasicAuth object at 0x962986c>}
+
+una volta letto dovresti avere 
+auth.username = dXNlcm5hbWVGYXJsb2Njbw==
+auth.password = cGFzc3dvcmRTZWdyZXRpc3NpbWE=
+data = {'file_content': 'LOREM IPSIUM!', 'file_name': 'prova.txt'} http://127.0.0.1:5000/API/v1/files/test_mock/prova.txt
 
 # download
 curl localhost:5000/download/FileName -u UserName:password
