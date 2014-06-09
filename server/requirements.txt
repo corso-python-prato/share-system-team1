@@ -1,3 +1,4 @@
 Flask>=0.10.1
 Flask-HTTPAuth>=2.2.1
+Flask-Restless>=0.13.1
 passlib>=1.6.2
