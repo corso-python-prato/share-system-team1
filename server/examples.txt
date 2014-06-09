@@ -16,7 +16,7 @@ curl  localhost:5000/hidden_page -u UserName:password
 curl --form "data=@FileName" localhost:5000/upload -u UserName:password
 
 # example of post and put request from daemon
-{'url': 'http://127.0.0.1:5000/API/v1/files/test_mock/prova.txt', 'data': {'file_content': 'LOREM IPSIUM!', 'file_name': 'prova.txt'}, 'auth': <requests.auth.HTTPBasicAuth object at 0x962986c>}
+{'url': 'http://127.0.0.1:5000/API/v1/files/test_mock/prova.txt', 'data': {'file_content': 'LOREM IPSIUM!', 'file_name': 'prova.txt'}, 'auth': NON SO COSA CI FINISCA PERÒ VEDETE COME ACCEDERCI}
 
 una volta letto dovresti avere 
 auth.username = dXNlcm5hbWVGYXJsb2Njbw==
