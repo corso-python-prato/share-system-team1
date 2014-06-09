@@ -40,12 +40,21 @@ def req_delete(*args, **kwargs):
 		return True # TODO True x test | use False
 
 
+
 class ServerCommunicator(object):
 
 	def __init__(self, server_url, username, password):
 		self.auth = HTTPBasicAuth(username, password)
 		self.server_url = server_url
-		self.retry_delay = 2
+		self.retry_delay = 2 
+		self.timestamp = None 	#timestamp for Synchronization
+		try:
+			with open('/timestamp.json', 'r') as timestamp_file:
+				self.timestamp = timestamp_file.read().[0]
+		except IOError:
+			print "There's no timestamp saved."
+
+
 
 	def _try_request(self, callback, success = '', error = '', *args, **kwargs):
 		""" try a request until it's a success """
@@ -59,8 +68,21 @@ class ServerCommunicator(object):
 		print success
 		return request_result
 
+
 	def download_file(self, dst_path):
 		""" download a file from server"""
+
+		def is_synchronized(self):
+			#server_timestamp = request_timestamp()	
+			if self.timestamp < server_timestamp:
+				return False
+			else:
+				return True
+
+		while not (is_synchronized):
+			#TODO download all new files
+
+
 
 		error_log = "ERROR on download request " + dst_path
 		success_log = "file downloaded! " + dst_path

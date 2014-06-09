@@ -46,11 +46,13 @@ class ClientDaemonTest(unittest.TestCase):
 		#check if data is equals
 		self.assertEqual(data, mock_data) 
 		#check if url is equals
-		self.assertEqual(path, mock_path)   
+		self.assertEqual(path, mock_path)
+
+	def test_download(self):
+		   
 
 	def test_upload_put(self):
-		self.test_upload(put_file = True)
-		pass 
+		self.test_upload(put_file = True) 
 
 	def test_delete(self):
 		pass
