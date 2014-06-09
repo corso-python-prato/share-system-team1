@@ -43,11 +43,9 @@ def req_delete(*args, **kwargs):
 class ServerCommunicator(object):
 
 	def __init__(self, server_url, username, password):
+		self.auth = HTTPBasicAuth(username, password)
 		self.server_url = server_url
 		self.retry_delay = 2
-		self.auth = HTTPBasicAuth(
-			base64.encodestring(username), 
-			base64.encodestring(password))
 
 	def _try_request(self, callback, success = '', error = '', *args, **kwargs):
 		""" try a request until it's a success """
@@ -80,6 +78,7 @@ class ServerCommunicator(object):
 		""" upload a file to server """
 
 		file_name = dst_path.split(os.path.sep)[-1]
+		path = os.path.join(*(dst_path.split(os.path.sep)[0:-1]))
 		file_content = ''
 		
 		try:
@@ -93,9 +92,7 @@ class ServerCommunicator(object):
 					'file_content': file_content
 				 }
 
-		server_url = "{}/files/{}".format(
-				self.server_url, 
-				dst_path.replace(os.path.sep, '/'))
+		server_url = "{}/files/{}".format(self.server_url, path)
 
 		error_log = "ERROR upload request " + dst_path
 		success_log = "file uploaded! " + dst_path

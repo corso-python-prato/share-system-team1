@@ -34,7 +34,7 @@ class TestSequenceFunctions(unittest.TestCase):
     def test_id(self):
         nums = []
         for i in range(10):
-            nums.append(server.IdCreator.get_id())
+            nums.append(server.users.get_id())
 
         for i, n in enumerate(nums):
             for j in range(i+1, len(nums)):
@@ -52,10 +52,9 @@ class TestSequenceFunctions(unittest.TestCase):
 
     # check if a new user is correctly created
     def test_correct_user_creation(self):
-        username = random.sample(string.letters, 5)
-        password = random.sample(string.letters, 5)
+        username = "".join(random.sample(string.letters, 5))
+        password = "".join(random.sample(string.letters, 5))
         dirs_counter = len(os.listdir(server.USERS_DIRECTORIES))
-            
         with server.app.test_client() as tc:
             rv = self.user_demo(username, password)
             self.assertEqual(rv.status_code, 201)
