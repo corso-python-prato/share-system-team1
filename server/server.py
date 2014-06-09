@@ -26,14 +26,14 @@ users = {}
 
 
 parser = reqparse.RequestParser()
-parser.add_argument('task', type=str)
+parser.add_argument("task", type=str)
 
 #todo
 class Methods(Resource):
     @app.route("/files/<path>")
     @auth.login_required
     def get(self, path):
-    """this function return file content as string by get"""
+        """this function return file content as string using GET"""
         access_permission(auth.username())
         if os.path.exists(path):
             with open(path, "r") as tmp:
@@ -45,12 +45,12 @@ class Methods(Resource):
     @auth.login_required
     def delete(self, path):
         
-        return '', 204
+        return "", 204
     
     @app.route("/files/<path>")
     @auth.login_required
     def put(self, path):
-        """this function modify file by PUT"""
+        """this function modify file using PUT"""
         access_permission(auth.username())
         if os.path.exists(path):
             return "",201
@@ -61,16 +61,16 @@ class Methods(Resource):
     @app.route("/files/<path>")
     @auth.login_required
     def post(self, post, json):
-        """this function load file by POST"""
+        """this function load file using POST"""
         access_permission(auth.username())
-        f = request.files['data']
+        f = request.files["data"]
         f.save(f.filename)
         return "", 201
 
 
 
 class IdCreator(object):
-    ''' creates univoque IDs, used as users' directories name '''
+    """creates univoque IDs, used as users' directories name"""
     counter_id = 0
 
     @classmethod
@@ -81,12 +81,12 @@ class IdCreator(object):
 
 @auth.verify_password
 def verify_password(username, password):
-    return sha256_crypt.verify(password, users[username]['psw'])
+    return sha256_crypt.verify(password, users[username]["psw"])
 
 
 def verify_path(username, path):
     #verify if the path is in the user accesses
-    for p in users[username]['paths']:
+    for p in users[username]["paths"]:
         if p == path:
             return True
     else: return False
@@ -136,5 +136,8 @@ def main():
         os.mkdir(USERS_DIRECTORIES)
     app.run(debug=True)         # TODO: remove debug=True
 
-if __name__ == '__main__':
+
+api.add_resource(Methods, "/files/<path>")
+
+if __name__ == "__main__":
     main()
