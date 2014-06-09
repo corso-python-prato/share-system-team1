@@ -3,6 +3,8 @@
 
 import asyncore
 import socket
+import json
+import struct
 
 
 class CmdMessageHandler(asyncore.dispatcher_with_send):
@@ -49,7 +51,7 @@ class CmdMessageClient(asyncore.dispatcher_with_send):
     PACK_FORMAT = '{}s'.format(LENGTH_FORMAT)
 
     def __init__(self, host, port):
-        asyncore.dispatcher.__init__(self)
+        asyncore.dispatcher_with_send.__init__(self)
         self.host = host
         self.port = port
         self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -65,15 +67,15 @@ class CmdMessageClient(asyncore.dispatcher_with_send):
         data = struct.pack(self.PACK_FORMAT, pack_size, cmd_struct)
         return data
 
-    def _unpacking_message(response_data):
-        pass
+    def _unpacking_message(self, response_data):
+        return response_data
 
     def handle_read(self):
-        data_length = self.recv(struct.calcsize(LENGTH_FORMAT))
+        data_length = self.recv(struct.calcsize(self.LENGTH_FORMAT))
         data = self.recv(data_length)
         response = json.loads(data)
         print response
 
     def send_message(self, command_type, param=None):
-        data = self._packing_message(command, param)
+        data = self._packing_message(command_type, param)
         self.send(data)
