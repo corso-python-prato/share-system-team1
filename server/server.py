@@ -5,7 +5,6 @@ from flask import Flask, request, abort
 from flask.ext.httpauth import HTTPBasicAuth
 from passlib.hash import sha256_crypt
 import datetime
-import time
 import os
 from flask.ext.restful import reqparse, abort, Api, Resource
 
@@ -33,7 +32,8 @@ class Methods(Resource):
     @app.route("/files/<path>")
     @auth.login_required
     def get(self, path):
-        """this function return file content as string using GET"""
+        """Download
+        this function return file content as string using GET"""
         access_permission(auth.username())
         if os.path.exists(path):
             with open(path, "r") as tmp:
@@ -44,13 +44,15 @@ class Methods(Resource):
     @app.route("/files/<path>")
     @auth.login_required
     def delete(self, path):
-        
+        """Delete
+        """
         return "", 204
     
     @app.route("/files/<path>")
     @auth.login_required
     def put(self, path):
-        """this function modify file using PUT"""
+        """Update
+        this function modify file using PUT"""
         access_permission(auth.username())
         if os.path.exists(path):
             return "",201
@@ -61,7 +63,8 @@ class Methods(Resource):
     @app.route("/files/<path>")
     @auth.login_required
     def post(self, post, json):
-        """this function load file using POST"""
+        """Upload
+        this function load file using POST"""
         access_permission(auth.username())
         f = request.files["data"]
         f.save(f.filename)
@@ -79,8 +82,11 @@ class IdCreator(object):
         cls.counter_id += 1    
         return  new_id
 
+
 @auth.verify_password
 def verify_password(username, password):
+    if username not in users:
+        return False
     return sha256_crypt.verify(password, users[username]["psw"])
 
 
@@ -100,7 +106,7 @@ def access_permission(username,path):
 @app.route("/hidden_page")
 @auth.login_required
 def hidden_page():
-    return "Hello {}".format(auth.username())
+    return "Hello {}\n".format(auth.username())
 
 
 @app.route("/create_user", methods=["POST"])
@@ -115,7 +121,11 @@ def create_user():
     psw_hash = sha256_crypt.encrypt(request.form["psw"])
 
     dir_id = IdCreator.get_id()
-    os.mkdir(os.path.join(USERS_DIRECTORIES, dir_id))
+    dir_path = os.path.join(USERS_DIRECTORIES, dir_id)
+    try:
+        os.mkdir(dir_path)
+    except OSError:
+        abort(409)      # Conflict: the directory already exists
     
     users[request.form["user"]] = { 
         "psw": psw_hash,
