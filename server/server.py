@@ -77,12 +77,14 @@ users = Users()
 
 #todo
 class Files(Resource):
-    #@auth.login_required
+    @auth.login_required
     def get(self, path):
         """Download
         this function return file content as string using GET"""
-        user_dir = "0"
-        full_path = os.path.join("user_dirs", user_dir, path)
+        destination_folder = users.users[auth.username()]["paths"][0] #for now we set it has the user dir
+        file_name = path        #fix this for subdirectories
+        full_path = os.path.join("user_dirs", destination_folder, file_name)
+
         if os.path.exists(full_path):
             with open(full_path, "r") as tmp:
                 return tmp.read()
@@ -107,22 +109,23 @@ class Files(Resource):
     #         return abort(404)
     
 
-    #@auth.login_required
+    @auth.login_required
     def post(self, path):
         """Upload
         this function load file using POST"""
-        user_dir = "0"
-        full_path = os.path.join("user_dirs", user_dir, request.form["file_name"])
-        print full_path
+        destination_folder = users.users[auth.username()]["paths"][0] #for now we set it has the user dir
+        file_name = request.form["file_name"]
+        full_path = os.path.join("user_dirs", destination_folder, file_name)
+
         if os.path.exists(full_path):
-            return "file gia' esistente", 409
+            return "{} already exists".format(file_name), 409
         else:
             f = request.files["file_content"]
-            os.chdir("user_dirs/0")
-            f.save(request.form["file_name"])
-            os.chdir(os.pardir)
-            os.chdir(os.pardir)
-            return "file upload done", 201
+            server_dir = os.getcwd()
+            os.chdir(os.path.join("user_dirs", destination_folder))
+            f.save(file_name)
+            os.chdir(server_dir)
+            return "{} upload done".format(file_name), 201
 
 
 @auth.verify_password
