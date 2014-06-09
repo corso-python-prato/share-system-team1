@@ -1,60 +1,56 @@
-from httmock import all_requests, HTTMock
 import client_daemon
+import httpretty
 import unittest
 import requests
+import base64
 import sys
 import os
 
-
-@all_requests
-def response_xxx(url, request):
-	return {'status_code': 201}
-
 class ClientDaemonTest(unittest.TestCase):
-	def setup(self):
-		pass
+	def setUp(self):
+		httpretty.enable()
+		httpretty.register_uri(httpretty.POST,
+		'http://127.0.0.1:5000/API/v1/files/test_mock/prova.txt',
+		data = {"response":"ok"})
 
+	def tearDown(self):
+		httpretty.disable()
+		httpretty.reset()
+    
 	def test_upload(self, put_file = False):
-		def mock_req_post(*args, **kwargs):
-			global upload_auth, upload_data, upload_url
-			upload_auth = kwargs['auth']
-			upload_data = kwargs['data']
-			upload_url = kwargs['url']
-			return True
-
-		client_daemon.req_post = mock_req_post
-
 		password = "passwordSegretissima"
 		username = "usernameFarlocco"
 		
-		path = os.path.join("test_mock", "prova.txt")
+		path = os.path.join("test_mock", "sub_folder",  "prova.txt")
 
 		mock_file_content = open(path, 'r').read()
-		mock_auth_user = client_daemon.base64.encodestring(username)
-		mock_auth_psw = client_daemon.base64.encodestring(password)
-		mock_url = 'http://127.0.0.1:5000/API/v1/files/test_mock/prova.txt' 
+		mock_auth_user = ":".join([username, password])
+		mock_path = '/API/v1/files/test_mock/sub_folder' 
 		mock_data = {
-				'file_name': 'prova.txt', 
-				'file_content': mock_file_content
+				u'file_name': [u'prova.txt'], 
+				u'file_content': [unicode(mock_file_content)]
 			}
-
 
 		client_daemon.ServerCommunicator(
 			'http://127.0.0.1:5000/API/v1', 
 			username, 
 			password).upload_file(path, put_file)
 		
-		#check if username is equals
-		self.assertEqual(upload_auth.username, mock_auth_user)
-		#check if password is equals
-		self.assertEqual(upload_auth.password, mock_auth_psw)
+		encoded = httpretty.last_request().headers['authorization'].split()[1]
+		authorization_decoded = base64.decodestring(encoded)
+		data = httpretty.last_request().parsed_body
+		path = httpretty.last_request().path
+		
+		#check if authorization is equals
+		self.assertEqual(authorization_decoded, mock_auth_user)
 		#check if data is equals
-		self.assertEqual(upload_data, mock_data) 
+		self.assertEqual(data, mock_data) 
 		#check if url is equals
-		self.assertEqual(upload_url, mock_url)   
+		self.assertEqual(path, mock_path)   
 
 	def test_upload_put(self):
 		self.test_upload(put_file = True)
+		pass 
 
 	def test_delete(self):
 		pass
