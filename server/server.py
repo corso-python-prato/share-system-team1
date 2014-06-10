@@ -74,8 +74,6 @@ class Users(object):
         with open(USERS_DATA, "w") as ud:
             json.dump(to_save, ud)
 
-users = Users()
-
 
 class History(object):
     ACTIONS = ["new", "modify", "rm", "mv", "cp"]
@@ -84,6 +82,7 @@ class History(object):
         self._history = {}
         # {
         #     path : [last_timestamp, action]
+        #     path : [last_timestamp, "moved by", source_path]
         # }
 
     def set_change(self, action, source_path, destination_path=None):
@@ -96,8 +95,7 @@ class History(object):
         if action != "new" and path not in self._history:
             raise MissingFileError
         
-        if (action == "mv" or action == "cp")
-                and destination_path is None:
+        if (action == "mv" or action == "cp") and destination_path is None:
             raise MissingDestinationError
 
         if action == "mv":
@@ -108,16 +106,25 @@ class History(object):
         else:
             self._history[source_path] = [time.time(), action]
 
-    
+
+class API(Resource):
+    @auth.login_required
+    def diffs(self, timestamp):
+        """ Diffs
+        returns a JSON with a list of changes """
+        changes = []
+        for path in users.users[auth.username()]["paths"]:
+            if history[path][0] > timestamp:
+                changes.append({
+                        "path" : path, 
+                        "action" : history[path]
+                })
+        if changes:
+            return json.dumps(changes), 200
+        else:
+            return "up to grade", 204
 
 
-
-
-
-
-
-
-#todo
 class Files(Resource):
     @auth.login_required
     def get(self, path):
@@ -170,6 +177,7 @@ class Files(Resource):
             f.save(file_name)
             os.chdir(server_dir)
             return "{} upload done".format(file_name), 201
+
 
 class Actions(Resource):
     @auth.login_required     #da testare
@@ -269,6 +277,9 @@ def main():
 
 
 api.add_resource(Files, "/files/<path:path>")
+users = Users()
+history = History()
+
 
 if __name__ == "__main__":
     main()
