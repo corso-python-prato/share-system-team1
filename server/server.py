@@ -75,7 +75,7 @@ class Users(object):
 
 users = Users()
 
-#todo
+
 class Files(Resource):
     @auth.login_required
     def get(self, path):
@@ -175,6 +175,6 @@ def main():
 
 
 api.add_resource(Files, "/files/<path:path>")
-
+api.add_resource(Actions, "/actions/")
 if __name__ == "__main__":
     main()
