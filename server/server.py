@@ -9,7 +9,7 @@ import time
 import datetime
 import json
 import os
-
+import shutil
 
 
 app = Flask(__name__)
@@ -133,23 +133,25 @@ class Files(Resource):
         else:
             return abort(404)
 
-    # @app.route(`"/files/<path>")
-    # @auth.login_required
-    # def delete(self, path):
-    #     """Delete
-    #     """
-    #     return "", 204
-    
-    # @app.route("/files/<path>")
-    # @auth.login_required
-    # def put(self, path):
-    #     """Update
-    #     this function modify file using PUT"""
-    #     if os.path.exists(path):
-    #         return "",201
-    #     else:
-    #         return abort(404)
-    
+
+    @auth.login_required     #da testare
+    def put(self, path):
+        """Put
+        this function update file"""
+        destination_folder = users.users[auth.username()]["paths"][0] #for now we set it has the user dir
+        file_name = request.form["file_name"]
+        full_path = os.path.join("user_dirs", destination_folder, file_name)
+
+        if os.path.exists(full_path):
+            f = request.files["file_content"]
+            server_dir = os.getcwd()
+            os.chdir(os.path.join("user_dirs", destination_folder))
+            f.save(file_name)
+            os.chdir(server_dir)
+            return "{} upload done".format(file_name), 201  
+        else:
+            return "file not found", 409
+
 
     @auth.login_required
     def post(self, path):
@@ -168,6 +170,56 @@ class Files(Resource):
             f.save(file_name)
             os.chdir(server_dir)
             return "{} upload done".format(file_name), 201
+
+class Actions(Resource):
+    @auth.login_required     #da testare
+    def delete(self, path):
+        """Delete
+        this function delete file selected"""
+        destination_folder = users.users[auth.username()]["paths"][0] #for now we set it has the user dir
+        file_name = request.form["file_name"]
+        full_path = os.path.join("user_dirs", destination_folder, file_name)
+
+        if os.path.exists(full_path):
+            os.remove(full_path)
+            return "file deleted",200
+        else:
+            return "file not found", 409
+
+
+    @auth.login_required     #da testare
+    def copy(self):
+        """Copy
+        this function copy a file from src to dest"""
+        file_src = request.form["file_src"]
+        file_dest = request.form["file_dest"]
+
+        if os.path.exists(file_src): 
+            if os.path.exists(file_dest):
+                shutil.copyfile(file_src, file_dst)
+                return "copied file",200
+            else:
+                return "dest not found", 409
+        else:
+            return "file not found in src", 409
+
+
+    @auth.login_required     #da testare
+    def move(self):
+        """Move
+        this function move a file from src to dest"""
+        file_src = request.form["file_src"]
+        file_dest = request.form["file_dest"]
+
+        if os.path.exists(file_src): 
+            if os.path.exists(file_dest):
+                shutil.copyfile(file_src, file_dst)
+                os.remove(full_src)
+                return "moved file",200
+            else:
+                return "dest not found", 409
+        else:
+            return "file not found in src", 409
 
 
 @auth.verify_password
