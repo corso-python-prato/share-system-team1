@@ -5,10 +5,12 @@ from flask import Flask, request, abort
 from flask.ext.httpauth import HTTPBasicAuth
 from flask.ext.restful import reqparse, abort, Api, Resource
 from passlib.hash import sha256_crypt
+import time
 import datetime
 import json
 import os
 import shutil
+import server_errors
 
 
 app = Flask(__name__)
@@ -73,7 +75,55 @@ class Users(object):
         with open(USERS_DATA, "w") as ud:
             json.dump(to_save, ud)
 
-users = Users()
+
+class History(object):
+    ACTIONS = ["new", "modify", "rm", "mv", "cp"]
+
+    def __init__(self):
+        self._history = {}
+        # {
+        #     path : [last_timestamp, action]
+        #     path : [last_timestamp, "moved by", source_path]
+        # }
+
+    def set_change(self, action, source_path, destination_path=None):
+        ''' actions allowed:
+            with only a path:   new, modify, rm
+            with two paths:     mv, cp '''
+        if action not in cls.ACTIONS:
+            raise NotAllowedError
+
+        if action != "new" and path not in self._history:
+            raise MissingFileError
+        
+        if (action == "mv" or action == "cp") and destination_path is None:
+            raise MissingDestinationError
+
+        if action == "mv":
+            self._history[source_path] = [time.time(), "moved to", destination_path]
+            self._history[destination_path] = [time.time(), "moved by", source_path]
+        elif action == "cp":
+            self._history[destination_path] = [time.time(), "copied by", source_path]
+        else:
+            self._history[source_path] = [time.time(), action]
+
+
+class API(Resource):
+    @auth.login_required
+    def diffs(self, timestamp):
+        """ Diffs
+        returns a JSON with a list of changes """
+        changes = []
+        for path in users.users[auth.username()]["paths"]:
+            if history[path][0] > timestamp:
+                changes.append({
+                        "path" : path, 
+                        "action" : history[path]
+                })
+        if changes:
+            return json.dumps(changes), 200
+        else:
+            return "up to grade", 204
 
 
 class Files(Resource):
@@ -128,6 +178,7 @@ class Files(Resource):
             f.save(file_name)
             os.chdir(server_dir)
             return "upload done", 201
+
 
 
 class Actions(Resource):
@@ -244,6 +295,10 @@ def main():
 
 api.add_resource(Files, "/files/<path:path>")
 api.add_resource(Actions, "/actions/<string:cmd>")
+
+users = Users()
+history = History()
+
 
 if __name__ == "__main__":
     main()

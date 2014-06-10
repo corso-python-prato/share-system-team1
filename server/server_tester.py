@@ -31,7 +31,10 @@ class TestSequenceFunctions(unittest.TestCase):
 
 
     # check id uniqueness
+    # DANGER current comodifications of users.counter_id
     def test_id(self):
+        tmp = server.users.counter_id
+        
         nums = []
         for i in range(10):
             nums.append(server.users.get_id())
@@ -39,6 +42,8 @@ class TestSequenceFunctions(unittest.TestCase):
         for i, n in enumerate(nums):
             for j in range(i+1, len(nums)):
                 self.assertNotEqual(n, nums[j])
+
+        server.users.counter_id = tmp
     
 
     # check if the server works
