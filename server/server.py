@@ -5,6 +5,7 @@ from flask import Flask, request, abort
 from flask.ext.httpauth import HTTPBasicAuth
 from flask.ext.restful import reqparse, abort, Api, Resource
 from passlib.hash import sha256_crypt
+import time
 import datetime
 import json
 import os
@@ -74,6 +75,47 @@ class Users(object):
             json.dump(to_save, ud)
 
 users = Users()
+
+
+class History(object):
+    ACTIONS = ["new", "modify", "rm", "mv", "cp"]
+
+    def __init__(self):
+        self._history = {}
+        # {
+        #     path : [last_timestamp, action]
+        # }
+
+    def set_change(self, action, source_path, destination_path=None):
+        ''' actions allowed:
+            with only a path:   new, modify, rm
+            with two paths:     mv, cp '''
+        if action not in cls.ACTIONS:
+            raise NotAllowedError
+
+        if action != "new" and path not in self._history:
+            raise MissingFileError
+        
+        if (action == "mv" or action == "cp")
+                and destination_path is None:
+            raise MissingDestinationError
+
+        if action == "mv":
+            self._history[source_path] = [time.time(), "moved to", destination_path]
+            self._history[destination_path] = [time.time(), "moved by", source_path]
+        elif action == "cp":
+            self._history[destination_path] = [time.time(), "copied by", source_path]
+        else:
+            self._history[source_path] = [time.time(), action]
+
+    
+
+
+
+
+
+
+
 
 #todo
 class Files(Resource):
