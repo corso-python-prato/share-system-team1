@@ -10,6 +10,7 @@ from watchdog.observers.polling import PollingObserver as Observer
 from watchdog.events import FileSystemEventHandler
 from requests.auth import HTTPBasicAuth
 import requests
+import shutil
 import base64
 import time
 import json
@@ -19,7 +20,7 @@ def req_post(*args, **kwargs):
 	try:
 		return requests.post(*args, **kwargs)
 	except requests.exceptions.RequestException:
-		return True # TODO True x test | use False
+		return False # TODO True x test | use False
 
 def req_get(*args, **kwargs):
 	try:
@@ -42,9 +43,10 @@ def req_delete(*args, **kwargs):
 
 class ServerCommunicator(object):
 
-	def __init__(self, server_url, username, password):
+	def __init__(self, server_url, username, password, dir_path):
 		self.auth = HTTPBasicAuth(username, password)
 		self.server_url = server_url
+		self.dir_path = dir_path
 		self.retry_delay = 2
 
 	def _try_request(self, callback, success = '', error = '', *args, **kwargs):
@@ -65,14 +67,22 @@ class ServerCommunicator(object):
 		error_log = "ERROR on download request " + dst_path
 		success_log = "file downloaded! " + dst_path
 
-		server_url = "{}/diffs/".format(self.server_url)
+		server_url = "{}/files/{}".format(self.server_url, dst_path)
 
 		request = {
 			"url": server_url,
-			"data": 'timestamp', #TODO
 			"auth": self.auth
 		}
-		download = self._try_request(req_get, success_log, error_log, **request)
+		print request
+		r = self._try_request(req_get, success_log, error_log, **request)
+		
+		local_path = os.path.join(self.dir_path, dst_path)
+
+		#create a directory chain without file name
+		os.makedirs(local_path[-1], 0755 )
+		#create a downloaded file
+		with open(local_path, 'w') as f:
+			f.write(r.text)
 
 	def upload_file(self, dst_path, put_file = False):
 		""" upload a file to server """
@@ -123,7 +133,22 @@ class ServerCommunicator(object):
 		}
 		self._try_request(req_delete, success_log, error_log, **request)
 
+	def create_user(self, username, password):
+		
+		error_log = "User creation error"
+		success_log = "user created!" 
 
+		server_url = "{}/create_user".format(self.server_url)
+
+		request = {
+			"url": server_url,
+			"data":{
+					"user": username,
+					"psw": password
+			}
+		}
+		
+		self._try_request(req_post, success_log, error_log, **request)
 
 def load_config():
 	with open('config.json', 'r') as config_file:
@@ -182,18 +207,25 @@ class DirectoryEventHandler(FileSystemEventHandler):
 			self.cmd.upload_file(event.src_path, put_file = True)
 
 
+
+
 def main():
 	config = load_config()
 
 	server_com = ServerCommunicator(
 		server_url = config['server_url'], 
 		username = config['username'],
-		password = config['password'])
+		password = config['password'],
+		dir_path = config['dir_path'])
+
+	#server_com.create_user("usernameFarlocco", "passwordSegretissima")
+	server_com.download_file('bla.txt')
 
 	event_handler = DirectoryEventHandler(server_com)
 	observer = Observer()
 	observer.schedule(event_handler, config['dir_path'], recursive=True)
 	observer.start()
+
 	try:
 		while True:
 			time.sleep(1)
