@@ -93,6 +93,7 @@ class TestSequenceFunctions(unittest.TestCase):
             self.assertEqual(rv.status_code, 200)
 
 
+
 if __name__ == '__main__':
     try:
         os.mkdir(TEST_DIRECTORY)
