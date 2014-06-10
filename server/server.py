@@ -10,13 +10,15 @@ import datetime
 import json
 import os
 import shutil
-import server_errors
+import urlparse
+from server_errors import *
 
 
 app = Flask(__name__)
 auth = HTTPBasicAuth()
 USERS_DIRECTORIES = "user_dirs/"
 USERS_DATA = "users_data.json"
+API_PREFIX = "/API/v1"
 api = Api(app)
 parser = reqparse.RequestParser()
 parser.add_argument("task", type=str)
@@ -90,7 +92,7 @@ class History(object):
         ''' actions allowed:
             with only a path:   new, modify, rm
             with two paths:     mv, cp '''
-        if action not in cls.ACTIONS:
+        if action not in History.ACTIONS:
             raise NotAllowedError
 
         if action != "new" and path not in self._history:
@@ -134,7 +136,6 @@ class Files(Resource):
         destination_folder = users.users[auth.username()]["paths"][0] #for now we set it has the user dir
         file_name = path        #fix this for subdirectories
         full_path = os.path.join("user_dirs", destination_folder, file_name)
-
         if os.path.exists(full_path):
             with open(full_path, "r") as tmp:
                 return tmp.read()
@@ -252,7 +253,7 @@ def hidden_page():
     return "Hello {}\n".format(auth.username())
 
 
-@app.route("/create_user", methods=["POST"])
+@app.route("/API/v1/create_user", methods=["POST"])
 # this method takes only 'user' and 'psw' as POST variables
 def create_user():
     if not ("user" in request.form
@@ -277,7 +278,7 @@ def main():
     app.run(host="0.0.0.0",debug=True)         # TODO: remove debug=True
 
 
-api.add_resource(Files, "/files/<path:path>")
+api.add_resource(Files, urlparse.urljoin(API_PREFIX, "files/<path:path>"))
 users = Users()
 history = History()
 
