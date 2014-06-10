@@ -48,7 +48,7 @@ class CmdMessageServer(asyncore.dispatcher):
 class CmdMessageClient(asyncore.dispatcher_with_send):
 
     LENGTH_FORMAT = '!i'
-    PACK_FORMAT = '{}s'.format(LENGTH_FORMAT)
+    PACK_FORMAT = '{}89s'.format(LENGTH_FORMAT)
 
     def __init__(self, host, port):
         asyncore.dispatcher_with_send.__init__(self)
