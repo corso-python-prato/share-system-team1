@@ -92,7 +92,7 @@ class Files(Resource):
             return abort(404)
 
 
-    @auth.login_required     #da testare
+    @auth.login_required
     def put(self, path):
         """Put
         this function update file"""
@@ -106,7 +106,7 @@ class Files(Resource):
             os.chdir(os.path.join("user_dirs", destination_folder))
             f.save(file_name)
             os.chdir(server_dir)
-            return "{} upload done".format(file_name), 201  
+            return "updated", 201  
         else:
             return "file not found", 409
 
@@ -120,23 +120,24 @@ class Files(Resource):
         full_path = os.path.join("user_dirs", destination_folder, file_name)
 
         if os.path.exists(full_path):
-            return "{} already exists".format(file_name), 409
+            return "already exists", 409
         else:
             f = request.files["file_content"]
             server_dir = os.getcwd()
             os.chdir(os.path.join("user_dirs", destination_folder))
             f.save(file_name)
             os.chdir(server_dir)
-            return "{} upload done".format(file_name), 201
+            return "upload done", 201
+
 
 class Actions(Resource):
-    @auth.login_required     #da testare
-    def delete(self, path):
+    
+    def _delete(self):
         """Delete
         this function delete file selected"""
+        path = request.form["path"]
         destination_folder = users.users[auth.username()]["paths"][0] #for now we set it has the user dir
-        file_name = request.form["file_name"]
-        full_path = os.path.join("user_dirs", destination_folder, file_name)
+        full_path = os.path.join("user_dirs", destination_folder, path)
 
         if os.path.exists(full_path):
             os.remove(full_path)
@@ -145,16 +146,19 @@ class Actions(Resource):
             return "file not found", 409
 
 
-    @auth.login_required     #da testare
-    def copy(self):
+    def _copy(self):
         """Copy
         this function copy a file from src to dest"""
         file_src = request.form["file_src"]
-        file_dest = request.form["file_dest"]
+        destination_folder = users.users[auth.username()]["paths"][0] #for now we set it has the user dir
+        full_src_path = os.path.join("user_dirs", destination_folder, file_src)
 
-        if os.path.exists(file_src): 
-            if os.path.exists(file_dest):
-                shutil.copyfile(file_src, file_dst)
+        file_dest = request.form["file_dest"]
+        full_dest_path = os.path.join("user_dirs", destination_folder, file_dest)
+        
+        if os.path.exists(full_src_path): 
+            if os.path.exists(full_dest_path):
+                shutil.copy(full_src_path, full_dest_path)
                 return "copied file",200
             else:
                 return "dest not found", 409
@@ -162,23 +166,35 @@ class Actions(Resource):
             return "file not found in src", 409
 
 
-    @auth.login_required     #da testare
-    def move(self):
+    def _move(self):
         """Move
         this function move a file from src to dest"""
         file_src = request.form["file_src"]
-        file_dest = request.form["file_dest"]
+        destination_folder = users.users[auth.username()]["paths"][0] #for now we set it has the user dir
+        full_src_path = os.path.join("user_dirs", destination_folder, file_src)
 
-        if os.path.exists(file_src): 
-            if os.path.exists(file_dest):
-                shutil.copyfile(file_src, file_dst)
-                os.remove(full_src)
+        file_dest = request.form["file_dest"]
+        full_dest_path = os.path.join("user_dirs", destination_folder, file_dest)
+        
+        if os.path.exists(full_src_path): 
+            if os.path.exists(full_dest_path):
+                shutil.copy(full_src_path, full_dest_path)
+                os.remove(full_src_path)
                 return "moved file",200
             else:
                 return "dest not found", 409
         else:
             return "file not found in src", 409
+    
+    command = {
+        "delete" : _delete,
+        "move" : _move,
+        "copy" : _copy
+    }
 
+    @auth.login_required
+    def post(self, cmd):
+        return self.command[cmd](self)
 
 @auth.verify_password
 def verify_password(username, password):
@@ -227,6 +243,7 @@ def main():
 
 
 api.add_resource(Files, "/files/<path:path>")
-api.add_resource(Actions, "/actions/")
+api.add_resource(Actions, "/actions/<string:cmd>")
+
 if __name__ == "__main__":
     main()
