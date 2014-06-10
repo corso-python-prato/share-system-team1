@@ -15,6 +15,7 @@ TEST_DIRECTORY = "test_users_dirs/"
 class TestSequenceFunctions(unittest.TestCase):
 
     def setUp(self):
+        server.app.config.update(TESTING=True)
         server.app.testing = True
         server.USERS_DIRECTORIES = TEST_DIRECTORY
 
@@ -92,6 +93,9 @@ class TestSequenceFunctions(unittest.TestCase):
             rv = tc.get("/hidden_page", headers=headers)
             self.assertEqual(rv.status_code, 200)
 
+    def test_history(self):
+        with self.assertRaises(NotAllowedError):
+                server.history.set_change("draw", "/")
 
 if __name__ == '__main__':
     try:
