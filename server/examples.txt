@@ -1,17 +1,21 @@
+#### GENERIC PAGES ####
 # welcome
 curl localhost:5000/
-
-
-# examples of user creation
-curl --data "user=UserName&psw=password" 127.0.0.1:5000/create_user
-
-(it's a POST request, as you have to do)
-
 
 # access to restricted area
 curl  localhost:5000/hidden_page -u UserName:password
 
 
+#### USER ACTIONS ####
+# examples of user creation
+(it's a POST request, as you have to do)
+curl --data "user=UserName&psw=password" localhost:5000/API/v1/user/create
+
+# example of diff request
+curl --data "timestamp=1402500509.062415" localhost:5000/API/v1/user/diffs -u UserName:password
+
+
+#### FILES ACTIONS ####
 # example of upload
  curl -X POST -F file_content=@<file_name> -F file_name=<destination_file_name> http://localhost:5000/files/<path_of_the_file> -u UserName:password
 

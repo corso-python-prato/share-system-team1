@@ -23,7 +23,7 @@ class TestSequenceFunctions(unittest.TestCase):
     def user_demo(self, user="Gianni", psw="linux"):
         # self.client.preserve_context = False
         with server.app.test_client() as tc:
-            return tc.post("/create_user", 
+            return tc.post("/API/v1/create_user", 
                     data = { 
                         "user" : user,
                         "psw" : psw 
@@ -82,13 +82,7 @@ class TestSequenceFunctions(unittest.TestCase):
     def test_correct_hidden_page(self):
         user = "Giovannina"
         psw = "cracracra"
-        with server.app.test_client() as tc:
-            tc.post("/create_user", 
-                    data = { 
-                        "user" : user,
-                        "psw" : psw 
-                    }
-            )
+        user_demo(user, psw)
 
         headers = {
             'Authorization': 'Basic ' + b64encode("{0}:{1}".format(user, psw))
@@ -98,12 +92,12 @@ class TestSequenceFunctions(unittest.TestCase):
             rv = tc.get("/hidden_page", headers=headers)
             self.assertEqual(rv.status_code, 200)
 
-    #to do
-    def test_history_errors(self):
-        with self.assertRaises(server.NotAllowedError):
-                server.history.set_change("draw", "/")
-        with self.assertRaises(server.MissingFileError):
-                server.history.set_change()
+    # TODO:
+    # def test_history_errors(self):
+    #     with self.assertRaises(server.NotAllowedError):
+    #             server.history.set_change("draw", "/")
+    #     with self.assertRaises(server.MissingFileError):
+    #             server.history.set_change()
 
 
 
@@ -113,6 +107,7 @@ if __name__ == '__main__':
     except OSError:
         shutil.rmtree(TEST_DIRECTORY)
         os.mkdir(TEST_DIRECTORY)
+    # TODO: don't use the real user_data.json
 
     unittest.main(exit=False)
 

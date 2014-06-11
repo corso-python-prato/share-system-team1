@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #-*- coding: utf-8 -*-
 
-from flask import Flask, request, abort
+from flask import Flask, request
 from flask.ext.httpauth import HTTPBasicAuth
 from flask.ext.restful import reqparse, abort, Api, Resource
 from passlib.hash import sha256_crypt
@@ -13,15 +13,27 @@ import shutil
 import urlparse
 from server_errors import *
 
-
 app = Flask(__name__)
+api = Api(app)
 auth = HTTPBasicAuth()
 USERS_DIRECTORIES = "user_dirs/"
-USERS_DATA = "users_data.json"
-API_PREFIX = "/API/v1"
-api = Api(app)
+USERS_DATA = "user_data.json"
 parser = reqparse.RequestParser()
 parser.add_argument("task", type=str)
+
+_API_PREFIX = "/API/v1/"
+_URLS = {
+    "files" :     "files/<path:path>",
+    "actions" :   "actions/<string:cmd>",
+    "user" :      "user/<string:cmd>"
+}
+def init():
+    for u in _URLS.keys():
+        _URLS[u] = urlparse.urljoin(_API_PREFIX, _URLS.pop(u))
+
+    api.add_resource(UserActions, _URLS["user"])
+    api.add_resource(Files, _URLS["files"])
+    api.add_resource(Actions, _URLS["actions"])
 
 
 class Users(object):
@@ -31,7 +43,7 @@ class Users(object):
     def get_id(self):
         new_id = hex(self.counter_id)[2:]
         self.counter_id += 1    
-        return  new_id
+        return new_id
 
     def load(self):
         try:
@@ -52,7 +64,7 @@ class Users(object):
 
     def new_user(self, user, password):
         if user in self.users:
-            return "User already exists", 409               # Conflict
+            return "This user already exists", 409
 
         psw_hash = sha256_crypt.encrypt(password)
         dir_id = self.get_id()
@@ -60,14 +72,17 @@ class Users(object):
         try:
             os.mkdir(dir_path)
         except OSError:
-            return "The directory already exists", 409      # Conflict: the directory already exists
+            return "The directory already exists", 409
         
         self.users[user] = { 
             "psw": psw_hash,
             "paths" : [dir_id]
         }
+
+        history.set_change("new", dir_id)
+
         self.save_users()
-        return "User created!\n", 201
+        return "User created!", 201
 
     def save_users(self):
         to_save = {
@@ -110,22 +125,54 @@ class History(object):
             self._history[source_path] = [time.time(), action]
 
 
-class API(Resource):
+class UserActions(Resource):
     @auth.login_required
-    def diffs(self, timestamp):
-        """ Diffs
-        returns a JSON with a list of changes """
+    def diffs(self):
+        """ Returns a JSON with a list of changes.
+        Expected as POST data:
+        { "timestamp" : float }  """
+
+        try:
+            timestamp = request.form["timestamp"]
+        except KeyError:
+            abort(400)
+
         changes = []
+
         for path in users.users[auth.username()]["paths"]:
-            if history[path][0] > timestamp:
+            if history._history[path][0] > timestamp:
                 changes.append({
                         "path" : path, 
                         "action" : history[path]
                 })
+        
         if changes:
             return json.dumps(changes), 200
         else:
             return "up to grade", 204
+
+    def create_user(self):
+        ''' Expected as POST data:
+        { "user" : username, "psw" : password } '''
+
+        try:
+            user = request.form["user"]
+            psw = request.form["psw"]
+        except KeyError:
+            abort(400)
+
+        return users.new_user(user, psw)
+
+    commands = {
+        "create" :  create_user,
+        "diffs"  :  diffs,
+    }
+
+    def post(self, cmd):
+        try:
+            return UserActions.commands[cmd](self)
+        except KeyError:
+            abort(404)
 
 
 class Files(Resource):
@@ -140,7 +187,7 @@ class Files(Resource):
             with open(full_path, "r") as tmp:
                 return tmp.read()
         else:
-            return abort(404)
+            abort(404)
 
 
     @auth.login_required
@@ -181,9 +228,7 @@ class Files(Resource):
             return "upload done", 201
 
 
-
 class Actions(Resource):
-    
     def _delete(self):
         """Delete
         this function delete file selected"""
@@ -238,7 +283,7 @@ class Actions(Resource):
         else:
             return "file not found in src", 409
     
-    command = {
+    commands = {
         "delete" : _delete,
         "move" : _move,
         "copy" : _copy
@@ -246,7 +291,11 @@ class Actions(Resource):
 
     @auth.login_required
     def post(self, cmd):
-        return self.command[cmd](self)
+        try:
+            return Actions.commands[cmd](self)
+        except KeyError:
+            return abort(404)
+
 
 @auth.verify_password
 def verify_password(username, password):
@@ -257,28 +306,16 @@ def verify_password(username, password):
 
 def verify_path(username, path):
     #verify if the path is in the user accesses
-    for p in users.users[username]["paths"]:
-        if p == path:
-            return True
-    else: return False
+    if path in users.users[username]["paths"]:
+        return True
+    else:
+        return False
     
 
 @app.route("/hidden_page")
 @auth.login_required
 def hidden_page():
     return "Hello {}\n".format(auth.username())
-
-
-@app.route("/API/v1/create_user", methods=["POST"])
-# this method takes only 'user' and 'psw' as POST variables
-def create_user():
-    if not ("user" in request.form
-            and "psw" in request.form
-            and len(request.form) == 2):
-        abort(400)      # Bad Request
-
-    rv = users.new_user(request.form["user"], request.form["psw"])
-    return rv   
 
 
 @app.route("/")
@@ -294,16 +331,10 @@ def main():
     app.run(host="0.0.0.0",debug=True)         # TODO: remove debug=True
 
 
-
-api.add_resource(Files, urlparse.urljoin(API_PREFIX, "files/<path:path>"))
-
-api.add_resource(Files, "/files/<path:path>")
-api.add_resource(Actions, "/actions/<string:cmd>")
-
-
 users = Users()
 history = History()
 
 
 if __name__ == "__main__":
+    init()
     main()
