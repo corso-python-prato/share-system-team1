@@ -125,12 +125,13 @@ class UserActions(Resource):
 
         changes = []
 
-        for path in users.users[auth.username()]["paths"]:
-            if history._history[path][0] > timestamp:
-                changes.append({
-                        "path" : path, 
-                        "action" : history[path]
-                })
+        for p, v in history._history.items():
+            for myp in users.users[auth.username()]["paths"]
+                if p.startswith(myp) and v[0] > timestamp:
+                    changes.append({
+                        "path" : p,
+                        "action" : v
+                    })
         
         if changes:
             return json.dumps(changes), 200
