@@ -204,7 +204,9 @@ class Files(Resource):
             os.chdir(os.path.join("user_dirs", destination_folder))
             f.save(file_name)
             os.chdir(server_dir)
-            return "updated", 201  
+            history_path = os.path.join(destination_folder, file_name) #eg. <user_dir>/subdir/file.txt
+            history.set_change("modify", history_path)
+            return "updated", 201
         else:
             return "file not found", 409
 
@@ -225,6 +227,8 @@ class Files(Resource):
             os.chdir(os.path.join("user_dirs", destination_folder))
             f.save(file_name)
             os.chdir(server_dir)
+            history_path = os.path.join(destination_folder, file_name) #eg. <user_dir>/subdir/file.txt
+            history.set_change("new", history_path)
             return "upload done", 201
 
 
@@ -238,6 +242,8 @@ class Actions(Resource):
 
         if os.path.exists(full_path):
             os.remove(full_path)
+            history_path = os.path.join(destination_folder, file_name) #eg. <user_dir>/subdir/file.txt
+            history.set_change("rm", history_path)
             return "file deleted",200
         else:
             return "file not found", 409
@@ -256,6 +262,9 @@ class Actions(Resource):
         if os.path.exists(full_src_path): 
             if os.path.exists(full_dest_path):
                 shutil.copy(full_src_path, full_dest_path)
+                history_path = os.path.join(destination_folder, file_src) #eg. <user_dir>/subdir/file.txt
+                history_dest_path = os.path.join(destination_folder, file_dest)
+                history.set_change("cp", history_path, history_dest_path)
                 return "copied file",200
             else:
                 return "dest not found", 409
@@ -277,6 +286,9 @@ class Actions(Resource):
             if os.path.exists(full_dest_path):
                 shutil.copy(full_src_path, full_dest_path)
                 os.remove(full_src_path)
+                history_path = os.path.join(destination_folder, file_src) #eg. <user_dir>/subdir/file.txt
+                history_dest_path = os.path.join(destination_folder, file_dest)
+                history.set_change("mv", history_path, history_dest_path)
                 return "moved file",200
             else:
                 return "dest not found", 409
