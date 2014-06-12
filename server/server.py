@@ -21,20 +21,6 @@ USERS_DATA = "user_data.json"
 parser = reqparse.RequestParser()
 parser.add_argument("task", type=str)
 
-_API_PREFIX = "/API/v1/"
-_URLS = {
-    "files" :     "files/<path:path>",
-    "actions" :   "actions/<string:cmd>",
-    "user" :      "user/<string:cmd>"
-}
-def init():
-    for u in _URLS.keys():
-        _URLS[u] = urlparse.urljoin(_API_PREFIX, _URLS.pop(u))
-
-    api.add_resource(UserActions, _URLS["user"])
-    api.add_resource(Files, _URLS["files"])
-    api.add_resource(Actions, _URLS["actions"])
-
 
 class Users(object):
     def __init__(self):
@@ -333,8 +319,11 @@ def main():
 
 users = Users()
 history = History()
+_API_PREFIX = "/API/v1/"
 
+api.add_resource(UserActions, "{}user/<string:cmd>".format(_API_PREFIX))
+api.add_resource(Files, "{}files/<path:path>".format(_API_PREFIX))
+api.add_resource(Actions, "{}actions/<string:cmd>".format(_API_PREFIX))
 
 if __name__ == "__main__":
-    init()
     main()
