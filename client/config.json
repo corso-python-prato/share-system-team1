@@ -1,8 +1,1 @@
-{
-	"server_url" : "http://127.0.0.1:5000/API/v1", 
-	"dir_path": "/Users/marc0/progetto/prove_deamon", 
-	"cmd_host": "localhost", 
-	"cmd_port": "6666", 
-	"username":"usernameFarlocco", 
-	"password": "passwordSegretissima" 
-}
+{"server_url" : "http://127.0.0.1:5000/API/v1", "dir_path": "/home/federico/Documenti/prova", "cmd_host": "localhost", "cmd_port": "6666", "username":"usernameFarlocco", "password": "passwordSegretissima" }
