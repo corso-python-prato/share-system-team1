@@ -17,28 +17,16 @@ import json
 import os
 
 def req_post(*args, **kwargs):
-	try:
-		return requests.post(*args, **kwargs)
-	except requests.exceptions.RequestException:
-		return False # TODO True x test | use False
+	return requests.post(*args, **kwargs)
 
 def req_get(*args, **kwargs):
-	try:
-		return requests.get(*args, **kwargs)
-	except requests.exceptions.RequestException:
-		return True # TODO True x test | use False
+	return requests.get(*args, **kwargs)
 
 def req_put(*args, **kwargs):
-	try:
-		return requests.put(*args, **kwargs)
-	except requests.exceptions.RequestException:
-		return True # TODO True x test | use False
+	return requests.put(*args, **kwargs)
 
 def req_delete(*args, **kwargs):
-	try:
-		return requests.delete(*args, **kwargs)
-	except requests.exceptions.RequestException:
-		return True # TODO True x test | use False
+	return requests.delete(*args, **kwargs)
 
 
 class ServerCommunicator(object):
@@ -51,15 +39,14 @@ class ServerCommunicator(object):
 
 	def _try_request(self, callback, success = '', error = '', *args, **kwargs):
 		""" try a request until it's a success """
-
-		request_result = callback(*args, **kwargs)
-		while not request_result:
-			print error
-			time.sleep(self.retry_delay)
-			request_result = callback(*args, **kwargs)
-
-		print success
-		return request_result
+		while True:
+			try:
+				request_result = callback(*args, **kwargs)
+				print success
+				return request_result
+			except requests.exceptions.RequestException:
+				time.sleep(self.retry_delay)
+				print error
 
 	def download_file(self, dst_path):
 		""" download a file from server"""
