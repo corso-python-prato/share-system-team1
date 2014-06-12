@@ -253,9 +253,9 @@ class Actions(Resource):
         """Copy
         this function copy a file from src to dest"""
         file_src = request.form["file_src"]
+        src_folder = users.users[auth.username()]["paths"][0] #for now we set it has the user dir
         destination_folder = users.users[auth.username()]["paths"][0] #for now we set it has the user dir
-        full_src_path = os.path.join("user_dirs", destination_folder, file_src)
-
+        full_src_path = os.path.join("user_dirs", src_folder, file_src)
         file_dest = request.form["file_dest"]
         full_dest_path = os.path.join("user_dirs", destination_folder, file_dest)
         
@@ -276,9 +276,9 @@ class Actions(Resource):
         """Move
         this function move a file from src to dest"""
         file_src = request.form["file_src"]
+        src_folder = users.users[auth.username()]["paths"][0] #for now we set it has the user dir
         destination_folder = users.users[auth.username()]["paths"][0] #for now we set it has the user dir
-        full_src_path = os.path.join("user_dirs", destination_folder, file_src)
-
+        full_src_path = os.path.join("user_dirs", src_folder, file_src)
         file_dest = request.form["file_dest"]
         full_dest_path = os.path.join("user_dirs", destination_folder, file_dest)
         
