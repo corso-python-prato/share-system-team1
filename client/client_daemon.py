@@ -48,11 +48,11 @@ class ServerCommunicator(object):
 		self.server_url = server_url
 		self.retry_delay = 2 
 		self.timestamp = None 	#timestamp for Synchronization
-		try:
+		"""try:
 			with open('/timestamp.json', 'r') as timestamp_file:
-				self.timestamp = timestamp_file.read().[0]
+				self.timestamp = timestamp_file.load()[0]
 		except IOError:
-			print "There's no timestamp saved."
+			print "There's no timestamp saved." """
 
 
 
@@ -68,21 +68,37 @@ class ServerCommunicator(object):
 		print success
 		return request_result
 
+	def synchronize(self):
+		""" 
+		Requests if client is synchronized with server with a continuous iteration
+		If client isn't synchronized, the server answers with a json object containing
+		a series of timestamp, path and type of request.
+		If client is synchronized, the server answers with code 204.
+		"""
+
+		server_url = "{}/diffs".format(self.server_url)
+		request_sync = {
+			"url": server_url,
+			"data": self.timestamp,
+			"auth": self.auth
+		}
+		sync = self._try_request(req_get, success_log, error_log, **request_sync) 	
+		if sync.status_code != 204:
+			diffs = json.load(sync.text)
+			for tstamp, obj in diffs.iteritems():
+				self.timestamp = tstamp #update self timestamp
+				req = obj[0]
+				args = obj[1]
+				{
+					'req_get': self.operator.write_a_file,
+					'req_delete': self.operator._delete_a_file,
+					'req_move': self.operator.move_a_file,
+					'req_copy': self.operator.copy_a_file
+				}.get(req)(args)	
+
 
 	def download_file(self, dst_path):
 		""" download a file from server"""
-
-		def is_synchronized(self):
-			#server_timestamp = request_timestamp()	
-			if self.timestamp < server_timestamp:
-				return False
-			else:
-				return True
-
-		while not (is_synchronized):
-			#TODO download all new files
-
-
 
 		error_log = "ERROR on download request " + dst_path
 		success_log = "file downloaded! " + dst_path
@@ -91,10 +107,10 @@ class ServerCommunicator(object):
 
 		request = {
 			"url": server_url,
-			"data": 'timestamp', #TODO
+			"data": self.timestamp, #TODO
 			"auth": self.auth
 		}
-		download = self._try_request(req_get, success_log, error_log, **request)
+		return self._try_request(req_get, success_log, error_log, **request)
 
 	def upload_file(self, dst_path, put_file = False):
 		""" upload a file to server """
@@ -145,6 +161,13 @@ class ServerCommunicator(object):
 		}
 		self._try_request(req_delete, success_log, error_log, **request)
 
+	def move_file(self, src_path, dst_path):
+		pass
+
+	def copy_file(self, dst_path):
+		pass
+on? - Stack Overflow
+stackoverflow.com/.../how-do-i-sort-a-list-of-string...
 
 
 def load_config():
@@ -211,17 +234,18 @@ def main():
 		server_url = config['server_url'], 
 		username = config['username'],
 		password = config['password'])
-
 	event_handler = DirectoryEventHandler(server_com)
 	observer = Observer()
 	observer.schedule(event_handler, config['dir_path'], recursive=True)
 	observer.start()
 	try:
 		while True:
+			server_com.synchronize()
 			time.sleep(1)
 	except KeyboardInterrupt:
 		observer.stop()
 	observer.join()
+
 
 if __name__ == '__main__':
 	main()
