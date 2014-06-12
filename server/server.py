@@ -103,7 +103,7 @@ class History(object):
         #     path : [last_timestamp, "moved by", source_path]
         # }
 
-    def set_change(self, action, source_path, destination_path=None):
+    def set_change(self, action, path, destination_path=None):
         ''' actions allowed:
             with only a path:   new, modify, rm
             with two paths:     mv, cp '''
@@ -117,12 +117,12 @@ class History(object):
             raise MissingDestinationError
 
         if action == "mv":
-            self._history[source_path] = [time.time(), "moved to", destination_path]
-            self._history[destination_path] = [time.time(), "moved by", source_path]
+            self._history[path] = [time.time(), "moved to", destination_path]
+            self._history[destination_path] = [time.time(), "moved by", path]
         elif action == "cp":
-            self._history[destination_path] = [time.time(), "copied by", source_path]
+            self._history[destination_path] = [time.time(), "copied by", path]
         else:
-            self._history[source_path] = [time.time(), action]
+            self._history[path] = [time.time(), action]
 
 
 class UserActions(Resource):
