@@ -1,4 +1,4 @@
-//deamon adn client socket comunication protocol
+//deamon and client socket comunication protocol
 [
 	{
 		"type" : "syncronized",
@@ -20,7 +20,7 @@
 							"request":  {"path":"..."},
 							"response": {"ok":201, "already_deleted":409, "incorrect":400}
 						}
-	}
+	},
 	{
 		"type" : "delete_share_user",
 		"body" : 		{

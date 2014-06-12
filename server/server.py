@@ -21,20 +21,6 @@ USERS_DATA = "user_data.json"
 parser = reqparse.RequestParser()
 parser.add_argument("task", type=str)
 
-_API_PREFIX = "/API/v1/"
-_URLS = {
-    "files" :     "files/<path:path>",
-    "actions" :   "actions/<string:cmd>",
-    "user" :      "user/<string:cmd>"
-}
-def init():
-    for u in _URLS.keys():
-        _URLS[u] = urlparse.urljoin(_API_PREFIX, _URLS.pop(u))
-
-    api.add_resource(UserActions, _URLS["user"])
-    api.add_resource(Files, _URLS["files"])
-    api.add_resource(Actions, _URLS["actions"])
-
 
 class Users(object):
     def __init__(self):
@@ -103,26 +89,26 @@ class History(object):
         #     path : [last_timestamp, "moved by", source_path]
         # }
 
-    def set_change(self, action, source_path, destination_path=None):
+    def set_change(self, action, path, destination_path=None):
         ''' actions allowed:
             with only a path:   new, modify, rm
             with two paths:     mv, cp '''
         if action not in History.ACTIONS:
             raise NotAllowedError
 
-        if action != "new" and path not in self._history:
+        if (action != "new") and (path not in self._history):
             raise MissingFileError
         
         if (action == "mv" or action == "cp") and destination_path is None:
             raise MissingDestinationError
 
         if action == "mv":
-            self._history[source_path] = [time.time(), "moved to", destination_path]
-            self._history[destination_path] = [time.time(), "moved by", source_path]
+            self._history[path] = [time.time(), "moved to", destination_path]
+            self._history[destination_path] = [time.time(), "moved by", path]
         elif action == "cp":
-            self._history[destination_path] = [time.time(), "copied by", source_path]
+            self._history[destination_path] = [time.time(), "copied by", path]
         else:
-            self._history[source_path] = [time.time(), action]
+            self._history[path] = [time.time(), action]
 
 
 class UserActions(Resource):
@@ -204,7 +190,9 @@ class Files(Resource):
             os.chdir(os.path.join("user_dirs", destination_folder))
             f.save(file_name)
             os.chdir(server_dir)
-            return "updated", 201  
+            history_path = os.path.join(destination_folder, file_name) #eg. <user_dir>/subdir/file.txt
+            history.set_change("modify", history_path)
+            return "updated", 201
         else:
             return "file not found", 409
 
@@ -225,6 +213,8 @@ class Files(Resource):
             os.chdir(os.path.join("user_dirs", destination_folder))
             f.save(file_name)
             os.chdir(server_dir)
+            history_path = os.path.join(destination_folder, file_name) #eg. <user_dir>/subdir/file.txt
+            history.set_change("new", history_path)
             return "upload done", 201
 
 
@@ -238,6 +228,8 @@ class Actions(Resource):
 
         if os.path.exists(full_path):
             os.remove(full_path)
+            history_path = os.path.join(destination_folder, file_name) #eg. <user_dir>/subdir/file.txt
+            history.set_change("rm", history_path)
             return "file deleted",200
         else:
             return "file not found", 409
@@ -247,15 +239,18 @@ class Actions(Resource):
         """Copy
         this function copy a file from src to dest"""
         file_src = request.form["file_src"]
+        src_folder = users.users[auth.username()]["paths"][0] #for now we set it has the user dir
         destination_folder = users.users[auth.username()]["paths"][0] #for now we set it has the user dir
-        full_src_path = os.path.join("user_dirs", destination_folder, file_src)
-
+        full_src_path = os.path.join("user_dirs", src_folder, file_src)
         file_dest = request.form["file_dest"]
         full_dest_path = os.path.join("user_dirs", destination_folder, file_dest)
         
         if os.path.exists(full_src_path): 
             if os.path.exists(full_dest_path):
                 shutil.copy(full_src_path, full_dest_path)
+                history_path = os.path.join(destination_folder, file_src) #eg. <user_dir>/subdir/file.txt
+                history_dest_path = os.path.join(destination_folder, file_dest)
+                history.set_change("cp", history_path, history_dest_path)
                 return "copied file",200
             else:
                 return "dest not found", 409
@@ -267,9 +262,9 @@ class Actions(Resource):
         """Move
         this function move a file from src to dest"""
         file_src = request.form["file_src"]
+        src_folder = users.users[auth.username()]["paths"][0] #for now we set it has the user dir
         destination_folder = users.users[auth.username()]["paths"][0] #for now we set it has the user dir
-        full_src_path = os.path.join("user_dirs", destination_folder, file_src)
-
+        full_src_path = os.path.join("user_dirs", src_folder, file_src)
         file_dest = request.form["file_dest"]
         full_dest_path = os.path.join("user_dirs", destination_folder, file_dest)
         
@@ -277,6 +272,9 @@ class Actions(Resource):
             if os.path.exists(full_dest_path):
                 shutil.copy(full_src_path, full_dest_path)
                 os.remove(full_src_path)
+                history_path = os.path.join(destination_folder, file_src) #eg. <user_dir>/subdir/file.txt
+                history_dest_path = os.path.join(destination_folder, file_dest)
+                history.set_change("mv", history_path, history_dest_path)
                 return "moved file",200
             else:
                 return "dest not found", 409
@@ -333,8 +331,11 @@ def main():
 
 users = Users()
 history = History()
+_API_PREFIX = "/API/v1/"
 
+api.add_resource(UserActions, "{}user/<string:cmd>".format(_API_PREFIX))
+api.add_resource(Files, "{}files/<path:path>".format(_API_PREFIX))
+api.add_resource(Actions, "{}actions/<string:cmd>".format(_API_PREFIX))
 
 if __name__ == "__main__":
-    init()
     main()
