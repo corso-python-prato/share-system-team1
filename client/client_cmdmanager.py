@@ -37,7 +37,7 @@ class RawBoxCmd(cmd.Cmd):
 			password = getpass.getpass('insert your password: ')
 			rpt_password = getpass.getpass('Repeat your password: ')
 
-		email_regex = re.compile('[^@]+@[^@]+\.[^@]+')
+		email_regex = re.compile('[a-z][\w-\.]*@[a-z]+\.[a-z]+')
 		email = raw_input('insert your user email: ')
 		
 		while not email_regex.match(email):
