@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #-*- coding: utf-8 -*-
 
-from flask import Flask, request, abort
+from flask import Flask, request
 from flask.ext.httpauth import HTTPBasicAuth
 from flask.ext.restful import reqparse, abort, Api, Resource
 from passlib.hash import sha256_crypt
@@ -10,16 +10,30 @@ import datetime
 import json
 import os
 import shutil
-import server_errors
-
+import urlparse
+from server_errors import *
 
 app = Flask(__name__)
+api = Api(app)
 auth = HTTPBasicAuth()
 USERS_DIRECTORIES = "user_dirs/"
-USERS_DATA = "users_data.json"
-api = Api(app)
+USERS_DATA = "user_data.json"
 parser = reqparse.RequestParser()
 parser.add_argument("task", type=str)
+
+_API_PREFIX = "/API/v1/"
+_URLS = {
+    "files" :     "files/<path:path>",
+    "actions" :   "actions/<string:cmd>",
+    "user" :      "user/<string:cmd>"
+}
+def init():
+    for u in _URLS.keys():
+        _URLS[u] = urlparse.urljoin(_API_PREFIX, _URLS.pop(u))
+
+    api.add_resource(UserActions, _URLS["user"])
+    api.add_resource(Files, _URLS["files"])
+    api.add_resource(Actions, _URLS["actions"])
 
 
 class Users(object):
@@ -29,7 +43,7 @@ class Users(object):
     def get_id(self):
         new_id = hex(self.counter_id)[2:]
         self.counter_id += 1    
-        return  new_id
+        return new_id
 
     def load(self):
         try:
@@ -50,7 +64,7 @@ class Users(object):
 
     def new_user(self, user, password):
         if user in self.users:
-            return "User already exists", 409               # Conflict
+            return "This user already exists", 409
 
         psw_hash = sha256_crypt.encrypt(password)
         dir_id = self.get_id()
@@ -58,14 +72,17 @@ class Users(object):
         try:
             os.mkdir(dir_path)
         except OSError:
-            return "The directory already exists", 409      # Conflict: the directory already exists
+            return "The directory already exists", 409
         
         self.users[user] = { 
             "psw": psw_hash,
             "paths" : [dir_id]
         }
+
+        history.set_change("new", dir_id)
+
         self.save_users()
-        return "User created!\n", 201
+        return "User created!", 201
 
     def save_users(self):
         to_save = {
@@ -86,11 +103,11 @@ class History(object):
         #     path : [last_timestamp, "moved by", source_path]
         # }
 
-    def set_change(self, action, source_path, destination_path=None):
+    def set_change(self, action, path, destination_path=None):
         ''' actions allowed:
             with only a path:   new, modify, rm
             with two paths:     mv, cp '''
-        if action not in cls.ACTIONS:
+        if action not in History.ACTIONS:
             raise NotAllowedError
 
         if action != "new" and path not in self._history:
@@ -100,30 +117,62 @@ class History(object):
             raise MissingDestinationError
 
         if action == "mv":
-            self._history[source_path] = [time.time(), "moved to", destination_path]
-            self._history[destination_path] = [time.time(), "moved by", source_path]
+            self._history[path] = [time.time(), "moved to", destination_path]
+            self._history[destination_path] = [time.time(), "moved by", path]
         elif action == "cp":
-            self._history[destination_path] = [time.time(), "copied by", source_path]
+            self._history[destination_path] = [time.time(), "copied by", path]
         else:
-            self._history[source_path] = [time.time(), action]
+            self._history[path] = [time.time(), action]
 
 
-class API(Resource):
+class UserActions(Resource):
     @auth.login_required
-    def diffs(self, timestamp):
-        """ Diffs
-        returns a JSON with a list of changes """
+    def diffs(self):
+        """ Returns a JSON with a list of changes.
+        Expected as POST data:
+        { "timestamp" : float }  """
+
+        try:
+            timestamp = request.form["timestamp"]
+        except KeyError:
+            abort(400)
+
         changes = []
+
         for path in users.users[auth.username()]["paths"]:
-            if history[path][0] > timestamp:
+            if history._history[path][0] > timestamp:
                 changes.append({
                         "path" : path, 
                         "action" : history[path]
                 })
+        
         if changes:
             return json.dumps(changes), 200
         else:
             return "up to grade", 204
+
+    def create_user(self):
+        ''' Expected as POST data:
+        { "user" : username, "psw" : password } '''
+
+        try:
+            user = request.form["user"]
+            psw = request.form["psw"]
+        except KeyError:
+            abort(400)
+
+        return users.new_user(user, psw)
+
+    commands = {
+        "create" :  create_user,
+        "diffs"  :  diffs,
+    }
+
+    def post(self, cmd):
+        try:
+            return UserActions.commands[cmd](self)
+        except KeyError:
+            abort(404)
 
 
 class Files(Resource):
@@ -134,15 +183,14 @@ class Files(Resource):
         destination_folder = users.users[auth.username()]["paths"][0] #for now we set it has the user dir
         file_name = path        #fix this for subdirectories
         full_path = os.path.join("user_dirs", destination_folder, file_name)
-
         if os.path.exists(full_path):
             with open(full_path, "r") as tmp:
                 return tmp.read()
         else:
-            return abort(404)
+            abort(404)
 
 
-    @auth.login_required     #da testare
+    @auth.login_required
     def put(self, path):
         """Put
         this function update file"""
@@ -156,7 +204,9 @@ class Files(Resource):
             os.chdir(os.path.join("user_dirs", destination_folder))
             f.save(file_name)
             os.chdir(server_dir)
-            return "{} upload done".format(file_name), 201  
+            history_path = os.path.join(destination_folder, file_name) #eg. <user_dir>/subdir/file.txt
+            history.set_change("modify", history_path)
+            return "updated", 201
         else:
             return "file not found", 409
 
@@ -170,42 +220,51 @@ class Files(Resource):
         full_path = os.path.join("user_dirs", destination_folder, file_name)
 
         if os.path.exists(full_path):
-            return "{} already exists".format(file_name), 409
+            return "already exists", 409
         else:
             f = request.files["file_content"]
             server_dir = os.getcwd()
             os.chdir(os.path.join("user_dirs", destination_folder))
             f.save(file_name)
             os.chdir(server_dir)
-            return "{} upload done".format(file_name), 201
+            history_path = os.path.join(destination_folder, file_name) #eg. <user_dir>/subdir/file.txt
+            history.set_change("new", history_path)
+            return "upload done", 201
 
 
 class Actions(Resource):
-    @auth.login_required     #da testare
-    def delete(self, path):
+    def _delete(self):
         """Delete
         this function delete file selected"""
+        path = request.form["path"]
         destination_folder = users.users[auth.username()]["paths"][0] #for now we set it has the user dir
-        file_name = request.form["file_name"]
-        full_path = os.path.join("user_dirs", destination_folder, file_name)
+        full_path = os.path.join("user_dirs", destination_folder, path)
 
         if os.path.exists(full_path):
             os.remove(full_path)
+            history_path = os.path.join(destination_folder, file_name) #eg. <user_dir>/subdir/file.txt
+            history.set_change("rm", history_path)
             return "file deleted",200
         else:
             return "file not found", 409
 
 
-    @auth.login_required     #da testare
-    def copy(self):
+    def _copy(self):
         """Copy
         this function copy a file from src to dest"""
         file_src = request.form["file_src"]
+        src_folder = users.users[auth.username()]["paths"][0] #for now we set it has the user dir
+        destination_folder = users.users[auth.username()]["paths"][0] #for now we set it has the user dir
+        full_src_path = os.path.join("user_dirs", src_folder, file_src)
         file_dest = request.form["file_dest"]
-
-        if os.path.exists(file_src): 
-            if os.path.exists(file_dest):
-                shutil.copyfile(file_src, file_dst)
+        full_dest_path = os.path.join("user_dirs", destination_folder, file_dest)
+        
+        if os.path.exists(full_src_path): 
+            if os.path.exists(full_dest_path):
+                shutil.copy(full_src_path, full_dest_path)
+                history_path = os.path.join(destination_folder, file_src) #eg. <user_dir>/subdir/file.txt
+                history_dest_path = os.path.join(destination_folder, file_dest)
+                history.set_change("cp", history_path, history_dest_path)
                 return "copied file",200
             else:
                 return "dest not found", 409
@@ -213,22 +272,41 @@ class Actions(Resource):
             return "file not found in src", 409
 
 
-    @auth.login_required     #da testare
-    def move(self):
+    def _move(self):
         """Move
         this function move a file from src to dest"""
         file_src = request.form["file_src"]
+        src_folder = users.users[auth.username()]["paths"][0] #for now we set it has the user dir
+        destination_folder = users.users[auth.username()]["paths"][0] #for now we set it has the user dir
+        full_src_path = os.path.join("user_dirs", src_folder, file_src)
         file_dest = request.form["file_dest"]
-
-        if os.path.exists(file_src): 
-            if os.path.exists(file_dest):
-                shutil.copyfile(file_src, file_dst)
-                os.remove(full_src)
+        full_dest_path = os.path.join("user_dirs", destination_folder, file_dest)
+        
+        if os.path.exists(full_src_path): 
+            if os.path.exists(full_dest_path):
+                shutil.copy(full_src_path, full_dest_path)
+                os.remove(full_src_path)
+                history_path = os.path.join(destination_folder, file_src) #eg. <user_dir>/subdir/file.txt
+                history_dest_path = os.path.join(destination_folder, file_dest)
+                history.set_change("mv", history_path, history_dest_path)
                 return "moved file",200
             else:
                 return "dest not found", 409
         else:
             return "file not found in src", 409
+    
+    commands = {
+        "delete" : _delete,
+        "move" : _move,
+        "copy" : _copy
+    }
+
+    @auth.login_required
+    def post(self, cmd):
+        try:
+            return Actions.commands[cmd](self)
+        except KeyError:
+            return abort(404)
 
 
 @auth.verify_password
@@ -240,28 +318,16 @@ def verify_password(username, password):
 
 def verify_path(username, path):
     #verify if the path is in the user accesses
-    for p in users.users[username]["paths"]:
-        if p == path:
-            return True
-    else: return False
+    if path in users.users[username]["paths"]:
+        return True
+    else:
+        return False
     
 
 @app.route("/hidden_page")
 @auth.login_required
 def hidden_page():
     return "Hello {}\n".format(auth.username())
-
-
-@app.route("/create_user", methods=["POST"])
-# this method takes only 'user' and 'psw' as POST variables
-def create_user():
-    if not ("user" in request.form
-            and "psw" in request.form
-            and len(request.form) == 2):
-        abort(400)      # Bad Request
-
-    rv = users.new_user(request.form["user"], request.form["psw"])
-    return rv   
 
 
 @app.route("/")
@@ -277,10 +343,10 @@ def main():
     app.run(host="0.0.0.0",debug=True)         # TODO: remove debug=True
 
 
-api.add_resource(Files, "/files/<path:path>")
 users = Users()
 history = History()
 
 
 if __name__ == "__main__":
+    init()
     main()
