@@ -15,6 +15,7 @@ TEST_DIRECTORY = "test_users_dirs/"
 class TestSequenceFunctions(unittest.TestCase):
 
     def setUp(self):
+        server.app.config.update(TESTING=True)
         server.app.testing = True
         server.USERS_DIRECTORIES = TEST_DIRECTORY
 
@@ -22,7 +23,7 @@ class TestSequenceFunctions(unittest.TestCase):
     def user_demo(self, user="Gianni", psw="linux"):
         # self.client.preserve_context = False
         with server.app.test_client() as tc:
-            return tc.post("/create_user", 
+            return tc.post("/API/v1/create_user", 
                     data = { 
                         "user" : user,
                         "psw" : psw 
@@ -31,7 +32,10 @@ class TestSequenceFunctions(unittest.TestCase):
 
 
     # check id uniqueness
+    # DANGER current comodifications of users.counter_id
     def test_id(self):
+        tmp = server.users.counter_id
+        
         nums = []
         for i in range(10):
             nums.append(server.users.get_id())
@@ -39,6 +43,8 @@ class TestSequenceFunctions(unittest.TestCase):
         for i, n in enumerate(nums):
             for j in range(i+1, len(nums)):
                 self.assertNotEqual(n, nums[j])
+
+        server.users.counter_id = tmp
     
 
     # check if the server works
@@ -76,13 +82,7 @@ class TestSequenceFunctions(unittest.TestCase):
     def test_correct_hidden_page(self):
         user = "Giovannina"
         psw = "cracracra"
-        with server.app.test_client() as tc:
-            tc.post("/create_user", 
-                    data = { 
-                        "user" : user,
-                        "psw" : psw 
-                    }
-            )
+        user_demo(user, psw)
 
         headers = {
             'Authorization': 'Basic ' + b64encode("{0}:{1}".format(user, psw))
@@ -92,6 +92,14 @@ class TestSequenceFunctions(unittest.TestCase):
             rv = tc.get("/hidden_page", headers=headers)
             self.assertEqual(rv.status_code, 200)
 
+    # TODO:
+    # def test_history_errors(self):
+    #     with self.assertRaises(server.NotAllowedError):
+    #             server.history.set_change("draw", "/")
+    #     with self.assertRaises(server.MissingFileError):
+    #             server.history.set_change()
+
+
 
 if __name__ == '__main__':
     try:
@@ -99,6 +107,7 @@ if __name__ == '__main__':
     except OSError:
         shutil.rmtree(TEST_DIRECTORY)
         os.mkdir(TEST_DIRECTORY)
+    # TODO: don't use the real user_data.json
 
     unittest.main(exit=False)
 

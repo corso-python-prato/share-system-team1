@@ -6,26 +6,36 @@ import socket
 import json
 import struct
 
+"""
+Communication system between command manager and client daemon
+"""
+
 
 class CmdMessageHandler(asyncore.dispatcher_with_send):
 
     LENGTH_FORMAT = '!i'
-    PACK_FORMAT = '{}s'.format(LENGTH_FORMAT)
 
     def __init__(self, sock, cmd):
         asyncore.dispatcher_with_send.__init__(sock)
         self.cmd = cmd
+
+    def _packing_message(self, command_type, param=None):
+        cmd_struct = {
+            'request': command_type,
+            'body': param,
+        }
+        cmd_struct = json.dumps(cmd_struct)
+        pack_size = len(cmd_struct)
+        pack_format = '!i{}s'.format(pack_size)
+        data = struct.pack(pack_format, pack_size, cmd_struct)
+        return data
 
     def handle_read(self):
         data_length = self.recv(struct.calcsize(LENGTH_FORMAT))
         data = self.recv(data_length)
         command = json.loads(data)
         response = self.cmd[command['request']](command["body"])
-
-        response_struct = json.dumps(response)
-        pack_size = len(response_struct)
-        data = struct.pack(self.PACK_FORMAT, pack_size, response_struct)
-
+        data = self._packing_message(command['request'], response)
         self.send(data)
 
 
@@ -48,7 +58,6 @@ class CmdMessageServer(asyncore.dispatcher):
 class CmdMessageClient(asyncore.dispatcher_with_send):
 
     LENGTH_FORMAT = '!i'
-    PACK_FORMAT = '{}s'.format(LENGTH_FORMAT)
 
     def __init__(self, host, port):
         asyncore.dispatcher_with_send.__init__(self)
@@ -64,7 +73,8 @@ class CmdMessageClient(asyncore.dispatcher_with_send):
         }
         cmd_struct = json.dumps(cmd_struct)
         pack_size = len(cmd_struct)
-        data = struct.pack(self.PACK_FORMAT, pack_size, cmd_struct)
+        pack_format = '!i{}s'.format(pack_size)
+        data = struct.pack(pack_format, pack_size, cmd_struct)
         return data
 
     def _unpacking_message(self, response_data):

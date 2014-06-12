@@ -1,6 +1,6 @@
-[ME]· testing
-[SA]· controllo path utente
-
 · chunks
-· diff??
-· Flask tests with post and authentication
+· Flask tests with authentication in POST
+· UUID for dir names? https://docs.python.org/2/library/uuid.html#uuid.uuid4
+· save history in json (save all together?)
+· history per file, not per directory!
+· update history at every change
