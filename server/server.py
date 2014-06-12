@@ -96,7 +96,7 @@ class History(object):
         if action not in History.ACTIONS:
             raise NotAllowedError
 
-        if action != "new" and path not in self._history:
+        if (action != "new") and (path not in self._history):
             raise MissingFileError
         
         if (action == "mv" or action == "cp") and destination_path is None:

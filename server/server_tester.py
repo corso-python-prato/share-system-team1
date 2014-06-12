@@ -99,12 +99,20 @@ class TestSequenceFunctions(unittest.TestCase):
             rv = tc.get("/hidden_page", headers=headers)
             self.assertEqual(rv.status_code, 200)
 
-    # TODO:
-    # def test_history_errors(self):
-    #     with self.assertRaises(server.NotAllowedError):
-    #             server.history.set_change("draw", "/")
-    #     with self.assertRaises(server.MissingFileError):
-    #             server.history.set_change()
+
+    # check history custom errors
+    def test_history_errors(self):
+        with self.assertRaises(server.NotAllowedError):
+            server.history.set_change("draw", "/")
+
+        with self.assertRaises(server.MissingFileError):
+            server.history.set_change("rm", "nothing")
+
+        server.history.set_change("new", "/test_path")
+        with self.assertRaises(server.MissingDestinationError):
+            server.history.set_change("mv", "/test_path")
+
+
 
 
 
