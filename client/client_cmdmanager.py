@@ -25,9 +25,11 @@ class RawBoxCmd(cmd.Cmd):
 
 	def _create_user(self, username = None):
 		"""create user if not exists"""
-		  
+		
 		if not username:
 			username  = raw_input('insert your user name: ')
+		else:
+			username = " ".join(username)
 
 		password = getpass.getpass('insert your password: ')
 		rpt_password = getpass.getpass('Repeat your password: ')
@@ -49,7 +51,7 @@ class RawBoxCmd(cmd.Cmd):
 					'psw': password, 
 					'email': email
 				}
-
+		
 		r = requests.post("http://httpbin.org/post", data=user)
 		
 		if r.status_code == 201:
