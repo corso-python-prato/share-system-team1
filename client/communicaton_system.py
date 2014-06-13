@@ -10,6 +10,7 @@ import struct
 Communication system between command manager and client daemon
 """
 
+
 class CommunicatorSock(asyncore.dispatcher_with_send):
 
     LENGTH_FORMAT = '!i'
@@ -25,25 +26,28 @@ class CommunicatorSock(asyncore.dispatcher_with_send):
         data = struct.pack(pack_format, pack_size, cmd_struct)
         return data
 
-    def _unpacking_message(self):
-        data_length = self.recv(struct.calcsize(self.LENGTH_FORMAT))
-        data_length = struct.unpack(self.LENGTH_FORMAT, data_length)
-        data = self.recv(data_length[0])
-        data = struct.unpack('{}s'.format(data_length[0]), data)
-        command = json.loads(data[0])
-        return command
+    def _unpacking_message(self, data, format=LENGTH_FORMAT):
+        if format == self.LENGTH_FORMAT:
+            pkts = struct.unpack(format, data)
+            return pkts[0]
+        else:
+            data = struct.unpack(format, data)
+            command = json.loads[data[0]]
+            return command
 
     def _executer(self, command):
         pass
 
     def handle_read(self):
-        command = self._unpacking_message()
+        header = self.recv(struct.calcsize(self.LENGTH_FORMAT))
+        data_length = self._unpacking_message(header)
+        data = self.recv(data_length)
+        command = self._unpacking_message(data, '{}s'.format(data_length))
         self._executer(command)
 
     def send_message(self, command_type, param=None):
         data = self._packing_message(command_type, param)
         self.send(data)
-
 
 
 class CmdMessageHandler(CommunicatorSock):
