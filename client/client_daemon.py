@@ -17,28 +17,17 @@ import json
 import os
 
 def req_post(*args, **kwargs):
-	try:
-		return requests.post(*args, **kwargs)
-	except requests.exceptions.RequestException:
-		return False # TODO True x test | use False
+	return requests.post(*args, **kwargs)
 
 def req_get(*args, **kwargs):
-	try:
-		return requests.get(*args, **kwargs)
-	except requests.exceptions.RequestException:
-		return True # TODO True x test | use False
+	return requests.get(*args, **kwargs)
 
 def req_put(*args, **kwargs):
-	try:
-		return requests.put(*args, **kwargs)
-	except requests.exceptions.RequestException:
-		return True # TODO True x test | use False
+	return requests.put(*args, **kwargs)
 
 def req_delete(*args, **kwargs):
-	try:
-		return requests.delete(*args, **kwargs)
-	except requests.exceptions.RequestException:
-		return True # TODO True x test | use False
+	return requests.delete(*args, **kwargs)
+
 
 
 class ServerCommunicator(object):
@@ -47,19 +36,53 @@ class ServerCommunicator(object):
 		self.auth = HTTPBasicAuth(username, password)
 		self.server_url = server_url
 		self.dir_path = dir_path
-		self.retry_delay = 2
+		self.retry_delay = 2 
+		self.timestamp = None 	#timestamp for Synchronization
+		try:
+			with open('timestamp.json', 'r') as timestamp_file:
+				self.timestamp = timestamp_file.load()[0]
+		except IOError:
+			print "There's no timestamp saved."
 
 	def _try_request(self, callback, success = '', error = '', *args, **kwargs):
 		""" try a request until it's a success """
+		while True:
+			try:
+				request_result = callback(*args, **kwargs)
+				print success
+				return request_result
+			except requests.exceptions.RequestException:
+				time.sleep(self.retry_delay)
+				print error
 
-		request_result = callback(*args, **kwargs)
-		while not request_result:
-			print error
-			time.sleep(self.retry_delay)
-			request_result = callback(*args, **kwargs)
+	def synchronize(self):
+		""" 
+		Requests if client is synchronized with server with a continuous iteration
+		If client isn't synchronized, the server answers with a json object containing
+		a series of timestamp, path and type of request.
+		If client is synchronized, the server answers with code 204.
+		"""
 
-		print success
-		return request_result
+		server_url = "{}/diffs".format(self.server_url)
+		request_sync = {
+			"url": server_url,
+			"data": self.timestamp,
+			"auth": self.auth
+		}
+		sync = self._try_request(req_get, success_log, error_log, **request_sync) 	
+		if sync.status_code != 204:
+			diffs = json.load(sync.text)
+			for tstamp, obj in diffs.iteritems():
+				self.timestamp = tstamp #update self timestamp
+				req = obj[0]
+				args = obj[1]
+				{
+					'req_get': self.operator.write_a_file,
+					'req_delete': self.operator._delete_a_file,
+					'req_move': self.operator.move_a_file,
+					'req_copy': self.operator.copy_a_file
+				}.get(req)(args)	
+
 
 	def download_file(self, dst_path):
 		""" download a file from server"""
@@ -71,9 +94,10 @@ class ServerCommunicator(object):
 
 		request = {
 			"url": server_url,
+			"data": self.timestamp, #TODO
 			"auth": self.auth
 		}
-		print request
+
 		r = self._try_request(req_get, success_log, error_log, **request)
 		
 		local_path = os.path.join(self.dir_path, dst_path)
@@ -132,6 +156,12 @@ class ServerCommunicator(object):
 			"auth": self.auth
 		}
 		self._try_request(req_delete, success_log, error_log, **request)
+
+	def move_file(self, src_path, dst_path):
+		pass
+
+	def copy_file(self, dst_path):
+		pass
 
 	def create_user(self, username, password):
 		
@@ -218,6 +248,7 @@ def main():
 		password = config['password'],
 		dir_path = config['dir_path'])
 
+
 	#server_com.create_user("usernameFarlocco", "passwordSegretissima")
 	server_com.download_file('bla.txt')
 
@@ -228,10 +259,12 @@ def main():
 
 	try:
 		while True:
+			server_com.synchronize()
 			time.sleep(1)
 	except KeyboardInterrupt:
 		observer.stop()
 	observer.join()
+
 
 if __name__ == '__main__':
 	main()
