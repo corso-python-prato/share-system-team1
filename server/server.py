@@ -228,15 +228,21 @@ class Files(Resource):
         """Upload
         this function load file using POST"""
         destination_folder = users.users[auth.username()]["paths"][0] #for now we set it has the user dir
-        file_name = request.form["file_name"]
-        full_path = os.path.join("user_dirs", destination_folder, file_name)
-
+        full_path = os.path.join("user_dirs", destination_folder, path)
+        dirs_tree = path.split("/")[:-1]  #list of subdirectories that contains the new file except filename
         if os.path.exists(full_path):
             return "already exists", 409
         else:
-            f = request.files["file_content"]
             server_dir = os.getcwd()
             os.chdir(os.path.join("user_dirs", destination_folder))
+            for folder in dirs_tree:      #checking if subdirectories already exist else create them
+                if os.path.exists(folder):
+                    os.chdir(folder)                   
+                else:
+                    os.mkdir(folder)
+                    os.chdir(folder)
+            f = request.files["file_content"]
+            file_name = f.name
             f.save(file_name)
             os.chdir(server_dir)
             history_path = os.path.join(destination_folder, file_name) #eg. <user_dir>/subdir/file.txt
@@ -323,6 +329,7 @@ class Actions(Resource):
 
 @auth.verify_password
 def verify_password(username, password):
+    print username
     if username not in users.users:
         return False
     return sha256_crypt.verify(password, users.users[username]["psw"])
