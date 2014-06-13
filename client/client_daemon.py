@@ -47,20 +47,14 @@ class ServerCommunicator(object):
 	def __init__(self, server_url, username, password, dir_path):
 		self.auth = HTTPBasicAuth(username, password)
 		self.server_url = server_url
-<<<<<<< HEAD
+		self.dir_path = dir_path
 		self.retry_delay = 2 
 		self.timestamp = None 	#timestamp for Synchronization
-		"""try:
+		try:
 			with open('/timestamp.json', 'r') as timestamp_file:
 				self.timestamp = timestamp_file.load()[0]
 		except IOError:
-			print "There's no timestamp saved." """
-
-
-=======
-		self.dir_path = dir_path
-		self.retry_delay = 2
->>>>>>> 5f01debb5b6848c95e45de013efa817ee2f89c90
+			print "There's no timestamp saved."
 
 	def _try_request(self, callback, success = '', error = '', *args, **kwargs):
 		""" try a request until it's a success """
@@ -113,15 +107,10 @@ class ServerCommunicator(object):
 
 		request = {
 			"url": server_url,
-<<<<<<< HEAD
 			"data": self.timestamp, #TODO
 			"auth": self.auth
 		}
-		return self._try_request(req_get, success_log, error_log, **request)
-=======
-			"auth": self.auth
-		}
-		print request
+
 		r = self._try_request(req_get, success_log, error_log, **request)
 		
 		local_path = os.path.join(self.dir_path, dst_path)
@@ -131,7 +120,6 @@ class ServerCommunicator(object):
 		#create a downloaded file
 		with open(local_path, 'w') as f:
 			f.write(r.text)
->>>>>>> 5f01debb5b6848c95e45de013efa817ee2f89c90
 
 	def upload_file(self, dst_path, put_file = False):
 		""" upload a file to server """
@@ -182,20 +170,16 @@ class ServerCommunicator(object):
 		}
 		self._try_request(req_delete, success_log, error_log, **request)
 
-<<<<<<< HEAD
 	def move_file(self, src_path, dst_path):
 		pass
 
 	def copy_file(self, dst_path):
 		pass
-on? - Stack Overflow
-stackoverflow.com/.../how-do-i-sort-a-list-of-string...
-=======
+
 	def create_user(self, username, password):
 		
 		error_log = "User creation error"
 		success_log = "user created!" 
->>>>>>> 5f01debb5b6848c95e45de013efa817ee2f89c90
 
 		server_url = "{}/create_user".format(self.server_url)
 
@@ -274,16 +258,14 @@ def main():
 	server_com = ServerCommunicator(
 		server_url = config['server_url'], 
 		username = config['username'],
-<<<<<<< HEAD
 		password = config['password'])
-=======
+
 		password = config['password'],
 		dir_path = config['dir_path'])
 
 	#server_com.create_user("usernameFarlocco", "passwordSegretissima")
 	server_com.download_file('bla.txt')
 
->>>>>>> 5f01debb5b6848c95e45de013efa817ee2f89c90
 	event_handler = DirectoryEventHandler(server_com)
 	observer = Observer()
 	observer.schedule(event_handler, config['dir_path'], recursive=True)
