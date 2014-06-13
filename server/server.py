@@ -11,23 +11,26 @@ import json
 import os
 import shutil
 import urlparse
+
+# TODO: from raw_box_common import md5
 from hashlib import md5
 
 
 app = Flask(__name__)
 api = Api(app)
 auth = HTTPBasicAuth()
+_API_PREFIX = "/API/v1/"
 USERS_DIRECTORIES = "user_dirs/"
 USERS_DATA = "user_data.json"
 parser = reqparse.RequestParser()
 parser.add_argument("task", type=str)
 
 
-def file_updated(modified_file_path):
+def path_updated(modified_file_path):
     ''' set new timestamp for each user who can access to the file +
     create new md5 for that file '''
     timestamp = time.time()
-    md5_file = md5[modified_file_path]
+    md5_file = str(md5(modified_file_path))
     # TODO: if file has been removed
 
     for u, v in users.users.items():
@@ -40,13 +43,7 @@ def file_updated(modified_file_path):
 class Users(object):
     
     def __init__(self):
-        try:
-            ud = open(USERS_DATA, "r")
-            saved = json.load(ud)
-            self.users = saved["users"]
-            self.counter_id = saved["counter_id"]
-            ud.close()
-        except IOError:
+        def from_zero(self):
             self.users = {}
             # { 
             #     username : { 
@@ -59,6 +56,18 @@ class Users(object):
             #     }
             # }
             self.counter_id = 0
+
+        try:
+            ud = open(USERS_DATA, "r")
+            saved = json.load(ud)
+            self.users = saved["users"]
+            self.counter_id = saved["counter_id"]
+            ud.close()
+        except IOError:         # file not present
+            from_zero(self)
+        except ValueError:      # invalid json
+            os.remove(USERS_DATA)
+            from_zero(self)
     
 
     def get_id(self):
@@ -86,8 +95,7 @@ class Users(object):
             "md5_tree" : {}
         }
 
-        history.set_change("new", dir_id)
-
+        path_updated(dir_id)
         self.save_users()
         return "User created!", 201
 
@@ -128,15 +136,20 @@ class Files(Resource):
         """Put
         this function update file"""
         full_path = get_path(auth.username(), path)
+        
+        f = request.files["file_content"]
+        file_name = f.name
+        server_dir = os.getcwd()
 
         try:
-            f = request.files["file_content"]
-            server_dir = os.getcwd()
-            os.chdir(os.path.join("user_dirs", destination_folder))
+            os.chdir(os.path.join(USERS_DIRECTORIES, full_path))
             f.save(file_name)
             os.chdir(server_dir)
         except IOError: 
             abort(409)
+        else:
+            file_path = os.path.join(full_path, file_name)
+            path_updated(file_path)
 
 
     def post(self, path):
@@ -171,10 +184,10 @@ class Actions(Resource):
         #         md5 : path
         #     }
         # }
-        u = users.users[auth.username()]
+        usr = users.users[auth.username()]
         to_send = {
-            "last_change" : u["last_change"]
-            "files" : u["md5_tree"]
+            "last_change" : usr["last_change"],
+            "files" : usr["md5_tree"]
         }
         return json.dumps(to_send)
 
@@ -189,6 +202,8 @@ class Actions(Resource):
             os.remove(full_path)
         except KeyError:
             return abort(409)
+        else:
+            path_updated(full_path)
 
 
     def _copy(self):
@@ -200,6 +215,9 @@ class Actions(Resource):
             shutil.copy(full_src_path, full_dest_path)
         except KeyError:
             return abort(409)
+        else:
+            path_updated(full_src_path)
+            path_updated(full_dest_path)
 
 
     def _move(self):
@@ -211,7 +229,10 @@ class Actions(Resource):
             shutil.move(full_src_path, full_dest_path)
         except KeyError:
             return abort(409)
-            
+        else:
+            path_updated(full_src_path)
+            path_updated(full_dest_path)
+
     
     commands = {
         "get_files" : get_files,
@@ -229,12 +250,12 @@ class Actions(Resource):
 
 @auth.verify_password
 def verify_password(username, password):
-    print username
     if username not in users.users:
         return False
     return sha256_crypt.verify(password, users.users[username]["psw"])
 
 
+# @app.route("{}create_user".format(_API_PREFIX), methods = ["POST"])
 @app.route("/API/v1/create_user", methods = ["POST"])
 def create_user():
         ''' Expected as POST data:
@@ -247,6 +268,7 @@ def create_user():
             abort(400)
 
         return users.new_user(user, psw)
+
 
 @app.route("/hidden_page")
 @auth.login_required
@@ -281,7 +303,6 @@ def main():
 
 
 users = Users()
-_API_PREFIX = "/API/v1/"
 
 api.add_resource(Files, "{}files/<path:path>".format(_API_PREFIX))
 api.add_resource(Actions, "{}actions/<string:cmd>".format(_API_PREFIX))

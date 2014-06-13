@@ -8,3 +8,7 @@
 {
 	"shared_folder" : [list of users]
 }
+
+
+· Fare una wiki dedicata, dove si mantiene tutta la storia delle problematiche che hanno portato alla scelta di certe logiche.
+· codici http in testa al file come variabili globali
