@@ -326,15 +326,6 @@ def verify_password(username, password):
         return False
     return sha256_crypt.verify(password, users.users[username]["psw"])
 
-
-def verify_path(username, path):
-    #verify if the path is in the user accesses
-    if path in users.users[username]["paths"]:
-        return True
-    else:
-        return False
-    
-
 @app.route("/hidden_page")
 @auth.login_required
 def hidden_page():
