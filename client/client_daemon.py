@@ -17,20 +17,6 @@ import time
 import json
 import os
 
-def req_post(*args, **kwargs):
-    return requests.post(*args, **kwargs)
-
-def req_get(*args, **kwargs):
-    return requests.get(*args, **kwargs)
-
-def req_put(*args, **kwargs):
-    return requests.put(*args, **kwargs)
-
-def req_delete(*args, **kwargs):
-    return requests.delete(*args, **kwargs)
-
-
-
 class ServerCommunicator(object):
 
     def __init__(self, server_url, username, password, dir_path):
@@ -57,6 +43,7 @@ class ServerCommunicator(object):
                 print error
 
     def synchronize(self):
+
         """ 
         Requests if client is synchronized with server with a continuous iteration
         If client isn't synchronized, the server answers with a json object containing
@@ -70,7 +57,7 @@ class ServerCommunicator(object):
             "data": self.timestamp,
             "auth": self.auth
         }
-        sync = self._try_request(req_get, "ok", "no", **request_sync)   
+        sync = self._try_request(requests.get, "ok", "no", **request_sync)   
         if sync.status_code != 204:
             diffs = json.load(sync.text)
             for tstamp, obj in diffs.iteritems():
@@ -101,7 +88,7 @@ class ServerCommunicator(object):
             "auth": self.auth
         }
         print request
-        r = self._try_request(req_get, success_log, error_log, **request)
+        r = self._try_request(requests.get, success_log, error_log, **request)
         local_path = self.get_fullpath(dst_path)
         return local_path, r.text
     
@@ -126,9 +113,9 @@ class ServerCommunicator(object):
             "auth": self.auth
         }
         if put_file:
-            self._try_request(req_put, success_log, error_log, **request)
+            self._try_request(requests.put, success_log, error_log, **request)
         else:
-            self._try_request(req_post, success_log, error_log, **request)
+            self._try_request(requests.post, success_log, error_log, **request)
 
     def delete_file(self, dst_path):
         """ send to server a message of file delete """
@@ -144,7 +131,7 @@ class ServerCommunicator(object):
             "url": server_url,
             "auth": self.auth
         }
-        self._try_request(req_delete, success_log, error_log, **request)
+        self._try_request(requests.delete, success_log, error_log, **request)
 
     def move_file(self, src_path, dst_path):
         pass
@@ -166,7 +153,7 @@ class ServerCommunicator(object):
                     "psw": password
             }
         }
-        self._try_request(req_post, success_log, error_log, **request)
+        self._try_request(requests.post, success_log, error_log, **request)
 
 class FileSystemOperator(object):
     
