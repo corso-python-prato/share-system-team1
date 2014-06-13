@@ -107,67 +107,61 @@ class Resource(Resource):
     method_decorators = [auth.login_required]
 
 
+def get_path(user, path):
+    folder = users.users[user]["paths"][0]
+    return os.path.join("user_dirs", folder, path)
+
+
 class Files(Resource):
     def get(self, path):
         """Download
         this function return file content as string using GET"""
-        destination_folder = users.users[auth.username()]["paths"][0] #for now we set it has the user dir
-        file_name = path        #fix this for subdirectories
-        full_path = os.path.join("user_dirs", destination_folder, file_name)
-        if os.path.exists(full_path):
-            with open(full_path, "r") as tmp:
-                return tmp.read()
-        else:
+        full_path = get_path(auth.username(), path)
+        try:
+            f = open(full_path, "r")
+            return f.read() 
+        except IOError: 
             abort(404)
 
 
     def put(self, path):
         """Put
         this function update file"""
-        destination_folder = users.users[auth.username()]["paths"][0] #for now we set it has the user dir
-        file_name = request.form["file_name"]
-        full_path = os.path.join("user_dirs", destination_folder, file_name)
+        full_path = get_path(auth.username(), path)
 
-        if os.path.exists(full_path):
+        try:
             f = request.files["file_content"]
             server_dir = os.getcwd()
             os.chdir(os.path.join("user_dirs", destination_folder))
             f.save(file_name)
             os.chdir(server_dir)
-            history_path = os.path.join(destination_folder, file_name) #eg. <user_dir>/subdir/file.txt
-            history.set_change("modify", history_path)
-            return "updated", 201
-        else:
-            return "file not found", 409
+        except IOError: 
+            abort(409)
 
 
     def post(self, path):
         """Upload
         this function load file using POST"""
-        destination_folder = users.users[auth.username()]["paths"][0] #for now we set it has the user dir
-        full_path = os.path.join("user_dirs", destination_folder, path)
-        dirs_tree = path.split("/")[:-1]  #list of subdirectories that contains the new file except filename
+        full_path = get_path(auth.username(), path)
+
         if os.path.exists(full_path):
             return "already exists", 409
         else:
-            server_dir = os.getcwd()
-            os.chdir(os.path.join("user_dirs", destination_folder))
-            for folder in dirs_tree:      #checking if subdirectories already exist else create them
-                if os.path.exists(folder):
-                    os.chdir(folder)                   
-                else:
-                    os.mkdir(folder)
-                    os.chdir(folder)
-            f = request.files["file_content"]
-            file_name = os.path.split(path)[1]
-            f.save(file_name)
-            os.chdir(server_dir)
-            history_path = os.path.join(destination_folder, file_name) #eg. <user_dir>/subdir/file.txt
-            history.set_change("new", history_path)
-            return "upload done", 201
+            os.makedirs(full_path)
+            put(self, path)
 
 
 class Actions(Resource):
+    def get_src_dest_path():
+        file_src = request.form["file_src"]
+        src_folder = users.users[auth.username()]["paths"][0] #for now we set it has the user dir
+        destination_folder = users.users[auth.username()]["paths"][0] #for now we set it has the user dir
+        full_src_path = os.path.join("user_dirs", src_folder, file_src)
+        file_dest = request.form["file_dest"]
+        full_dest_path = os.path.join("user_dirs", destination_folder, file_dest)
+        return full_src_path,full_dest_path
+
+
     def get_files(self):
         ''' Send a JSON with the timestamp of the last change in user
         directories and an md5 for each file '''
@@ -189,64 +183,35 @@ class Actions(Resource):
         """Delete
         this function delete file selected"""
         path = request.form["path"]
-        destination_folder = users.users[auth.username()]["paths"][0] #for now we set it has the user dir
-        full_path = os.path.join("user_dirs", destination_folder, path)
+        full_path = get_path(auth.username(), path)
 
-        if os.path.exists(full_path):
+        try:
             os.remove(full_path)
-            history_path = os.path.join(destination_folder, file_name) #eg. <user_dir>/subdir/file.txt
-            history.set_change("rm", history_path)
-            return "file deleted",200
-        else:
-            return "file not found", 409
+        except KeyError:
+            return abort(409)
 
 
     def _copy(self):
         """Copy
         this function copy a file from src to dest"""
-        file_src = request.form["file_src"]
-        src_folder = users.users[auth.username()]["paths"][0] #for now we set it has the user dir
-        destination_folder = users.users[auth.username()]["paths"][0] #for now we set it has the user dir
-        full_src_path = os.path.join("user_dirs", src_folder, file_src)
-        file_dest = request.form["file_dest"]
-        full_dest_path = os.path.join("user_dirs", destination_folder, file_dest)
-        
-        if os.path.exists(full_src_path): 
-            if os.path.exists(full_dest_path):
-                shutil.copy(full_src_path, full_dest_path)
-                history_path = os.path.join(destination_folder, file_src) #eg. <user_dir>/subdir/file.txt
-                history_dest_path = os.path.join(destination_folder, file_dest)
-                history.set_change("cp", history_path, history_dest_path)
-                return "copied file",200
-            else:
-                return "dest not found", 409
-        else:
-            return "file not found in src", 409
+        full_src_path,full_dest_path = get_src_dest_path()
+
+        try:
+            shutil.copy(full_src_path, full_dest_path)
+        except KeyError:
+            return abort(409)
 
 
     def _move(self):
         """Move
         this function move a file from src to dest"""
-        file_src = request.form["file_src"]
-        src_folder = users.users[auth.username()]["paths"][0] #for now we set it has the user dir
-        destination_folder = users.users[auth.username()]["paths"][0] #for now we set it has the user dir
-        full_src_path = os.path.join("user_dirs", src_folder, file_src)
-        file_dest = request.form["file_dest"]
-        full_dest_path = os.path.join("user_dirs", destination_folder, file_dest)
+        full_src_path,full_dest_path = get_src_dest_path()
         
-        if os.path.exists(full_src_path): 
-            if os.path.exists(full_dest_path):
-                shutil.copy(full_src_path, full_dest_path)
-                os.remove(full_src_path)
-                history_path = os.path.join(destination_folder, file_src) #eg. <user_dir>/subdir/file.txt
-                history_dest_path = os.path.join(destination_folder, file_dest)
-                history.set_change("mv", history_path, history_dest_path)
-
-                return "moved file",200
-            else:
-                return "dest not found", 409
-        else:
-            return "file not found in src", 409
+        try:
+            shutil.move(full_src_path, full_dest_path)
+        except KeyError:
+            return abort(409)
+            
     
     commands = {
         "get_files" : get_files,
