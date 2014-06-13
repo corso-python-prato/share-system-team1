@@ -28,6 +28,7 @@ def file_updated(modified_file_path):
     create new md5 for that file '''
     timestamp = time.time()
     md5_file = md5[modified_file_path]
+    # TODO: if file has been removed
 
     for u, v in users.users.items():
         for p in v["paths"]:
@@ -240,6 +241,7 @@ class Actions(Resource):
                 history_path = os.path.join(destination_folder, file_src) #eg. <user_dir>/subdir/file.txt
                 history_dest_path = os.path.join(destination_folder, file_dest)
                 history.set_change("mv", history_path, history_dest_path)
+
                 return "moved file",200
             else:
                 return "dest not found", 409
@@ -267,33 +269,6 @@ def verify_password(username, password):
         return False
     return sha256_crypt.verify(password, users.users[username]["psw"])
 
-
-@app.route("/diffs")
-@auth.login_required
-def diffs():
-    """ Returns a JSON with a list of changes.
-    Expected as POST data:
-    { "timestamp" : float }  """
-
-    try:
-        timestamp = request.form["timestamp"]
-    except KeyError:
-        abort(400)
-
-    changes = []
-
-    for p, v in history._history.items():
-        for myp in users.users[auth.username()]["paths"]:
-            if p.startswith(myp) and v[0] > timestamp:
-                changes.append({
-                    "path" : p,
-                    "action" : v
-                })
-    
-    if changes:
-        return json.dumps(changes), 200
-    else:
-        return "up to grade", 204
 
 @app.route("/API/v1/create_user", methods = ["POST"])
 def create_user():
