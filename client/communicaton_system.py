@@ -27,13 +27,11 @@ class CommunicatorSock(asyncore.dispatcher_with_send):
         return data
 
     def _unpacking_message(self, data, format=LENGTH_FORMAT):
-        if format == self.LENGTH_FORMAT:
-            pkts = struct.unpack(format, data)
-            return pkts[0]
-        else:
-            data = struct.unpack(format, data)
-            command = json.loads[data[0]]
-            return command
+        pkts = struct.unpack(format, data)
+        data = pkts[0]
+        if format != self.LENGTH_FORMAT:
+            data = json.loads(pkts[1])
+        return data
 
     def _executer(self, command):
         pass
@@ -42,7 +40,7 @@ class CommunicatorSock(asyncore.dispatcher_with_send):
         header = self.recv(struct.calcsize(self.LENGTH_FORMAT))
         data_length = self._unpacking_message(header)
         data = self.recv(data_length)
-        command = self._unpacking_message(data, '{}s'.format(data_length))
+        command = self._unpacking_message(data, '!i{}s'.format(data_length))
         self._executer(command)
 
     def send_message(self, command_type, param=None):
@@ -84,6 +82,7 @@ class CmdMessageClient(CommunicatorSock):
         self.host = host
         self.port = port
         self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.socket.setblocking(1)
         self.connect((host, port))
         self.cmd_istance = cmd_istance
 
