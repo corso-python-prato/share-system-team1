@@ -101,8 +101,8 @@ class TestSequenceFunctions(unittest.TestCase):
             self.assertEqual(rv.status_code, 200)
 
 
+    # check if the .json file is created/modified
     def test_save_history(self):
-        # check if the .json file is created/modified
         server.history.set_change("new", "/456")
         try:
             h = open(server.HISTORY_FILE, "r")
@@ -125,6 +125,22 @@ class TestSequenceFunctions(unittest.TestCase):
         server.history.set_change("new", "/test_path")
         with self.assertRaises(server.MissingDestinationError):
             server.history.set_change("mv", "/test_path")
+
+
+    # check if the backup function create the folder and the files
+    def test_backup_config_files(self):
+        server.backup_config_files("test_backup")
+        try:
+            dir_content = os.listdir("test_backup")
+        except IOError:
+            self.fail("Directory not created")
+        else:
+            self.assertIn(server.USERS_DATA, dir_content,
+                    msg="'user_data' missing in backup folder")
+            self.assertIn(server.HISTORY_FILE, dir_content,
+                    msg="'history' file missing in backup folder")
+        shutil.rmtree("test_backup")
+
 
 
 if __name__ == '__main__':
@@ -152,5 +168,3 @@ if __name__ == '__main__':
     os.remove(TEST_HISTORY_FILE)
     os.remove(TEST_USER_DATA)
     shutil.rmtree(TEST_DIRECTORY)
-
-

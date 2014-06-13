@@ -24,13 +24,16 @@ parser.add_argument("task", type=str)
 
 
 class Users(object):
+    
     def __init__(self):
         self.load()
+
 
     def get_id(self):
         new_id = hex(self.counter_id)[2:]
         self.counter_id += 1    
         return new_id
+
 
     def load(self):
         try:
@@ -48,6 +51,7 @@ class Users(object):
             #     }
             # }
             self.counter_id = 0
+
 
     def new_user(self, user, password):
         if user in self.users:
@@ -71,12 +75,15 @@ class Users(object):
         self.save_users()
         return "User created!", 201
 
-    def save_users(self):
+
+    def save_users(self, filename=None):
+        if not filename:
+            filename = USERS_DATA
         to_save = {
             "counter_id" : self.counter_id,
             "users" : self.users
         }
-        with open(USERS_DATA, "w") as ud:
+        with open(filename, "w") as ud:
             json.dump(to_save, ud)
 
 
@@ -120,10 +127,11 @@ class History(object):
         self.save_history()
 
 
-    def save_history(self):
-        with open(HISTORY_FILE, "w") as h:
+    def save_history(self, filename=None):
+        if not filename:
+            filename = HISTORY_FILE
+        with open(filename, "w") as h:
             json.dump(self._history, h)
-
 
 
 class UserActions(Resource):
@@ -337,6 +345,20 @@ def welcome():
     local_time = datetime.datetime.now()
     formatted_time = local_time.strftime("%Y-%m-%d %H:%M")
     return "Welcome on the Server!\n{}\n".format(formatted_time)
+
+
+def backup_config_files(folder_name=None):
+    if not folder_name:
+        folder_name = os.path.join("backup", str(time.time()))
+
+    try:
+        os.makedirs(folder_name)
+    except IOError:
+        return False
+    else:
+        users.save_users(os.path.join(folder_name, USERS_DATA))
+        history.save_history(os.path.join(folder_name, HISTORY_FILE))
+        return True
 
 
 def main():
