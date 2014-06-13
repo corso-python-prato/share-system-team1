@@ -10,6 +10,7 @@ from watchdog.observers.polling import PollingObserver as Observer
 from watchdog.events import FileSystemEventHandler
 from requests.auth import HTTPBasicAuth
 import requests
+import hashlib
 import shutil
 import base64
 import time
@@ -37,7 +38,7 @@ class ServerCommunicator(object):
 		self.server_url = server_url
 		self.dir_path = dir_path
 		self.retry_delay = 2 
-		self.timestamp = None 	#timestamp for Synchronization
+		self.timestamp = None   #timestamp for Synchronization
 		try:
 			with open('timestamp.json', 'r') as timestamp_file:
 				self.timestamp = timestamp_file.load()[0]
@@ -69,7 +70,7 @@ class ServerCommunicator(object):
 			"data": self.timestamp,
 			"auth": self.auth
 		}
-		sync = self._try_request(req_get, "ok", "no", **request_sync) 	
+		sync = self._try_request(req_get, "ok", "no", **request_sync)   
 		if sync.status_code != 204:
 			diffs = json.load(sync.text)
 			for tstamp, obj in diffs.iteritems():
@@ -81,7 +82,7 @@ class ServerCommunicator(object):
 					'req_delete': self.operator._delete_a_file,
 					'req_move': self.operator.move_a_file,
 					'req_copy': self.operator.copy_a_file
-				}.get(req)(args)	
+				}.get(req)(args)    
 
 
 	def get_fullpath(self, dst_path):
@@ -316,10 +317,50 @@ class DirectoryEventHandler(FileSystemEventHandler):
 			print "ingnored modified on ", event.src_path
 
 
+class DirSnapshotManager(object):
+	def __init__(self, dir_path, snapshot_file):
+		self.dir_path = dir_path
+		self.snapshot_file = snapshot_file
+		self.snapshot = self._load_snapshot()
+		diff = self.diff_snapthot(self.instant_snapshot())
+
+	def _load_snapshot(self):
+		""" load from file the last snapshot """
+		with open(self.snapshot_file) as f:
+			return json.load(f)
+
+	def instant_snapshot(self):
+		""" create a snapshot of directory """
+
+		dir_snapshot = {}
+		for root, dirs, files in os.walk(self.dir_path):
+			for f in files:
+				full_path = os.path.join(root, f)
+				file_md5 = hashlib.md5()
+				with open(full_path, 'rb') as afile:
+					buf = afile.read(2048)
+					while len(buf) > 0:
+						file_md5.update(buf)
+						buf = afile.read(2048)
+				file_md5 = file_md5.hexdigest()
+				if file_md5 in dir_snapshot:
+					dir_snapshot[file_md5].append(full_path)
+				else:
+					dir_snapshot[file_md5] = [full_path]
+		return dir_snapshot
+
+	def _save_snapshot(self):
+		with open(self.snapshot_file, 'w') as f:
+			f.write(json.dumps(self.snapshot))
+
+	def diff_snapthot(self, server_snapshot):
+		""" return the list of conflict """
+		return "diff_list"
 
 
 def main():
 	config = load_config()
+	snapshot_manager = DirSnapshotManager(config['dir_path'], config['snapshot_file'])
 
 	server_com = ServerCommunicator(
 		server_url = config['server_url'], 
