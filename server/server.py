@@ -188,7 +188,7 @@ class Files(Resource):
                     os.mkdir(folder)
                     os.chdir(folder)
             f = request.files["file_content"]
-            file_name = f.name
+            file_name = os.path.split(path)[1]
             f.save(file_name)
             os.chdir(server_dir)
             history_path = os.path.join(destination_folder, file_name) #eg. <user_dir>/subdir/file.txt
@@ -307,7 +307,7 @@ def diffs():
     else:
         return "up to grade", 204
 
-@app.route("/create_user")
+@app.route("/API/v1/create_user", methods = ["POST"])
 def create_user():
         ''' Expected as POST data:
         { "user" : username, "psw" : password } '''
