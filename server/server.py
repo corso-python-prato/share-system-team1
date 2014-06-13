@@ -18,6 +18,7 @@ api = Api(app)
 auth = HTTPBasicAuth()
 USERS_DIRECTORIES = "user_dirs/"
 USERS_DATA = "user_data.json"
+HISTORY_FILE = "history.json"
 parser = reqparse.RequestParser()
 parser.add_argument("task", type=str)
 
@@ -83,11 +84,17 @@ class History(object):
     ACTIONS = ["new", "modify", "rm", "mv", "cp"]
 
     def __init__(self):
-        self._history = {}
-        # {
-        #     path : [last_timestamp, action]
-        #     path : [last_timestamp, "moved by", source_path]
-        # }
+        try:
+            h = open(HISTORY_FILE, "r")
+            self._history = json.load(h)
+            h.close()
+        except IOError:
+            self._history = {}
+            # {
+            #     path : [last_timestamp, action]
+            #     path : [last_timestamp, "moved by", source_path]
+            # }
+
 
     def set_change(self, action, path, destination_path=None):
         ''' actions allowed:
@@ -109,6 +116,14 @@ class History(object):
             self._history[destination_path] = [time.time(), "copied by", path]
         else:
             self._history[path] = [time.time(), action]
+
+        self.save_history()
+
+
+    def save_history(self):
+        with open(HISTORY_FILE, "w") as h:
+            json.dump(self._history, h)
+
 
 
 class UserActions(Resource):
@@ -138,6 +153,7 @@ class UserActions(Resource):
         else:
             return "up to grade", 204
 
+
     def create_user(self):
         ''' Expected as POST data:
         { "user" : username, "psw" : password } '''
@@ -149,6 +165,7 @@ class UserActions(Resource):
             abort(400)
 
         return users.new_user(user, psw)
+
 
     commands = {
         "create" :  create_user,
