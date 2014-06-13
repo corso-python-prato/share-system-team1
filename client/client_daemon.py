@@ -39,7 +39,7 @@ class ServerCommunicator(object):
 		self.retry_delay = 2 
 		self.timestamp = None 	#timestamp for Synchronization
 		try:
-			with open('/timestamp.json', 'r') as timestamp_file:
+			with open('timestamp.json', 'r') as timestamp_file:
 				self.timestamp = timestamp_file.load()[0]
 		except IOError:
 			print "There's no timestamp saved."
@@ -245,10 +245,9 @@ def main():
 	server_com = ServerCommunicator(
 		server_url = config['server_url'], 
 		username = config['username'],
-		password = config['password'])
-
 		password = config['password'],
 		dir_path = config['dir_path'])
+
 
 	#server_com.create_user("usernameFarlocco", "passwordSegretissima")
 	server_com.download_file('bla.txt')
