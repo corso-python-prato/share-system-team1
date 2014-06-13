@@ -11,31 +11,34 @@ import json
 import os
 import shutil
 import urlparse
-from server_errors import *
+from hashlib import md5
+
 
 app = Flask(__name__)
 api = Api(app)
 auth = HTTPBasicAuth()
 USERS_DIRECTORIES = "user_dirs/"
 USERS_DATA = "user_data.json"
-HISTORY_FILE = "history.json"
 parser = reqparse.RequestParser()
 parser.add_argument("task", type=str)
+
+
+def file_updated(modified_file_path):
+    ''' set new timestamp for each user who can access to the file +
+    create new md5 for that file '''
+    timestamp = time.time()
+    md5_file = md5[modified_file_path]
+
+    for u, v in users.users.items():
+        for p in v["paths"]:
+            if modified_file_path.startswith(p):
+                v["last_change"] = timestamp
+                v["md5_tree"][md5_file] = modified_file_path
 
 
 class Users(object):
     
     def __init__(self):
-        self.load()
-
-
-    def get_id(self):
-        new_id = hex(self.counter_id)[2:]
-        self.counter_id += 1    
-        return new_id
-
-
-    def load(self):
         try:
             ud = open(USERS_DATA, "r")
             saved = json.load(ud)
@@ -46,11 +49,21 @@ class Users(object):
             self.users = {}
             # { 
             #     username : { 
-            #            psw : encoded_password,
-            #            paths : list_of_path
+            #            "psw" : encoded_password,
+            #            "paths" : [list of directory]
+            #            "last_change" : timestamp,
+            #            "md5_tree" : {
+            #                   md5 : path_file
+            #            }
             #     }
             # }
             self.counter_id = 0
+    
+
+    def get_id(self):
+        new_id = hex(self.counter_id)[2:]
+        self.counter_id += 1    
+        return new_id
 
 
     def new_user(self, user, password):
@@ -67,7 +80,9 @@ class Users(object):
         
         self.users[user] = { 
             "psw": psw_hash,
-            "paths" : [dir_id]
+            "paths" : [dir_id],
+            "last_change" : time.time(),
+            "md5_tree" : {}
         }
 
         history.set_change("new", dir_id)
@@ -87,58 +102,14 @@ class Users(object):
             json.dump(to_save, ud)
 
 
-class History(object):
-    ACTIONS = ["new", "modify", "rm", "mv", "cp"]
-
-    def __init__(self):
-        try:
-            h = open(HISTORY_FILE, "r")
-            self._history = json.load(h)
-            h.close()
-        except IOError:
-            self._history = {}
-            # {
-            #     path : [last_timestamp, action]
-            #     path : [last_timestamp, "moved by", source_path]
-            # }
-
-
-    def set_change(self, action, path, destination_path=None):
-        ''' actions allowed:
-            with only a path:   new, modify, rm
-            with two paths:     mv, cp '''
-        if action not in History.ACTIONS:
-            raise NotAllowedError
-
-        if (action != "new") and (path not in self._history):
-            raise MissingFileError
-        
-        if (action == "mv" or action == "cp") and destination_path is None:
-            raise MissingDestinationError
-
-        if action == "mv":
-            self._history[path] = [time.time(), "moved to", destination_path]
-            self._history[destination_path] = [time.time(), "moved by", path]
-        elif action == "cp":
-            self._history[destination_path] = [time.time(), "copied by", path]
-        else:
-            self._history[path] = [time.time(), action]
-
-        self.save_history()
-
-
-    def save_history(self, filename=None):
-        if not filename:
-            filename = HISTORY_FILE
-        with open(filename, "w") as h:
-            json.dump(self._history, h)
-
 class Resource(Resource):
     method_decorators = [auth.login_required]
+
 
 def get_path(user, path):
     folder = users.users[user]["paths"][0]
     return os.path.join("user_dirs", folder, path)
+
 
 class Files(Resource):
     def get(self, path):
@@ -179,16 +150,34 @@ class Files(Resource):
             put(self, path)
 
 
-def get_src_dest_path():
-    file_src = request.form["file_src"]
-    src_folder = users.users[auth.username()]["paths"][0] #for now we set it has the user dir
-    destination_folder = users.users[auth.username()]["paths"][0] #for now we set it has the user dir
-    full_src_path = os.path.join("user_dirs", src_folder, file_src)
-    file_dest = request.form["file_dest"]
-    full_dest_path = os.path.join("user_dirs", destination_folder, file_dest)
-    return full_src_path,full_dest_path
-
 class Actions(Resource):
+    def get_src_dest_path():
+        file_src = request.form["file_src"]
+        src_folder = users.users[auth.username()]["paths"][0] #for now we set it has the user dir
+        destination_folder = users.users[auth.username()]["paths"][0] #for now we set it has the user dir
+        full_src_path = os.path.join("user_dirs", src_folder, file_src)
+        file_dest = request.form["file_dest"]
+        full_dest_path = os.path.join("user_dirs", destination_folder, file_dest)
+        return full_src_path,full_dest_path
+
+
+    def get_files(self):
+        ''' Send a JSON with the timestamp of the last change in user
+        directories and an md5 for each file '''
+        # {
+        #     "last_change" : timestamp_last_change
+        #     "files" : {
+        #         md5 : path
+        #     }
+        # }
+        u = users.users[auth.username()]
+        to_send = {
+            "last_change" : u["last_change"]
+            "files" : u["md5_tree"]
+        }
+        return json.dumps(to_send)
+
+
     def _delete(self):
         """Delete
         this function delete file selected"""
@@ -223,6 +212,7 @@ class Actions(Resource):
             return abort(409)
     
     commands = {
+        "get_files" : get_files,
         "delete" : _delete,
         "move" : _move,
         "copy" : _copy
@@ -270,7 +260,7 @@ def diffs():
     else:
         return "up to grade", 204
 
-@app.route("/create_user")
+@app.route("/API/v1/create_user", methods = ["POST"])
 def create_user():
         ''' Expected as POST data:
         { "user" : username, "psw" : password } '''
@@ -306,7 +296,6 @@ def backup_config_files(folder_name=None):
         return False
     else:
         users.save_users(os.path.join(folder_name, USERS_DATA))
-        history.save_history(os.path.join(folder_name, HISTORY_FILE))
         return True
 
 
@@ -317,7 +306,6 @@ def main():
 
 
 users = Users()
-history = History()
 _API_PREFIX = "/API/v1/"
 
 api.add_resource(Files, "{}files/<path:path>".format(_API_PREFIX))
