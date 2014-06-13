@@ -4,6 +4,7 @@
 import server
 import os
 import string
+import json
 import random
 import unittest
 import shutil
@@ -11,6 +12,7 @@ from base64 import b64encode
 
 TEST_DIRECTORY = "test_users_dirs/"
 TEST_USER_DATA = "test_user_data.json"
+TEST_HISTORY_FILE = "test_history_file.json"
 
 
 class TestSequenceFunctions(unittest.TestCase):
@@ -18,7 +20,6 @@ class TestSequenceFunctions(unittest.TestCase):
     def setUp(self):
         server.app.config.update(TESTING=True)
         server.app.testing = True
-        server.USERS_DIRECTORIES = TEST_DIRECTORY
 
 
     def user_demo(self, user=None, psw=None):
@@ -100,6 +101,19 @@ class TestSequenceFunctions(unittest.TestCase):
             self.assertEqual(rv.status_code, 200)
 
 
+    # check if the .json file is created/modified
+    def test_save_history(self):
+        server.history.set_change("new", "/456")
+        try:
+            h = open(server.HISTORY_FILE, "r")
+            saved_history = json.load(h)
+            h.close()
+        except IOError:
+            self.fail("Unable to open history file")
+
+        self.assertEqual(server.history._history, saved_history)
+
+
     # check history custom errors
     def test_history_errors(self):
         with self.assertRaises(server.NotAllowedError):
@@ -113,22 +127,44 @@ class TestSequenceFunctions(unittest.TestCase):
             server.history.set_change("mv", "/test_path")
 
 
+    # check if the backup function create the folder and the files
+    def test_backup_config_files(self):
+        server.backup_config_files("test_backup")
+        try:
+            dir_content = os.listdir("test_backup")
+        except IOError:
+            self.fail("Directory not created")
+        else:
+            self.assertIn(server.USERS_DATA, dir_content,
+                    msg="'user_data' missing in backup folder")
+            self.assertIn(server.HISTORY_FILE, dir_content,
+                    msg="'history' file missing in backup folder")
+        shutil.rmtree("test_backup")
 
 
 
 if __name__ == '__main__':
+    # set a test "USERS_DIRECTORIES"
     try:
         os.mkdir(TEST_DIRECTORY)
     except OSError:
         shutil.rmtree(TEST_DIRECTORY)
         os.mkdir(TEST_DIRECTORY)
-    
-    server.USERS_DATA = TEST_USER_DATA
-    open(TEST_USER_DATA, "w").close()
 
+    server.USERS_DIRECTORIES = TEST_DIRECTORY
+    
+    # set a test "USER_DATA" json
+    open(TEST_USER_DATA, "w").close()
+    server.USERS_DATA = TEST_USER_DATA
+
+    # set a test "HISTORY_FILE" json
+    open(TEST_HISTORY_FILE, "w").close()
+    server.HISTORY_FILE = TEST_HISTORY_FILE
+
+    # make tests!
     unittest.main(exit=False)
 
+    # restore previous status
+    os.remove(TEST_HISTORY_FILE)
     os.remove(TEST_USER_DATA)
     shutil.rmtree(TEST_DIRECTORY)
-
-
