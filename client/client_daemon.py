@@ -72,7 +72,7 @@ class ServerCommunicator(object):
                 }.get(req)(args)    
 
 
-    def get_fullpath(self, dst_path):
+    def get_abspath(self, dst_path):
         return os.path.join(self.dir_path, dst_path)
 
     def download_file(self, dst_path):
@@ -89,7 +89,7 @@ class ServerCommunicator(object):
         }
         print request
         r = self._try_request(requests.get, success_log, error_log, **request)
-        local_path = self.get_fullpath(dst_path)
+        local_path = self.get_abspath(dst_path)
         return local_path, r.text
     
 
@@ -162,10 +162,10 @@ class FileSystemOperator(object):
         self.server_com = server_com
 
     def send_lock(self, path):
-        self.event_handler.path_ignored = path
+        self.event_handler.path_ignored.append(path)
 
     def send_unlock(self):
-        self.event_handler.path_ignored = None
+        self.event_handler.path_ignored = []
 
     def write_a_file(self, path):
         """
@@ -177,14 +177,13 @@ class FileSystemOperator(object):
             create file
             send unlock to watchdog
         """
-        full_path = self.server_com.get_fullpath(path)
-        self.send_lock(full_path)
-        fullpath, content = self.server_com.download_file(path)
+        self.send_lock(self.server_com.get_abspath(path))
+        abs_path, content = self.server_com.download_file(path)
         try:
-            os.makedirs(os.path.split(fullpath)[0], 0755 )
+            os.makedirs(os.path.split(abs_path)[0], 0755 )
         except OSError:
             pass
-        with open(fullpath, 'w') as f:
+        with open(abs_path, 'w') as f:
             f.write(content)
         time.sleep(3)
         self.send_unlock()
@@ -198,7 +197,8 @@ class FileSystemOperator(object):
             move the file from origin_path to dst_path
             send unlock to watchdog
         """
-        self.send_lock(origin_path)
+        self.send_lock(self.server_com.get_abspath(origin_path))
+        self.send_lock(self.server_com.get_abspath(dst_path))
         try:
             os.makedirs(os.path.split(dst_path)[0], 0755 )
         except OSError:
@@ -214,7 +214,8 @@ class FileSystemOperator(object):
             copy the file from origin_path to dst_path
             send unlock to watchdog
         """
-        self.send_lock(origin_path)
+        self.send_lock(self.server_com.get_abspath(origin_path))
+        self.send_lock(self.server_com.get_abspath(dst_path))
         try:
             os.makedirs(os.path.split(dst_path)[0], 0755 )
         except OSError:
@@ -229,12 +230,12 @@ class FileSystemOperator(object):
             delete file
             send unlock to watchdog
         """
-        self.send_lock(origin_path)
+        self.send_lock(self.server_com.get_abspath(path))
         try:
             shutil.rmtree(path)
         except IOError:
             pass
-        self.send_unlock
+        self.send_unlock()
 
 def load_config():
     with open('config.json', 'r') as config_file:
@@ -246,7 +247,7 @@ class DirectoryEventHandler(FileSystemEventHandler):
 
     def __init__(self, cmd):
         self.cmd = cmd
-        self.path_ignored = None
+        self.path_ignored = []
         
     def on_moved(self, event):
         """Called when a file or a directory is moved or renamed.
@@ -256,7 +257,7 @@ class DirectoryEventHandler(FileSystemEventHandler):
         :type event:
             :class:`DirMovedEvent` or :class:`FileMovedEvent`
         """
-        if self.path_ignored != event.src_path:
+        if event.src_path not in self.path_ignored:
             self.cmd.delete_file(event.src_path)
             self.cmd.upload_file(event.dest_path)
         else:
@@ -270,7 +271,8 @@ class DirectoryEventHandler(FileSystemEventHandler):
         :type event:
             :class:`DirCreatedEvent` or :class:`FileCreatedEvent`
         """
-        if self.path_ignored != event.src_path:
+       
+        if event.src_path not in self.path_ignored:
             self.cmd.upload_file(event.src_path)
         else:
             print "ingnored create on ", event.src_path
@@ -283,7 +285,7 @@ class DirectoryEventHandler(FileSystemEventHandler):
         :type event:
             :class:`DirDeletedEvent` or :class:`FileDeletedEvent`
         """
-        if self.path_ignored != event.src_path:
+        if event.src_path not in self.path_ignored:
             self.cmd.delete_file(event.src_path)
         else:
             print "ingnored deletion on ", event.src_path
@@ -296,8 +298,8 @@ class DirectoryEventHandler(FileSystemEventHandler):
         :type event:
             :class:`DirModifiedEvent` or :class:`FileModifiedEvent`
         """
-        print self.path_ignored,event.src_path
-        if self.path_ignored != event.src_path:
+        
+        if event.src_path not in self.path_ignored:
             if not event.is_directory:
                 self.cmd.upload_file(event.src_path, put_file = True)
         else:
