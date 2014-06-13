@@ -24,13 +24,16 @@ parser.add_argument("task", type=str)
 
 
 class Users(object):
+    
     def __init__(self):
         self.load()
+
 
     def get_id(self):
         new_id = hex(self.counter_id)[2:]
         self.counter_id += 1    
         return new_id
+
 
     def load(self):
         try:
@@ -48,6 +51,7 @@ class Users(object):
             #     }
             # }
             self.counter_id = 0
+
 
     def new_user(self, user, password):
         if user in self.users:
@@ -71,12 +75,15 @@ class Users(object):
         self.save_users()
         return "User created!", 201
 
-    def save_users(self):
+
+    def save_users(self, filename=None):
+        if not filename:
+            filename = USERS_DATA
         to_save = {
             "counter_id" : self.counter_id,
             "users" : self.users
         }
-        with open(USERS_DATA, "w") as ud:
+        with open(filename, "w") as ud:
             json.dump(to_save, ud)
 
 
@@ -120,71 +127,20 @@ class History(object):
         self.save_history()
 
 
-    def save_history(self):
-        with open(HISTORY_FILE, "w") as h:
+    def save_history(self, filename=None):
+        if not filename:
+            filename = HISTORY_FILE
+        with open(filename, "w") as h:
             json.dump(self._history, h)
 
-
-
-class UserActions(Resource):
-    @auth.login_required
-    def diffs(self):
-        """ Returns a JSON with a list of changes.
-        Expected as POST data:
-        { "timestamp" : float }  """
-
-        try:
-            timestamp = request.form["timestamp"]
-        except KeyError:
-            abort(400)
-
-        changes = []
-
-        for p, v in history._history.items():
-            for myp in users.users[auth.username()]["paths"]:
-                if p.startswith(myp) and v[0] > timestamp:
-                    changes.append({
-                        "path" : p,
-                        "action" : v
-                    })
-        
-        if changes:
-            return json.dumps(changes), 200
-        else:
-            return "up to grade", 204
-
-
-    def create_user(self):
-        ''' Expected as POST data:
-        { "user" : username, "psw" : password } '''
-
-        try:
-            user = request.form["user"]
-            psw = request.form["psw"]
-        except KeyError:
-            abort(400)
-
-        return users.new_user(user, psw)
-
-
-    commands = {
-        "create" :  create_user,
-        "diffs"  :  diffs,
-    }
-
-    def post(self, cmd):
-        try:
-            return UserActions.commands[cmd](self)
-        except KeyError:
-            abort(404)
-
+class Resource(Resource):
+    method_decorators = [auth.login_required]
 
 def get_path(user, path):
     folder = users.users[user]["paths"][0]
     return os.path.join("user_dirs", folder, path)
 
 class Files(Resource):
-    @auth.login_required
     def get(self, path):
         """Download
         this function return file content as string using GET"""
@@ -196,7 +152,6 @@ class Files(Resource):
             abort(404)
 
 
-    @auth.login_required
     def put(self, path):
         """Put
         this function update file"""
@@ -212,7 +167,6 @@ class Files(Resource):
             abort(409)
 
 
-    @auth.login_required
     def post(self, path):
         """Upload
         this function load file using POST"""
@@ -221,7 +175,9 @@ class Files(Resource):
         if os.path.exists(full_path):
             return "already exists", 409
         else:
+            os.makedirs(full_path)
             put(self, path)
+
 
 def get_src_dest_path():
     file_src = request.form["file_src"]
@@ -272,7 +228,6 @@ class Actions(Resource):
         "copy" : _copy
     }
 
-    @auth.login_required
     def post(self, cmd):
         try:
             return Actions.commands[cmd](self)
@@ -282,18 +237,51 @@ class Actions(Resource):
 
 @auth.verify_password
 def verify_password(username, password):
+    print username
     if username not in users.users:
         return False
     return sha256_crypt.verify(password, users.users[username]["psw"])
 
 
-def verify_path(username, path):
-    #verify if the path is in the user accesses
-    if path in users.users[username]["paths"]:
-        return True
-    else:
-        return False
+@app.route("/diffs")
+@auth.login_required
+def diffs():
+    """ Returns a JSON with a list of changes.
+    Expected as POST data:
+    { "timestamp" : float }  """
+
+    try:
+        timestamp = request.form["timestamp"]
+    except KeyError:
+        abort(400)
+
+    changes = []
+
+    for p, v in history._history.items():
+        for myp in users.users[auth.username()]["paths"]:
+            if p.startswith(myp) and v[0] > timestamp:
+                changes.append({
+                    "path" : p,
+                    "action" : v
+                })
     
+    if changes:
+        return json.dumps(changes), 200
+    else:
+        return "up to grade", 204
+
+@app.route("/create_user")
+def create_user():
+        ''' Expected as POST data:
+        { "user" : username, "psw" : password } '''
+
+        try:
+            user = request.form["user"]
+            psw = request.form["psw"]
+        except KeyError:
+            abort(400)
+
+        return users.new_user(user, psw)
 
 @app.route("/hidden_page")
 @auth.login_required
@@ -308,6 +296,20 @@ def welcome():
     return "Welcome on the Server!\n{}\n".format(formatted_time)
 
 
+def backup_config_files(folder_name=None):
+    if not folder_name:
+        folder_name = os.path.join("backup", str(time.time()))
+
+    try:
+        os.makedirs(folder_name)
+    except IOError:
+        return False
+    else:
+        users.save_users(os.path.join(folder_name, USERS_DATA))
+        history.save_history(os.path.join(folder_name, HISTORY_FILE))
+        return True
+
+
 def main():
     if not os.path.isdir(USERS_DIRECTORIES):
         os.mkdir(USERS_DIRECTORIES)
@@ -318,7 +320,6 @@ users = Users()
 history = History()
 _API_PREFIX = "/API/v1/"
 
-api.add_resource(UserActions, "{}user/<string:cmd>".format(_API_PREFIX))
 api.add_resource(Files, "{}files/<path:path>".format(_API_PREFIX))
 api.add_resource(Actions, "{}actions/<string:cmd>".format(_API_PREFIX))
 
