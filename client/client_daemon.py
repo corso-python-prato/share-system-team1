@@ -158,8 +158,21 @@ class ServerCommunicator(object):
         }
         self._try_request(requests.post, success_log, error_log, **request)
 
-    def copy_file(self, dst_path):
-        pass
+    def copy_file(self, src_path, dst_path):
+        """ send to server a message of copy file"""
+
+        error_log = "ERROR copy request " + dst_path
+        success_log = "file copied! " + dst_path
+
+        server_url = "{}/actions/copy".format(self.server_url)
+        src_path = self.get_url_relpath(src_path)
+        dst_path = self.get_url_relpath(dst_path)
+
+        request = {
+            "url": server_url,
+            "data": {"src": src_path, "dst": dst_path}
+        }
+        self._try_request(requests.post, success_log, error_log, **request)
 
     def create_user(self, username, password):
         
@@ -267,10 +280,22 @@ def load_config():
 
 class DirectoryEventHandler(FileSystemEventHandler):
 
-    def __init__(self, cmd):
+    def __init__(self, cmd, snap):
         self.cmd = cmd
+        self.snap = snap
         self.path_ignored = []
         
+    def _is_copy(self, abs_path):
+        """ 
+        check if a file_md5 already exists in my local snapshot 
+        IF IS A COPY : return the first path of already exists file
+        ELSE: return False
+        """
+        file_md5 = self.snap.file_snapMd5(abs_path)
+        if file_md5 in self.snap.snapshot:
+            return self.snap.snapshot[file_md5][0]
+        return False
+
     def on_moved(self, event):
         """Called when a file or a directory is moved or renamed.
 
@@ -294,7 +319,11 @@ class DirectoryEventHandler(FileSystemEventHandler):
         """
        
         if event.src_path not in self.path_ignored:
-            self.cmd.upload_file(event.src_path)
+            copy = self._is_copy(event.src_path)
+            if copy:
+                self.cmd.copy_file(copy, event.src_path)
+            else:
+                self.cmd.upload_file(event.src_path)
         else:
             print "ingnored create on ", event.src_path
 
@@ -339,6 +368,15 @@ class DirSnapshotManager(object):
         with open(self.snapshot_file) as f:
             return json.load(f)
 
+    def file_snapMd5(self, file_path):
+        file_md5 = hashlib.md5()
+        with open(file_path, 'rb') as afile:
+            buf = afile.read(2048)
+            while len(buf) > 0:
+                file_md5.update(buf)
+                buf = afile.read(2048)
+        return file_md5.hexdigest()
+
     def instant_snapshot(self):
         """ create a snapshot of directory """
 
@@ -346,13 +384,7 @@ class DirSnapshotManager(object):
         for root, dirs, files in os.walk(self.dir_path):
             for f in files:
                 full_path = os.path.join(root, f)
-                file_md5 = hashlib.md5()
-                with open(full_path, 'rb') as afile:
-                    buf = afile.read(2048)
-                    while len(buf) > 0:
-                        file_md5.update(buf)
-                        buf = afile.read(2048)
-                file_md5 = file_md5.hexdigest()
+                file_md5 = self.file_snapMd5(full_path)
                 if file_md5 in dir_snapshot:
                     dir_snapshot[file_md5].append(full_path)
                 else:
@@ -378,7 +410,7 @@ def main():
         password = config['password'],
         dir_path = config['dir_path'])
 
-    event_handler = DirectoryEventHandler(server_com)
+    event_handler = DirectoryEventHandler(server_com, snapshot_manager)
     file_system_op = FileSystemOperator(event_handler, server_com)
     observer = Observer()
     observer.schedule(event_handler, config['dir_path'], recursive=True)
