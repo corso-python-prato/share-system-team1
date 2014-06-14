@@ -75,7 +75,16 @@ class ServerCommunicator(object):
 
 
     def get_abspath(self, dst_path):
+        """ from relative path return absolute path """
         return os.path.join(self.dir_path, dst_path)
+
+    def get_relpath(self, abs_path):
+        """form absolute path return relative path """
+        return abs_path[len(self.dir_path) + 1:]
+
+    def get_url_relpath(self, abs_path):
+        """ form get_abspath return the relative path for url """
+        return self.get_relpath(abs_path).replace(os.path.sep, '/')
 
     def download_file(self, dst_path):
         """ download a file from server"""
@@ -83,7 +92,9 @@ class ServerCommunicator(object):
         error_log = "ERROR on download request " + dst_path
         success_log = "file downloaded! " + dst_path
 
-        server_url = "{}/files/{}".format(self.server_url, dst_path)
+        server_url = "{}/files/{}".format(
+            self.server_url, 
+            self.get_url_relpath(dst_path))
 
         request = {"url": server_url}
         
@@ -95,14 +106,15 @@ class ServerCommunicator(object):
     def upload_file(self, dst_path, put_file = False):
         """ upload a file to server """
 
-        path = os.path.join(*(dst_path.split(os.path.sep)))
         file_content = ''
         try:
             file_content = open(dst_path, 'rb')
         except IOError:
             return False #Atomic create and delete error!
 
-        server_url = "{}/files/{}".format(self.server_url, path)
+        server_url = "{}/files/{}".format(
+            self.server_url, 
+            self.get_url_relpath(dst_path))
 
         error_log = "ERROR upload request " + dst_path
         success_log = "file uploaded! " + dst_path
@@ -124,7 +136,7 @@ class ServerCommunicator(object):
 
         server_url = "{}/files/{}".format(
                 self.server_url, 
-                dst_path.replace(os.path.sep, '/'))
+                self.get_url_relpath(dst_path))
 
         request = {"url": server_url}
 
