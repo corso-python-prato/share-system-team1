@@ -134,11 +134,12 @@ class ServerCommunicator(object):
         error_log = "ERROR delete request " + dst_path
         success_log = "file deleted! " + dst_path
 
-        server_url = "{}/files/{}".format(
-                self.server_url, 
-                self.get_url_relpath(dst_path))
+        server_url = "{}/actions/delete".format(self.server_url)
 
-        request = {"url": server_url}
+        request = {
+            "url": server_url,
+            "data": self.get_url_relpath(dst_path)
+        }
 
         self._try_request(requests.delete, success_log, error_log, **request)
 
