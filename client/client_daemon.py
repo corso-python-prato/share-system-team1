@@ -35,7 +35,9 @@ class ServerCommunicator(object):
         """ try a request until it's a success """
         while True:
             try:
-                request_result = callback(*args, **kwargs)
+                request_result = callback(
+                    auth = self.auth,
+                    *args, **kwargs)
                 print success
                 return request_result
             except requests.exceptions.RequestException:
@@ -83,11 +85,8 @@ class ServerCommunicator(object):
 
         server_url = "{}/files/{}".format(self.server_url, dst_path)
 
-        request = {
-            "url": server_url,
-            "auth": self.auth
-        }
-        print request
+        request = {"url": server_url}
+        
         r = self._try_request(requests.get, success_log, error_log, **request)
         local_path = self.get_abspath(dst_path)
         return local_path, r.text
@@ -109,9 +108,9 @@ class ServerCommunicator(object):
         success_log = "file uploaded! " + dst_path
         request = {
             "url": server_url,
-            "files": {'file_content':file_content},
-            "auth": self.auth
+            "files": {'file_content':file_content}
         }
+
         if put_file:
             self._try_request(requests.put, success_log, error_log, **request)
         else:
@@ -127,10 +126,8 @@ class ServerCommunicator(object):
                 self.server_url, 
                 dst_path.replace(os.path.sep, '/'))
 
-        request = {
-            "url": server_url,
-            "auth": self.auth
-        }
+        request = {"url": server_url}
+
         self._try_request(requests.delete, success_log, error_log, **request)
 
     def move_file(self, src_path, dst_path):
@@ -192,7 +189,7 @@ class FileSystemOperator(object):
         """ 
         move a file 
 
-            send lock to watchdog
+            send lock to watchdog for origin and dst path
             create directory chain for dst_path
             move the file from origin_path to dst_path
             send unlock to watchdog
@@ -209,7 +206,7 @@ class FileSystemOperator(object):
     def copy_a_file(self, origin_path, dst_path):
         """ copy a file 
 
-            send lock to watchdog
+            send lock to watchdog for origin and dest path
             create directory chain for dst_path
             copy the file from origin_path to dst_path
             send unlock to watchdog
@@ -258,8 +255,7 @@ class DirectoryEventHandler(FileSystemEventHandler):
             :class:`DirMovedEvent` or :class:`FileMovedEvent`
         """
         if event.src_path not in self.path_ignored:
-            self.cmd.delete_file(event.src_path)
-            self.cmd.upload_file(event.dest_path)
+            self.cmd.move_file(event.src_path)
         else:
             print "ingnored move on ", event.src_path
 
