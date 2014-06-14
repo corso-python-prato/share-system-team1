@@ -35,9 +35,11 @@ class Snapshot(object):
                 self.files[md5].append(client_path)
             else:
                 self.files[md5] = [client_path]
+            self.last_change = time.time()
         return md5
 
     def rm(self, md5, client_path):
         self.files[md5].pop(client_path)
         if not self.files[md5]:
             del self.files[md5]
+        self.last_change = time.time()
