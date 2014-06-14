@@ -592,7 +592,13 @@ more media queries
 	.box-team {
 		margin-bottom: 30px;
 	}
-
+	.img-pack {
+		margin-top: 20px;
+		margin-left: -100px;
+	}
+	.img-pack-cont {
+		margin-left: 50%;
+	}
 	
 }
 
