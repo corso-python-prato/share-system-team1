@@ -23,7 +23,6 @@ class ServerCommunicator(object):
         self.auth = HTTPBasicAuth(username, password)
         self.server_url = server_url
         self.dir_path = dir_path
-        self.retry_delay = 2 
         self.timestamp = None   #timestamp for Synchronization
         try:
             with open('timestamp.json', 'r') as timestamp_file:
@@ -31,7 +30,7 @@ class ServerCommunicator(object):
         except IOError:
             print "There's no timestamp saved."
 
-    def _try_request(self, callback, success = '', error = '', *args, **kwargs):
+    def _try_request(self, callback, success = '', error = '',retry_delay = 2, *args, **kwargs):
         """ try a request until it's a success """
         while True:
             try:
@@ -41,7 +40,7 @@ class ServerCommunicator(object):
                 print success
                 return request_result
             except requests.exceptions.RequestException:
-                time.sleep(self.retry_delay)
+                time.sleep(retry_delay)
                 print error
 
     def synchronize(self):
