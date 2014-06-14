@@ -143,7 +143,20 @@ class ServerCommunicator(object):
         self._try_request(requests.delete, success_log, error_log, **request)
 
     def move_file(self, src_path, dst_path):
-        pass
+        """ send to server a message of file moved """
+        
+        error_log = "ERROR move request " + dst_path
+        success_log = "file moved! " + dst_path
+
+        server_url = "{}/actions/move".format(self.server_url)
+        src_path = self.get_url_relpath(src_path)
+        dst_path = self.get_url_relpath(dst_path)
+
+        request = {
+            "url": server_url,
+            "data": {"src": src_path, "dst": dst_path}
+        }
+        self._try_request(requests.post, success_log, error_log, **request)
 
     def copy_file(self, dst_path):
         pass
