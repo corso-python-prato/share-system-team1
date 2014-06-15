@@ -18,15 +18,55 @@ def to_md5(path, block_size=2**20):
 
 class Snapshot(object):
 
-    def __init__(self, paths=None):
+    def __init__(self, timestamp=None, files=None):
+    # if restoring the server or from JSON
+        if timestamp and files:
+            self.last_change = timestamp
+            self.files = files
+            return
+
     # if restoring the server
         if paths:
-            self.last_change, self.files = self.istant_snapshot(paths)
+            self.last_change, 
             return
 
     # else if I'm creating a new Snapshot
         self.last_change = time.time()
-        self.files = {}         # md5 : [list of client_paths]
+        self.files = {}         # { md5 : [list of client_paths] }
+
+
+    def istant_snapshot(self):
+        # TODO
+        pass
+
+
+    def to_JSON(self):
+        # TODO
+        pass
+
+
+    # second constructor
+    @classmethod
+    def from_JSON(cls, file_path):
+        try:
+            f = open(file_path, "r")
+            data = json.load(ud)
+            f.close()
+        except IOError:                         # TODO
+            pass                # missing file
+        except ValueError:      # invalid json  # TODO
+            pass
+        else:
+            return cls(timestamp=data["last_change"], files=data["files"])
+
+
+# serverside        TODO: in server do a class, which extends Snapshot, and implements these methods
+    @classmethod
+    def restore_server(cls, paths):
+        files = self.istant_snapshot(paths)
+        # TODO: find the most recent update in file stamps.
+        return cls(timestamp=last_change, files=files)
+        
 
     def push(self, client_path):
         md5 = to_md5(client_path)

@@ -55,7 +55,7 @@ class User(object):
         if paths:
             self.psw = password
             self.paths = paths
-            self.snapshot = Snapshot(paths)
+            self.snapshot = Snapshot.restore_server(paths)
             User.user[username] = self
             return
 
@@ -74,12 +74,11 @@ class User(object):
             )
 
         self.psw = psw_hash
-        self.paths = {          # path of each file and directory of the user!
-            # client_path : [server_path, md5]
-            "" : [full_path, False]
-        }
         self.snapshot = Snapshot()
+        self.paths = {}          # path of each file and each directory of the user!
+                                 # client_path : [server_path, md5]
 
+        self.push_path("", full_path)
         User.users[username] = self
         User.save_users()
 
@@ -93,18 +92,16 @@ class User(object):
         }
 
 
-    def push_path(self, client_path):
+    def push_path(self, client_path, server_path):
         md5 = self.snapshot.push(client_path)
         if client_path in self.paths:
             self.paths[client_path][1] = md5        # update md5 value
         else:
-            user_directory = self.paths[""]
-            server_path = os.path.join(user_directory, client_path)
+            self.paths[client_path] = [server_path, md5]
             # TODO: manage shared folder here. Something like:
             # for s, v in shared_folder.items():
             #     if server_path.startswith(s):
             #         update every user
-            self.paths[client_path] = [server_path, md5]
 
 
     def rm_path(self, client_path):
