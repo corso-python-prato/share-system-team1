@@ -200,6 +200,7 @@ class Actions(Resource):
 
         try:
             os.remove(full_path)
+            return "file delete complete"
         except KeyError:
             return abort(409)
         else:
@@ -209,10 +210,11 @@ class Actions(Resource):
     def _copy(self):
         """Copy
         this function copy a file from src to dest"""
-        full_src_path,full_dest_path = get_src_dest_path()
+        full_src_path,full_dest_path = self.get_src_dest_path()
 
         try:
             shutil.copy(full_src_path, full_dest_path)
+            return "file copy complete"
         except KeyError:
             return abort(409)
         else:
@@ -223,10 +225,11 @@ class Actions(Resource):
     def _move(self):
         """Move
         this function move a file from src to dest"""
-        full_src_path,full_dest_path = get_src_dest_path()
+        full_src_path,full_dest_path = self.get_src_dest_path()
         
         try:
             shutil.move(full_src_path, full_dest_path)
+            return "file trasnfer complete"
         except KeyError:
             return abort(409)
         else:
