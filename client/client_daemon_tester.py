@@ -5,6 +5,7 @@ import requests
 import base64
 import sys
 import os
+import json
 
 class ClientDaemonTest(unittest.TestCase):
 	def setUp(self):
@@ -46,11 +47,44 @@ class ClientDaemonTest(unittest.TestCase):
 		#check if data is equals
 		self.assertEqual(data, mock_data) 
 		#check if url is equals
-		self.assertEqual(path, mock_path)   
+		self.assertEqual(path, mock_path)
+
+	def test_download(self):
+		   pass
 
 	def test_upload_put(self):
 		self.test_upload(put_file = True)
-		pass 
+
+	def test_synchronize(self):
+		status_code = 200
+
+		def fakewrite_a_file(*args):
+			return 'Writing a file'
+
+		def fakedelete_a_file(*args):
+			return 'Deleting a file'
+
+		def fakemove_a_file(*args):
+			return 'Moving a file'
+
+		def fakecopy_a_file(*args):
+			return 'Coping a file'
+
+		if status_code != 204:
+			diffs = json.load(open('test_mock/sync.json', 'r'))
+			for tstamp, obj in diffs.iteritems():
+				self.timestamp = tstamp #update self timestamp
+				print 'Timestamp op: ', tstamp
+				req = obj[0]
+				print 'Request: ', req
+				args = obj[1]
+				print 'Arguments: ', args
+				{
+					'req_get': fakewrite_a_file,
+					'req_delete': fakedelete_a_file,
+					'req_move': fakemove_a_file,
+					'req_copy': fakecopy_a_file
+				}.get(req)(args) 
 
 	def test_delete(self):
 		pass

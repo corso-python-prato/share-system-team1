@@ -34,9 +34,11 @@ class RawBoxCmd(cmd.Cmd):
 	def _create_user(self, username = None):
 		"""create user if not exists"""
 		command_type = 'create_user'
-		  
+
 		if not username:
 			username  = raw_input('insert your user name: ')
+		else:
+			username = " ".join(username)
 
 		password = getpass.getpass('insert your password: ')
 		rpt_password = getpass.getpass('Repeat your password: ')
@@ -73,10 +75,27 @@ class RawBoxCmd(cmd.Cmd):
 	def _add_user(self, *args):
 		"""add user/s to a group """
 		command_type = 'add_to_group'
-		param = {'user': args}
 
-		self.comm_sock.send_message(command_type, param)
-		self.comm_sock.handle_read()
+
+		args = args[0]
+		users = args[:-1]
+		try:
+			group = args[-1].split("group=")[1]
+			if group.strip() == "":
+				raise IndexError
+		except IndexError:
+			Message('WARNING', '\nyou must specify a group for example add user marco luigi group=your_group')
+			return False
+
+		for user in users:
+			#call socket message
+			print "add user ", user, " to group ", group
+			param = {
+				'user': user,
+				'group': group,
+			}
+			self.comm_sock.send_message(command_type, param)
+			self.comm_sock.handle_read()
 
 	def _add_admin(self, *args):
 		"""add admin/s to a group """

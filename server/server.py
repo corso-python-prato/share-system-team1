@@ -18,32 +18,22 @@ api = Api(app)
 auth = HTTPBasicAuth()
 USERS_DIRECTORIES = "user_dirs/"
 USERS_DATA = "user_data.json"
+HISTORY_FILE = "history.json"
 parser = reqparse.RequestParser()
 parser.add_argument("task", type=str)
 
-_API_PREFIX = "/API/v1/"
-_URLS = {
-    "files" :     "files/<path:path>",
-    "actions" :   "actions/<string:cmd>",
-    "user" :      "user/<string:cmd>"
-}
-def init():
-    for u in _URLS.keys():
-        _URLS[u] = urlparse.urljoin(_API_PREFIX, _URLS.pop(u))
-
-    api.add_resource(UserActions, _URLS["user"])
-    api.add_resource(Files, _URLS["files"])
-    api.add_resource(Actions, _URLS["actions"])
-
 
 class Users(object):
+    
     def __init__(self):
         self.load()
+
 
     def get_id(self):
         new_id = hex(self.counter_id)[2:]
         self.counter_id += 1    
         return new_id
+
 
     def load(self):
         try:
@@ -61,6 +51,7 @@ class Users(object):
             #     }
             # }
             self.counter_id = 0
+
 
     def new_user(self, user, password):
         if user in self.users:
@@ -84,12 +75,15 @@ class Users(object):
         self.save_users()
         return "User created!", 201
 
-    def save_users(self):
+
+    def save_users(self, filename=None):
+        if not filename:
+            filename = USERS_DATA
         to_save = {
             "counter_id" : self.counter_id,
             "users" : self.users
         }
-        with open(USERS_DATA, "w") as ud:
+        with open(filename, "w") as ud:
             json.dump(to_save, ud)
 
 
@@ -97,11 +91,17 @@ class History(object):
     ACTIONS = ["new", "modify", "rm", "mv", "cp"]
 
     def __init__(self):
-        self._history = {}
-        # {
-        #     path : [last_timestamp, action]
-        #     path : [last_timestamp, "moved by", source_path]
-        # }
+        try:
+            h = open(HISTORY_FILE, "r")
+            self._history = json.load(h)
+            h.close()
+        except IOError:
+            self._history = {}
+            # {
+            #     path : [last_timestamp, action]
+            #     path : [last_timestamp, "moved by", source_path]
+            # }
+
 
     def set_change(self, action, path, destination_path=None):
         ''' actions allowed:
@@ -110,7 +110,7 @@ class History(object):
         if action not in History.ACTIONS:
             raise NotAllowedError
 
-        if action != "new" and path not in self._history:
+        if (action != "new") and (path not in self._history):
             raise MissingFileError
         
         if (action == "mv" or action == "cp") and destination_path is None:
@@ -123,6 +123,15 @@ class History(object):
             self._history[destination_path] = [time.time(), "copied by", path]
         else:
             self._history[path] = [time.time(), action]
+
+        self.save_history()
+
+
+    def save_history(self, filename=None):
+        if not filename:
+            filename = HISTORY_FILE
+        with open(filename, "w") as h:
+            json.dump(self._history, h)
 
 
 class UserActions(Resource):
@@ -139,17 +148,19 @@ class UserActions(Resource):
 
         changes = []
 
-        for path in users.users[auth.username()]["paths"]:
-            if history._history[path][0] > timestamp:
-                changes.append({
-                        "path" : path, 
-                        "action" : history[path]
-                })
+        for p, v in history._history.items():
+            for myp in users.users[auth.username()]["paths"]:
+                if p.startswith(myp) and v[0] > timestamp:
+                    changes.append({
+                        "path" : p,
+                        "action" : v
+                    })
         
         if changes:
             return json.dumps(changes), 200
         else:
             return "up to grade", 204
+
 
     def create_user(self):
         ''' Expected as POST data:
@@ -162,6 +173,7 @@ class UserActions(Resource):
             abort(400)
 
         return users.new_user(user, psw)
+
 
     commands = {
         "create" :  create_user,
@@ -216,15 +228,21 @@ class Files(Resource):
         """Upload
         this function load file using POST"""
         destination_folder = users.users[auth.username()]["paths"][0] #for now we set it has the user dir
-        file_name = request.form["file_name"]
-        full_path = os.path.join("user_dirs", destination_folder, file_name)
-
+        full_path = os.path.join("user_dirs", destination_folder, path)
+        dirs_tree = path.split("/")[:-1]  #list of subdirectories that contains the new file except filename
         if os.path.exists(full_path):
             return "already exists", 409
         else:
-            f = request.files["file_content"]
             server_dir = os.getcwd()
             os.chdir(os.path.join("user_dirs", destination_folder))
+            for folder in dirs_tree:      #checking if subdirectories already exist else create them
+                if os.path.exists(folder):
+                    os.chdir(folder)                   
+                else:
+                    os.mkdir(folder)
+                    os.chdir(folder)
+            f = request.files["file_content"]
+            file_name = f.name
             f.save(file_name)
             os.chdir(server_dir)
             history_path = os.path.join(destination_folder, file_name) #eg. <user_dir>/subdir/file.txt
@@ -311,6 +329,7 @@ class Actions(Resource):
 
 @auth.verify_password
 def verify_password(username, password):
+    print username
     if username not in users.users:
         return False
     return sha256_crypt.verify(password, users.users[username]["psw"])
@@ -337,6 +356,20 @@ def welcome():
     return "Welcome on the Server!\n{}\n".format(formatted_time)
 
 
+def backup_config_files(folder_name=None):
+    if not folder_name:
+        folder_name = os.path.join("backup", str(time.time()))
+
+    try:
+        os.makedirs(folder_name)
+    except IOError:
+        return False
+    else:
+        users.save_users(os.path.join(folder_name, USERS_DATA))
+        history.save_history(os.path.join(folder_name, HISTORY_FILE))
+        return True
+
+
 def main():
     if not os.path.isdir(USERS_DIRECTORIES):
         os.mkdir(USERS_DIRECTORIES)
@@ -345,8 +378,11 @@ def main():
 
 users = Users()
 history = History()
+_API_PREFIX = "/API/v1/"
 
+api.add_resource(UserActions, "{}user/<string:cmd>".format(_API_PREFIX))
+api.add_resource(Files, "{}files/<path:path>".format(_API_PREFIX))
+api.add_resource(Actions, "{}actions/<string:cmd>".format(_API_PREFIX))
 
 if __name__ == "__main__":
-    init()
     main()
