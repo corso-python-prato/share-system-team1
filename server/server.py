@@ -172,7 +172,7 @@ class Actions(Resource):
         # }
         u = users.users[auth.username()]
         to_send = {
-            "last_change" : u["last_change"]
+            "last_change" : u["last_change"],
             "files" : u["md5_tree"]
         }
         return json.dumps(to_send)
