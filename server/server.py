@@ -156,12 +156,19 @@ class Files(Resource):
         """Upload
         this function load file using POST"""
         full_path = get_path(auth.username(), path)
+        sub_dirs = os.path.split(path)[0]
+        server_dir = os.getcwd()
 
         if os.path.exists(full_path):
             return "already exists", 409
         else:
-            os.makedirs(full_path)
-            put(self, path)
+            directory_path, file_name = os.path.split(full_path)
+            if sub_dirs: os.makedirs(sub_dirs)
+            f = request.files["file_content"]
+            os.chdir(directory_path)
+            f.save(file_name)
+            os.chdir(server_dir)
+            return "file uploaded", 401
 
 
 class Actions(Resource):
