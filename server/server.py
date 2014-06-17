@@ -172,7 +172,7 @@ class Files(Resource):
 
 
 class Actions(Resource):
-    def get_src_dest_path():
+    def get_src_dest_path(self):
         file_src = request.form["file_src"]
         src_folder = users.users[auth.username()]["paths"][0] #for now we set it has the user dir
         destination_folder = users.users[auth.username()]["paths"][0] #for now we set it has the user dir
@@ -183,8 +183,8 @@ class Actions(Resource):
 
 
     def get_files(self):
-        ''' Send a JSON with the timestamp of the last change in user
-        directories and an md5 for each file '''
+        """ Send a JSON with the timestamp of the last change in user
+        directories and an md5 for each file """
         # {
         #     "last_change" : timestamp_last_change
         #     "files" : {
