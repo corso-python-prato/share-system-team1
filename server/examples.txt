@@ -9,7 +9,7 @@ curl  localhost:5000/hidden_page -u UserName:password
 #### USER ACTIONS ####
 # examples of user creation
 (it's a POST request, as you have to do)
-curl --data "user=UserName&psw=password" localhost:5000/API/v1/user/create
+curl --data "user=UserName&psw=password" localhost:5000/API/v1/create_user
 
 # example of diff request
 curl --data "timestamp=1402500509.062415" localhost:5000/API/v1/user/diffs -u UserName:password

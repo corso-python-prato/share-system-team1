@@ -3,3 +3,12 @@
 · UUID for dir names? https://docs.python.org/2/library/uuid.html#uuid.uuid4
 · save history in csv or sqllite (troubles with append with json format)
 · diff files with md5
+
+· last_change per user, but update at every change in shared folders => dictionary of shared folders
+{
+	"shared_folder" : [list of users]
+}
+
+
+· Fare una wiki dedicata, dove si mantiene tutta la storia delle problematiche che hanno portato alla scelta di certe logiche.
+· codici http in testa al file come variabili globali
