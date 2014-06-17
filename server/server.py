@@ -136,19 +136,19 @@ class Files(Resource):
         """Put
         this function update file"""
         full_path = get_path(auth.username(), path)
-        
+        directory_path, file_name = os.path.split(full_path)
         f = request.files["file_content"]
-        file_name = f.name
         server_dir = os.getcwd()
 
         try:
-            os.chdir(os.path.join(USERS_DIRECTORIES, full_path))
+            os.chdir(directory_path)
             f.save(file_name)
             os.chdir(server_dir)
+            return "file updated"
         except IOError: 
             abort(409)
         else:
-            file_path = os.path.join(full_path, file_name)
+            file_path = os.path.join(directory_path, file_name)
             path_updated(file_path)
 
 
