@@ -10,10 +10,9 @@ import datetime
 import json
 import os
 import shutil
-import urlparse
 
-# TODO: from raw_box_common import md5
-from hashlib import md5
+from server_errors import *
+from snapshot import *
 
 
 app = Flask(__name__)
@@ -26,105 +25,141 @@ parser = reqparse.RequestParser()
 parser.add_argument("task", type=str)
 
 
-def path_updated(modified_file_path):
-    ''' set new timestamp for each user who can access to the file +
-    create new md5 for that file '''
-    timestamp = time.time()
-    md5_file = str(md5(modified_file_path))
-    # TODO: if file has been removed
-
-    for u, v in users.users.items():
-        for p in v["paths"]:
-            if modified_file_path.startswith(p):
-                v["last_change"] = timestamp
-                v["md5_tree"][md5_file] = modified_file_path
-
-
-class Users(object):
-    
-    def __init__(self):
-        def from_zero(self):
-            self.users = {}
-            # { 
-            #     username : { 
-            #            "psw" : encoded_password,
-            #            "paths" : [list of directory]
-            #            "last_change" : timestamp,
-            #            "md5_tree" : {
-            #                   md5 : path_file
-            #            }
-            #     }
-            # }
-            self.counter_id = 0
-
+def get_server_path(user, client_path):
+    try:
+        u = User.users[user]
+    except KeyError:
+        raise ConflictError("User doesn't exist")
+    else:
         try:
-            ud = open(USERS_DATA, "r")
-            saved = json.load(ud)
-            self.users = saved["users"]
-            self.counter_id = saved["counter_id"]
-            ud.close()
-        except IOError:         # file not present
-            from_zero(self)
-        except ValueError:      # invalid json
-            os.remove(USERS_DATA)
-            from_zero(self)
-    
+            return u.paths[client_path][0]
+        except KeyError:
+            raise MissingFileError("There is nothing in this client_path")
 
-    def get_id(self):
-        new_id = hex(self.counter_id)[2:]
-        self.counter_id += 1    
+
+class User(object):
+    ''' maintaining two dictionaries:
+        paths     = { client_path : [server_path, md5] }
+        inside Snapshot: { md5 : [client_path1, client_path2] }
+    server_path is for shared directories management '''
+
+# class initialization: first try with a config file, if fail initialize
+# from scratch
+    users = {}
+    counter_id = 0
+
+    try:
+        ud = open(USERS_DATA, "r")
+        saved = json.load(ud)
+        ud.close()
+    # if error, create new structure from scratch
+    except IOError:
+        pass                # missing file
+    except ValueError:      # invalid json
+        os.remove(USERS_DATA)
+    else:
+        counter_id = saved["counter_id"]
+        for u, v in saved["users"].items():
+            User(u, u["psw"], u["paths"])
+
+
+# other class methods
+    @classmethod
+    def get_new_id(cls):
+        new_id = hex(cls.counter_id)[2:]
+        cls.counter_id += 1    
         return new_id
 
 
-    def new_user(self, user, password):
-        if user in self.users:
+    @classmethod
+    def save_users(cls, filename=None):
+        if not filename:
+            filename = USERS_DATA
+
+        to_save = {
+            "counter_id" : cls.counter_id,
+            "users" : {}
+        }        
+        for u, v in users.items():
+            to_save["users"][u] = v.to_dict()
+
+        with open(filename, "w") as f:
+            json.dump(to_save, f)
+
+
+# dynamic methods
+    def __init__(self, username, password, paths=None):
+    # if restoring the server
+        if paths:
+            self.psw = password
+            self.paths = paths
+            self.snapshot = Snapshot.restore_server(paths)
+            User.user[username] = self
+            return
+
+    # else if I'm creating a new user
+        if username in User.users:
             return "This user already exists", 409
 
         psw_hash = sha256_crypt.encrypt(password)
-        dir_id = self.get_id()
-        dir_path = os.path.join(USERS_DIRECTORIES, dir_id)
+        dir_id = User.get_new_id()
+        full_path = os.path.join(USERS_DIRECTORIES, dir_id)
         try:
-            os.mkdir(dir_path)
+            os.mkdir(full_path)
         except OSError:
-            return "The directory already exists", 409
-        
-        self.users[user] = { 
-            "psw": psw_hash,
-            "paths" : [dir_id],
-            "last_change" : time.time(),
-            "md5_tree" : {}
-        }
+            raise ConflictError(
+                    "Conflict while creating the directory for a new user"
+            )
 
-        path_updated(dir_id)
-        self.save_users()
+    # class attributes
+        self.psw = psw_hash
+        self.snapshot = Snapshot()
+        self.paths = {}     # path of each file and each directory of the user!
+                            # client_path : [server_path, md5]
+
+    # update snapshot, users, file
+        self.push_path("", full_path)
+        User.users[username] = self
+        User.save_users()
+
         return "User created!", 201
 
 
-    def save_users(self, filename=None):
-        if not filename:
-            filename = USERS_DATA
-        to_save = {
-            "counter_id" : self.counter_id,
-            "users" : self.users
+    def to_dict(self):
+        return {
+            "psw" : self.psw,
+            "paths" : self.paths
         }
-        with open(filename, "w") as ud:
-            json.dump(to_save, ud)
+
+
+    # def get_server_path(self, client_path):
+    #     return self.paths[client_path][0]
+
+
+    def push_path(self, client_path, server_path):
+        md5 = self.snapshot.push(client_path)
+        self.paths[client_path] = [server_path, md5]
+            # TODO: manage shared folder here. Something like:
+            # for s, v in shared_folder.items():
+            #     if server_path.startswith(s):
+            #         update each user
+
+
+    def rm_path(self, client_path):
+        md5 = self.paths[client_path][1]
+        self.snapshot.rm(md5, client_path)
+        del self.paths[client_path]
 
 
 class Resource(Resource):
     method_decorators = [auth.login_required]
 
 
-def get_path(user, path):
-    folder = users.users[user]["paths"][0]
-    return os.path.join("user_dirs", folder, path)
-
-
 class Files(Resource):
     def get(self, path):
         """Download
-        this function return file content as string using GET"""
-        full_path = get_path(auth.username(), path)
+        this function return file content as a string using GET"""
+        full_path = get_server_path(auth.username(), path)
         try:
             f = open(full_path, "r")
             return f.read() 
@@ -135,14 +170,14 @@ class Files(Resource):
     def put(self, path):
         """Put
         this function update file"""
-        full_path = get_path(auth.username(), path)
+        full_path = get_server_path(auth.username(), path)
         directory_path, file_name = os.path.split(full_path)
         f = request.files["file_content"]
-        server_dir = os.getcwd()
+        server_dir = os.getcwd()                    
 
         try:
             os.chdir(directory_path)
-            f.save(file_name)
+            f.save(file_name)                   # ISSUE: non è possibile dare a save la path completa, senza usare i chdir?
             os.chdir(server_dir)
             return "file updated"
         except IOError: 
@@ -155,7 +190,7 @@ class Files(Resource):
     def post(self, path):
         """Upload
         this function load file using POST"""
-        full_path = get_path(auth.username(), path)
+        full_path = get_server_path(auth.username(), path)
         sub_dirs = os.path.split(path)[0]
         server_dir = os.getcwd()
 
@@ -203,7 +238,7 @@ class Actions(Resource):
         """Delete
         this function delete file selected"""
         path = request.form["path"]
-        full_path = get_path(auth.username(), path)
+        full_path = get_server_path(auth.username(), path)
 
         try:
             os.remove(full_path)
@@ -243,12 +278,11 @@ class Actions(Resource):
             path_updated(full_src_path)
             path_updated(full_dest_path)
 
-    
     commands = {
-        "get_files" : get_files,
-        "delete" : _delete,
-        "move" : _move,
-        "copy" : _copy
+        "get_files": get_files,
+        "delete": _delete,
+        "move": _move,
+        "copy": _copy
     }
 
     def post(self, cmd):

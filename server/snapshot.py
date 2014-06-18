@@ -1,5 +1,5 @@
-
-# METHODS AND CLASSES SHARED BETWEEN CLIENT AND SERVER
+#!/usr/bin/env python
+#-*- coding: utf-8 -*-
 
 
 def to_md5(path, block_size=2**20):
@@ -17,25 +17,19 @@ def to_md5(path, block_size=2**20):
 
 
 class Snapshot(object):
-
     def __init__(self, timestamp=None, files=None):
-    # if restoring the server or from JSON
+    # if restoring
         if timestamp and files:
             self.last_change = timestamp
             self.files = files
             return
 
-    # if restoring the server
-        if paths:
-            self.last_change, 
-            return
-
-    # else if I'm creating a new Snapshot
+    # else if I'm creating a Snapshot for a new user
         self.last_change = time.time()
         self.files = {}         # { md5 : [list of client_paths] }
 
 
-    def istant_snapshot(self):
+    def istant_snapshot(self, paths):
         # TODO
         pass
 
@@ -45,22 +39,21 @@ class Snapshot(object):
         pass
 
 
-    # second constructor
+# second constructor
     @classmethod
     def from_JSON(cls, file_path):
         try:
             f = open(file_path, "r")
             data = json.load(ud)
             f.close()
-        except IOError:                         # TODO
-            pass                # missing file
-        except ValueError:      # invalid json  # TODO
-            pass
+        except IOError:         # missing file
+            pass                  # TODO
+        except ValueError:      # invalid json
+            pass                  # TODO
         else:
             return cls(timestamp=data["last_change"], files=data["files"])
 
 
-# serverside        TODO: in server do a class, which extends Snapshot, and implements these methods
     @classmethod
     def restore_server(cls, paths):
         files = self.istant_snapshot(paths)
