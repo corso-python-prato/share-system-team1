@@ -324,7 +324,7 @@ def create_user():
         except KeyError:
             abort(400)
         else:
-            return users.new_user(user, psw)
+            User(user, psw)
 
 
 @app.route("/hidden_page")
@@ -349,7 +349,7 @@ def backup_config_files(folder_name=None):
     except IOError:
         return False
     else:
-        users.save_users(os.path.join(folder_name, USERS_DATA))
+        User.save_users(os.path.join(folder_name, USERS_DATA)
         return True
 
 
@@ -358,8 +358,6 @@ def main():
         os.mkdir(USERS_DIRECTORIES)
     app.run(host="0.0.0.0",debug=True)         # TODO: remove debug=True
 
-
-users = Users()
 
 api.add_resource(Files, "{}files/<path:path>".format(_API_PREFIX))
 api.add_resource(Actions, "{}actions/<string:cmd>".format(_API_PREFIX))
