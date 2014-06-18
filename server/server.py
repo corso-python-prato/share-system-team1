@@ -128,10 +128,10 @@ class User(object):
 
 
     def get_server_path(self, client_path):
-        try:
+        if client_path in self.paths:
             return self.paths[client_path][0]
-        except KeyError:
-            raise MissingFileError("There is nothing in this client_path")
+        else:
+            return False
 
 
     def push_path(self, client_path, server_path):
@@ -158,11 +158,13 @@ class Files(Resource):
         """ Download
         this function return file content as a string using GET """
         u = User.get_user(auth.username())
-        full_path = u.get_server_path(client_path)
+        server_path = u.get_server_path(client_path)
+        if not server_path:
+            abort(404)
         try:
-            f = open(full_path, "r")
+            f = open(server_path, "r")
             return f.read() 
-        except IOError: 
+        except IOError:
             abort(404)
 
 
@@ -184,6 +186,7 @@ class Files(Resource):
             abort(409)
         else:
             u.push_path(client_path, server_path)
+            # TODO: check here if the directory is shared and notify to the other users
             return "File updated", 201
 
 
@@ -191,24 +194,36 @@ class Files(Resource):
         """ Upload
         this function upload a new file using POST """
         u = User.get_user(auth.username())
-        server_path = u.get_server_path(client_path)
+        if u.get_server_path(client_path):
+            return "An file of the same name already exists in the same path", 409
+
+    # Search a father directory in user's client paths
+        directory_path, file_name = os.path.split(client_path)
+        dir_list = directory_path.split("/")
+        
+        to_be_created = []
+        while os.path.join(dir_list) not in u.paths:
+            to_be_created.append(dir_list.pop())
+
+        server_path = os.path.join(
+                *dir_list,
+                *to_be_created
+        )
+        # TODO: check here if the directory is shared and notify to the other users
+
+    # Create the new folder and continue saving the file
+        os.makedirs(server_path)
 
         server_dir = os.getcwd()
+        os.chdir(server_path)
 
-        if os.path.exists(server_path):
-            return "The file already exists", 409
-        else:
-            f = request.files["file_content"]
+        f = request.files["file_content"]
+        f.save(file_name)
+        os.chdir(server_dir)
 
-            directory_path, file_name = os.path.split(server_path)
-            os.makedirs(directory_path)
-
-            os.chdir(directory_path)
-            f.save(file_name)
-            os.chdir(server_dir)
-
-            u.push_path(client_path, server_path)
-            return "file uploaded", 201
+        server_path = os.path.join(server_path, file_name)
+        u.push_path(client_path, server_path)
+        return "file uploaded", 201
 
 
 class Actions(Resource):
