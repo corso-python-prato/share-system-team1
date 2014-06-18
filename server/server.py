@@ -134,6 +134,21 @@ class User(object):
             return False
 
 
+    def create_server_path(self, client_path):
+        directory_path, file_name = os.path.split(client_path)
+        dir_list = directory_path.split("/")
+        
+        to_be_created = []
+        while os.path.join(dir_list) not in self.paths:
+            to_be_created.append(dir_list.pop())
+
+        father = os.path.join(dir_list)
+        return os.path.join(
+                self.paths[father][0],
+                *to_be_created
+        )
+
+
     def push_path(self, client_path, server_path):
         md5 = self.snapshot.push(client_path)
         self.paths[client_path] = [server_path, md5]
@@ -197,21 +212,7 @@ class Files(Resource):
         if u.get_server_path(client_path):
             return "An file of the same name already exists in the same path", 409
 
-    # Search a father directory in user's client paths
-        directory_path, file_name = os.path.split(client_path)
-        dir_list = directory_path.split("/")
-        
-        to_be_created = []
-        while os.path.join(dir_list) not in u.paths:
-            to_be_created.append(dir_list.pop())
-
-        server_path = os.path.join(
-                *dir_list,
-                *to_be_created
-        )
-        # TODO: check here if the directory is shared and notify to the other users
-
-    # Create the new folder and continue saving the file
+        server_path = u.create_server_path(client_path)
         os.makedirs(server_path)
 
         server_dir = os.getcwd()
@@ -227,16 +228,6 @@ class Files(Resource):
 
 
 class Actions(Resource):
-    def get_src_dest_path(self):
-        file_src = request.form["file_src"]
-        src_folder = users.users[auth.username()]["paths"][0] #for now we set it has the user dir
-        destination_folder = users.users[auth.username()]["paths"][0] #for now we set it has the user dir
-        full_src_path = os.path.join("user_dirs", src_folder, file_src)
-        file_dest = request.form["file_dest"]
-        full_dest_path = os.path.join("user_dirs", destination_folder, file_dest)
-        return full_src_path,full_dest_path
-
-
     def get_files(self):
         """ Send a JSON with the timestamp of the last change in user
         directories and an md5 for each file """
@@ -246,57 +237,60 @@ class Actions(Resource):
         #         md5 : path
         #     }
         # }
-        usr = users.users[auth.username()]
-        to_send = {
-            "last_change" : usr["last_change"],
-            "files" : usr["md5_tree"]
-            }
-        return json.dumps(to_send)
+        u = User.get_user(auth.username())
+        return u.snapshot.to_json()
 
 
     def _delete(self):
-        """Delete
-        this function delete file selected"""
-        path = request.form["path"]
-        full_path = get_server_path(auth.username(), path)
+        """ This function deletes a selected file """
+        u = User.get_user(auth.username())
+        client_path = request.form["path"]
+        server_path = u.get_server_path(client_path)
 
         try:
-            os.remove(full_path)
-            return "file delete complete"
+            os.remove(server_path)
         except KeyError:
             return abort(409)
         else:
-            path_updated(full_path)
+            u.rm_path(client_path)
+            return "File delete complete"
 
 
     def _copy(self):
-        """Copy
-        this function copy a file from src to dest"""
-        full_src_path,full_dest_path = self.get_src_dest_path()
+        """ This function copies a file from src to dest """
+        u = User.get_user(auth.username())
+        client_src = request.form["file_src"]
+        client_dest = request.form["file_dest"]
+
+        server_src = u.get_server_path(client_src)
+        server_dest = u.create_server_path(client_dest)
 
         try:
-            shutil.copy(full_src_path, full_dest_path)
-            return "file copy complete"
+            shutil.copy(server_src, server_dest)
         except KeyError:
             return abort(409)
         else:
-            path_updated(full_src_path)
-            path_updated(full_dest_path)
+            u.push_path(client_dest, server_dest)
+            return "File copy complete"
 
 
     def _move(self):
-        """Move
-        this function move a file from src to dest"""
-        full_src_path,full_dest_path = self.get_src_dest_path()
+        """ This function moves a file from src to dest"""
+        u = User.get_user(auth.username())
+        client_src = request.form["file_src"]
+        client_dest = request.form["file_dest"]
+
+        server_src = u.get_server_path(client_src)
+        server_dest = u.create_server_path(client_dest)
         
         try:
-            shutil.move(full_src_path, full_dest_path)
-            return "file trasnfer complete"
+            shutil.move(server_src, server_dest)
         except KeyError:
             return abort(409)
         else:
-            path_updated(full_src_path)
-            path_updated(full_dest_path)
+            u.rm_path(client_src)
+            u.push_path(client_dest, server_dest)
+            return "File trasnfer complete"
 
     commands = {
         "get_files": get_files,
@@ -319,19 +313,18 @@ def verify_password(username, password):
     return sha256_crypt.verify(password, users.users[username]["psw"])
 
 
-# @app.route("{}create_user".format(_API_PREFIX), methods = ["POST"])
-@app.route("/API/v1/create_user", methods = ["POST"])
+@app.route("{}create_user".format(_API_PREFIX), methods = ["POST"])
+# @app.route("/API/v1/create_user", methods = ["POST"])
 def create_user():
         ''' Expected as POST data:
         { "user" : username, "psw" : password } '''
-
         try:
             user = request.form["user"]
             psw = request.form["psw"]
         except KeyError:
             abort(400)
-
-        return users.new_user(user, psw)
+        else:
+            return users.new_user(user, psw)
 
 
 @app.route("/hidden_page")
