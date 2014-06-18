@@ -25,18 +25,6 @@ parser = reqparse.RequestParser()
 parser.add_argument("task", type=str)
 
 
-def get_server_path(user, client_path):
-    try:
-        u = User.users[user]
-    except KeyError:
-        raise ConflictError("User doesn't exist")
-    else:
-        try:
-            return u.paths[client_path][0]
-        except KeyError:
-            raise MissingFileError("There is nothing in this client_path")
-
-
 class User(object):
     ''' maintaining two dictionaries:
         paths     = { client_path : [server_path, md5] }
@@ -86,6 +74,13 @@ class User(object):
         with open(filename, "w") as f:
             json.dump(to_save, f)
 
+    @classmethod
+    def get_user(cls, username):
+        try:
+            return = User.users[username]
+        except KeyError:
+            raise ConflictError("User doesn't exist")
+
 
 # dynamic methods
     def __init__(self, username, password, paths=None):
@@ -132,8 +127,11 @@ class User(object):
         }
 
 
-    # def get_server_path(self, client_path):
-    #     return self.paths[client_path][0]
+    def get_server_path(self, client_path):
+        try:
+            return self.paths[client_path][0]
+        except KeyError:
+            raise MissingFileError("There is nothing in this client_path")
 
 
     def push_path(self, client_path, server_path):
@@ -156,10 +154,11 @@ class Resource(Resource):
 
 
 class Files(Resource):
-    def get(self, path):
-        """Download
-        this function return file content as a string using GET"""
-        full_path = get_server_path(auth.username(), path)
+    def get(self, client_path):
+        """ Download
+        this function return file content as a string using GET """
+        u = User.get_user(auth.username())
+        full_path = u.get_server_path(client_path)
         try:
             f = open(full_path, "r")
             return f.read() 
@@ -167,11 +166,13 @@ class Files(Resource):
             abort(404)
 
 
-    def put(self, path):
-        """Put
-        this function update file"""
-        full_path = get_server_path(auth.username(), path)
-        directory_path, file_name = os.path.split(full_path)
+    def put(self, client_path):
+        """ Put
+        this function updates an existing file """
+        u = User.get_user(auth.username())
+        server_path = u.get_server_path(client_path)
+        
+        directory_path, file_name = os.path.split(server_path)
         f = request.files["file_content"]
         server_dir = os.getcwd()                    
 
@@ -179,31 +180,35 @@ class Files(Resource):
             os.chdir(directory_path)
             f.save(file_name)                   # ISSUE: non è possibile dare a save la path completa, senza usare i chdir?
             os.chdir(server_dir)
-            return "file updated"
         except IOError: 
             abort(409)
         else:
-            file_path = os.path.join(directory_path, file_name)
-            path_updated(file_path)
+            u.push_path(client_path, server_path)
+            return "File updated", 201
 
 
-    def post(self, path):
-        """Upload
-        this function load file using POST"""
-        full_path = get_server_path(auth.username(), path)
-        sub_dirs = os.path.split(path)[0]
+    def post(self, client_path):
+        """ Upload
+        this function upload a new file using POST """
+        u = User.get_user(auth.username())
+        server_path = u.get_server_path(client_path)
+
         server_dir = os.getcwd()
 
-        if os.path.exists(full_path):
-            return "already exists", 409
+        if os.path.exists(server_path):
+            return "The file already exists", 409
         else:
-            directory_path, file_name = os.path.split(full_path)
-            if sub_dirs: os.makedirs(sub_dirs)
             f = request.files["file_content"]
+
+            directory_path, file_name = os.path.split(server_path)
+            os.makedirs(directory_path)
+
             os.chdir(directory_path)
             f.save(file_name)
             os.chdir(server_dir)
-            return "file uploaded", 401
+
+            u.push_path(client_path, server_path)
+            return "file uploaded", 201
 
 
 class Actions(Resource):
