@@ -27,8 +27,8 @@ parser.add_argument("task", type=str)
 
 class User(object):
     ''' maintaining two dictionaries:
-        paths     = { client_path : [server_path, md5] }
-        inside Snapshot: { md5 : [client_path1, client_path2] }
+        · paths     = { client_path : [server_path, md5] }
+        · inside Snapshot: { md5 : [client_path1, client_path2] }
     server_path is for shared directories management '''
 
 # class initialization: first try with a config file, if fail initialize
@@ -77,7 +77,7 @@ class User(object):
     @classmethod
     def get_user(cls, username):
         try:
-            return = User.users[username]
+            return cls.users[username]
         except KeyError:
             raise ConflictError("User doesn't exist")
 
@@ -349,7 +349,7 @@ def backup_config_files(folder_name=None):
     except IOError:
         return False
     else:
-        User.save_users(os.path.join(folder_name, USERS_DATA)
+        User.save_users(os.path.join(folder_name, USERS_DATA))
         return True
 
 

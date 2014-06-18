@@ -34,7 +34,7 @@ class Snapshot(object):
         pass
 
 
-    def to_JSON(self):
+    def to_json(self):
         # TODO
         pass
 
