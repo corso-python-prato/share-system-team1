@@ -2,24 +2,19 @@
 · Flask tests with authentication in POST
 · UUID for dir names? https://docs.python.org/2/library/uuid.html#uuid.uuid4
 · save history in csv or sqllite (troubles with append with json format)
-· diff files with md5
 
-· last_change per user, but update at every change in shared folders => dictionary of shared folders?
+· dictionary of shared folders?
 {
-    "shared_folder" : [list of users]
+    "shared_folder_path" : [list of users]
 }
-
+or do we search for shared path for each user's path list?
 
 · Fare una wiki dedicata, dove si mantiene tutta la storia delle problematiche che hanno portato alla scelta di certe logiche.
-· codici http in testa al file come variabili globali
-· file_to_md5 (in comune con client): fare per pezzi di file, in modo da non caricare tutto il file in memoria.
-· gestione delle cartelle vuote
-· per md5 mettere una LISTA di path corrispondenti
 
 · decidere se ''' oppure """
 · u = User.get_user(auth.username()) come decoratore...
 
-· funzioni si mettono prima delle classi, nei file? [Gianni riunione]
+· funzioni si mettono prima delle classi, nei file? [Gianni alla riunione]
 
 estensioni consigliate da Gianni:
     python flake8 lint
