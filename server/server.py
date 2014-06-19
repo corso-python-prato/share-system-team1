@@ -140,7 +140,7 @@ class User(object):
         
         to_be_created = []
         while os.path.join(dir_list) not in self.paths:
-            to_be_created.append(dir_list.pop())
+            to_be_created.insert(0, dir_list.pop())
 
         father = os.path.join(dir_list)
         return os.path.join(
