@@ -11,7 +11,6 @@
 
 
 · Fare una wiki dedicata, dove si mantiene tutta la storia delle problematiche che hanno portato alla scelta di certe logiche.
-· codici http in testa al file come variabili globali
 · file_to_md5 (in comune con client): fare per pezzi di file, in modo da non caricare tutto il file in memoria.
 · gestione delle cartelle vuote
 · per md5 mettere una LISTA di path corrispondenti
