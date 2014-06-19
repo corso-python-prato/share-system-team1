@@ -6,7 +6,7 @@
 
 · last_change per user, but update at every change in shared folders => dictionary of shared folders?
 {
-	"shared_folder" : [list of users]
+    "shared_folder" : [list of users]
 }
 
 
@@ -18,3 +18,9 @@
 
 · decidere se ''' oppure """
 · u = User.get_user(auth.username()) come decoratore...
+
+· funzioni si mettono prima delle classi, nei file? [Gianni riunione]
+
+estensioni consigliate da Gianni:
+    python flake8 lint
+    git gutter
