@@ -111,6 +111,10 @@ class TestSequenceFunctions(unittest.TestCase):
                     msg="'user_data' missing in backup folder")
         shutil.rmtree("test_backup")
 
+    # TODO:
+    # def test_to_md5(self):
+    #     self.assertEqual(TEST_DIRECTORY, )
+
 
 
 if __name__ == '__main__':
