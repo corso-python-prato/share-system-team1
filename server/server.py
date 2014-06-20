@@ -10,6 +10,7 @@ import datetime
 import json
 import os
 import shutil
+import hashlib
 
 from server_errors import *
 
@@ -52,7 +53,6 @@ class User(object):
 # class initialization: first try with a config file, if fail initialize
 # from scratch
     users = {}
-    counter_id = 0
 
     try:
         ud = open(USERS_DATA, "r")
@@ -64,29 +64,20 @@ class User(object):
     except ValueError:      # invalid json
         os.remove(USERS_DATA)
     else:
-        counter_id = saved["counter_id"]
         for u, v in saved["users"].items():
             User(u, u["psw"], u["paths"])
 
 
 # other class methods
     @classmethod
-    def get_new_id(cls):
-        new_id = hex(cls.counter_id)[2:]
-        cls.counter_id += 1    
-        return new_id
-
-
-    @classmethod
     def save_users(cls, filename=None):
         if not filename:
             filename = USERS_DATA
 
         to_save = {
-            "counter_id" : cls.counter_id,
             "users" : {}
         }        
-        for u, v in users.items():
+        for u, v in cls.users.items():
             to_save["users"][u] = v.to_dict()
 
         with open(filename, "w") as f:
@@ -111,12 +102,8 @@ class User(object):
             return
 
     # else if I'm creating a new user
-        if username in User.users:
-            return "This user already exists", HTTP_CONFLICT
-
         psw_hash = sha256_crypt.encrypt(password)
-        dir_id = User.get_new_id()
-        full_path = os.path.join(USERS_DIRECTORIES, dir_id)
+        full_path = os.path.join(USERS_DIRECTORIES, username)
         try:
             os.mkdir(full_path)
         except OSError:
@@ -124,7 +111,7 @@ class User(object):
                     "Conflict while creating the directory for a new user"
             )
 
-    # class attributes
+    # object attributes
         self.psw = psw_hash
         self.timestamp = time.time()        # last change
         self.paths = {}     # path of each file and each directory of the user!
@@ -134,8 +121,6 @@ class User(object):
         self.push_path("", full_path)
         User.users[username] = self
         User.save_users()
-
-        return "User created!", HTTP_CREATED
 
 
     def to_dict(self):
@@ -177,7 +162,7 @@ class User(object):
 
 
     def push_path(self, client_path, server_path, update_attributes=True):
-        md5 = to_md5(client_path)
+        md5 = to_md5(server_path)
         now = time.time()
         self.paths[client_path] = [server_path, md5, now]
         if update_attributes:
@@ -356,7 +341,11 @@ def create_user():
         except KeyError:
             abort(HTTP_BAD_REQUEST)
         else:
-            User(user, psw)
+            if user in User.users:
+                return "This user already exists", HTTP_CONFLICT
+            else:
+                User(user, psw)
+                return "user created", HTTP_CREATED
 
 
 @app.route("/hidden_page")
