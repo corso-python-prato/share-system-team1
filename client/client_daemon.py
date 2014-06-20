@@ -43,35 +43,24 @@ class ServerCommunicator(object):
                 time.sleep(retry_delay)
                 print error
 
-    def synchronize(self):
+    def synchronize(self, operation_handler):
+        """Synchronize client and server"""
 
-        """ 
-        Requests if client is synchronized with server with a continuous iteration
-        If client isn't synchronized, the server answers with a json object containing
-        a series of timestamp, path and type of request.
-        If client is synchronized, the server answers with code 204.
-        """
-
-        server_url = "{}/diffs".format(self.server_url)
-        request_sync = {
-            "url": server_url,
-            "data": self.timestamp,
-            "auth": self.auth
-        }
-        sync = self._try_request(requests.get, "ok", "no", **request_sync)   
-        if sync.status_code != 204:
-            diffs = json.load(sync.text)
-            for tstamp, obj in diffs.iteritems():
-                self.timestamp = tstamp #update self timestamp
-                req = obj[0]
-                args = obj[1]
-                {
-                    'req_get': self.operator.write_a_file,
-                    'req_delete': self.operator._delete_a_file,
-                    'req_move': self.operator.move_a_file,
-                    'req_copy': self.operator.copy_a_file
-                }.get(req)(args)    
-
+        server_url = "{}/files".format(self.server_url)
+        request = {"url": server_url}
+        sync = self._try_request(requests.get, "Success", "Fail", **request)
+        with open("timestamp.json", "w") as timestamp_file:
+            timestamp_file.dump(sync.text.load()[0])
+        diffs = diff_snapshots(sync.text)
+        for tstamp, obj in diffs.iteritems():
+            req = obj[0]
+            args = obj[1]
+            {
+                'req_get': operation_handler.write_a_file,
+                'req_delete': operation_handler.delete_a_file,
+                'req_move': operation_handler.move_a_file,
+                'req_copy': operation_handler.copy_a_file
+            }.get(req)(args)
 
     def get_abspath(self, dst_path):
         """ from relative path return absolute path """
@@ -422,7 +411,7 @@ def main():
 
     try:
         while True:
-            #server_com.synchronize()
+            #server_com.synchronize(file_system_op)
             time.sleep(1)
     except KeyboardInterrupt:
         observer.stop()
