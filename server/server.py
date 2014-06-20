@@ -12,7 +12,6 @@ import os
 import shutil
 
 from server_errors import *
-from snapshot import *
 
 
 HTTP_CONFLICT = 409
@@ -28,6 +27,20 @@ USERS_DIRECTORIES = "user_dirs/"
 USERS_DATA = "user_data.json"
 parser = reqparse.RequestParser()
 parser.add_argument("task", type=str)
+
+
+def to_md5(path, block_size=2**20):
+    ''' if path is a file, return a md5;
+    if path is a directory, return False'''
+    if os.path.isdir(path):
+        return False
+
+    m = hashlib.md5()
+    with open(path,'rb') as f:
+        for chunk in iter(lambda: f.read(block_size), b''): 
+            m.update(chunk)
+
+    return m.digest()
 
 
 class User(object):
@@ -79,6 +92,7 @@ class User(object):
         with open(filename, "w") as f:
             json.dump(to_save, f)
 
+
     @classmethod
     def get_user(cls, username):
         try:
@@ -93,7 +107,6 @@ class User(object):
         if paths:
             self.psw = password
             self.paths = paths
-            self.snapshot = Snapshot.restore_server(paths)
             User.user[username] = self
             return
 
@@ -113,9 +126,10 @@ class User(object):
 
     # class attributes
         self.psw = psw_hash
-        self.snapshot = Snapshot()
+        self.timestamp = time.time()        # last change
         self.paths = {}     # path of each file and each directory of the user!
                             # client_path : [server_path, md5]
+        self.global_md5 = compute_global_md5()
 
     # update snapshot, users, file
         self.push_path("", full_path)
@@ -128,7 +142,9 @@ class User(object):
     def to_dict(self):
         return {
             "psw" : self.psw,
-            "paths" : self.paths
+            "paths" : self.paths,
+            "timestamp" : self.timestamp,
+            "global_md5" : self.global_md5
         }
 
 
@@ -162,18 +178,27 @@ class User(object):
         return new_server_path, filename
 
 
-    def push_path(self, client_path, server_path):
-        md5 = self.snapshot.push(client_path)
-        self.paths[client_path] = [server_path, md5]
-            # TODO: manage shared folder here. Something like:
-            # for s, v in shared_folder.items():
-            #     if server_path.startswith(s):
-            #         update each user
+    def compute_global_md5(self):
+        # TODO: self.global_md5 = ....
+        return 0
+
+
+    def push_path(self, client_path, server_path, update_attributes=True):
+        md5 = to_md5(client_path)
+        now = time.time()
+        self.paths[client_path] = [server_path, md5, now]
+        if update_attributes:
+            self.timestamp = now
+            self.compute_global_md5()
+        # TODO: manage shared folder here. Something like:
+        # for s, v in shared_folder.items():
+        #     if server_path.startswith(s):
+        #         update each user
 
 
     def rm_path(self, client_path):
-        md5 = self.paths[client_path][1]
-        self.snapshot.rm(md5, client_path)
+        self.timestamp = time.time()
+        self.compute_global_md5()
         del self.paths[client_path]
 
 
@@ -292,10 +317,11 @@ class Actions(Resource):
         except KeyError:
             return abort(HTTP_CONFLICT)
         else:
-            u.push_path(client_dest, server_dest)
             if keep_the_original:
+                u.push_path(client_dest, server_dest)
                 return "File copy complete"
             else:
+                u.push_path(client_dest, server_dest, update_attributes=False)
                 u.rm_path(client_src)
                 return "File move complete"
 
