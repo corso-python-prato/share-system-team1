@@ -263,12 +263,17 @@ class Actions(Resource):
         """ Send a JSON with the timestamp of the last change in user
         directories and an md5 for each file """
         u = User.get_user(auth.username())
-        snapshot = {}
+        tree = {}
         for p, v in u.paths.items():
-            if not v[1] in snapshot:
-                snapshot[v[1]] = [(p, v[2])]
+            if not v[1] in tree:
+                tree[v[1]] = [(p, v[2])]
             else:
-                snapshot[v[1]].append((p, v[2]))
+                tree[v[1]].append((p, v[2]))
+
+        snapshot = {
+            "tree" : tree,
+            "timestamp" : u.timestamp
+        }
 
         return json.dump(snapshot)
 
