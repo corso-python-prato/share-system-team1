@@ -15,6 +15,11 @@ from server_errors import *
 from snapshot import *
 
 
+HTTP_CONFLICT = 409
+HTTP_CREATED = 201
+HTTP_NOT_FOUND = 404
+HTTP_BAD_REQUEST = 400
+
 app = Flask(__name__)
 api = Api(app)
 auth = HTTPBasicAuth()
@@ -94,7 +99,7 @@ class User(object):
 
     # else if I'm creating a new user
         if username in User.users:
-            return "This user already exists", 409
+            return "This user already exists", HTTP_CONFLICT
 
         psw_hash = sha256_crypt.encrypt(password)
         dir_id = User.get_new_id()
@@ -117,7 +122,7 @@ class User(object):
         User.users[username] = self
         User.save_users()
 
-        return "User created!", 201
+        return "User created!", HTTP_CREATED
 
 
     def to_dict(self):
@@ -140,7 +145,7 @@ class User(object):
         
         to_be_created = []
         while os.path.join(dir_list) not in self.paths:
-            to_be_created.append(dir_list.pop())
+            to_be_created.insert(0, dir_list.pop())
 
         father = os.path.join(dir_list)
         return os.path.join(
@@ -175,12 +180,12 @@ class Files(Resource):
         u = User.get_user(auth.username())
         server_path = u.get_server_path(client_path)
         if not server_path:
-            abort(404)
+            abort(HTTP_NOT_FOUND)
         try:
             f = open(server_path, "r")
             return f.read() 
         except IOError:
-            abort(404)
+            abort(HTTP_NOT_FOUND)
 
 
     def put(self, client_path):
@@ -198,11 +203,11 @@ class Files(Resource):
             f.save(file_name)                   # ISSUE: non è possibile dare a save la path completa, senza usare i chdir?
             os.chdir(server_dir)
         except IOError: 
-            abort(409)
+            abort(HTTP_CONFLICT)
         else:
             u.push_path(client_path, server_path)
             # TODO: check here if the directory is shared and notify to the other users
-            return "File updated", 201
+            return "File updated", HTTP_CREATED
 
 
     def post(self, client_path):
@@ -210,7 +215,7 @@ class Files(Resource):
         this function upload a new file using POST """
         u = User.get_user(auth.username())
         if u.get_server_path(client_path):
-            return "An file of the same name already exists in the same path", 409
+            return "An file of the same name already exists in the same path", HTTP_CONFLICT
 
         server_path = u.create_server_path(client_path)
         os.makedirs(server_path)
@@ -224,7 +229,7 @@ class Files(Resource):
 
         server_path = os.path.join(server_path, file_name)
         u.push_path(client_path, server_path)
-        return "file uploaded", 201
+        return "file uploaded", HTTP_CREATED
 
 
 class Actions(Resource):
@@ -250,7 +255,7 @@ class Actions(Resource):
         try:
             os.remove(server_path)
         except KeyError:
-            return abort(409)
+            return abort(HTTP_CONFLICT)
         else:
             u.rm_path(client_path)
             return "File delete complete"
@@ -268,7 +273,7 @@ class Actions(Resource):
         try:
             shutil.copy(server_src, server_dest)
         except KeyError:
-            return abort(409)
+            return abort(HTTP_CONFLICT)
         else:
             u.push_path(client_dest, server_dest)
             return "File copy complete"
@@ -286,7 +291,7 @@ class Actions(Resource):
         try:
             shutil.move(server_src, server_dest)
         except KeyError:
-            return abort(409)
+            return abort(HTTP_CONFLICT)
         else:
             u.rm_path(client_src)
             u.push_path(client_dest, server_dest)
@@ -303,7 +308,7 @@ class Actions(Resource):
         try:
             return Actions.commands[cmd](self)
         except KeyError:
-            return abort(404)
+            return abort(HTTP_NOT_FOUND)
 
 
 @auth.verify_password
@@ -322,7 +327,7 @@ def create_user():
             user = request.form["user"]
             psw = request.form["psw"]
         except KeyError:
-            abort(400)
+            abort(HTTP_BAD_REQUEST)
         else:
             User(user, psw)
 

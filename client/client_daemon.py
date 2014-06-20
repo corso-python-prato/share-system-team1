@@ -140,7 +140,7 @@ class ServerCommunicator(object):
             "data": self.get_url_relpath(dst_path)
         }
 
-        self._try_request(requests.delete, success_log, error_log, **request)
+        self._try_request(requests.post, success_log, error_log, **request)
 
     def move_file(self, src_path, dst_path):
         """ send to server a message of file moved """

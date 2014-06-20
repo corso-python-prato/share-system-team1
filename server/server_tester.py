@@ -16,6 +16,29 @@ TEST_USER_DATA = "test_user_data.json"
 
 class TestSequenceFunctions(unittest.TestCase):
 
+    @classmethod
+    def setUpClass(cls):
+    # set a test "USERS_DIRECTORIES"
+        try:
+            os.mkdir(TEST_DIRECTORY)
+        except OSError:
+            shutil.rmtree(TEST_DIRECTORY)
+            os.mkdir(TEST_DIRECTORY)
+
+        server.USERS_DIRECTORIES = TEST_DIRECTORY
+    
+    # set a test "USER_DATA" json
+        open(TEST_USER_DATA, "w").close()
+        server.USERS_DATA = TEST_USER_DATA
+
+
+    @classmethod
+    def tearDownClass(cls):
+    # restore previous status
+        os.remove(TEST_USER_DATA)
+        shutil.rmtree(TEST_DIRECTORY)
+
+
     def setUp(self):
         server.app.config.update(TESTING=True)
         server.app.testing = True
@@ -29,9 +52,9 @@ class TestSequenceFunctions(unittest.TestCase):
 
         with server.app.test_client() as tc:
             return tc.post("/API/v1/create_user",
-                    data = { 
+                    data = {
                         "user" : user,
-                        "psw" : psw 
+                        "psw" : psw
                     }
             )
 
@@ -118,22 +141,5 @@ class TestSequenceFunctions(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    # set a test "USERS_DIRECTORIES"
-    try:
-        os.mkdir(TEST_DIRECTORY)
-    except OSError:
-        shutil.rmtree(TEST_DIRECTORY)
-        os.mkdir(TEST_DIRECTORY)
-
-    server.USERS_DIRECTORIES = TEST_DIRECTORY
-    
-    # set a test "USER_DATA" json
-    open(TEST_USER_DATA, "w").close()
-    server.USERS_DATA = TEST_USER_DATA
-
     # make tests!
     unittest.main(exit=False)
-
-    # restore previous status
-    os.remove(TEST_USER_DATA)
-    shutil.rmtree(TEST_DIRECTORY)
