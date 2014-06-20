@@ -140,18 +140,26 @@ class User(object):
 
 
     def create_server_path(self, client_path):
-        directory_path, file_name = os.path.split(client_path)
+        directory_path, filename = os.path.split(client_path)
         dir_list = directory_path.split("/")
         
         to_be_created = []
         while os.path.join(dir_list) not in self.paths:
             to_be_created.insert(0, dir_list.pop())
+        
+        if not dir_list:
+            fathernew_client_path = ""
+        else:
+            father = os.path.join(dir_list)
 
-        father = os.path.join(dir_list)
-        return os.path.join(
-                self.paths[father][0],
-                *to_be_created
-        )
+        new_server_path = self.paths[new_client_path][0]
+        new_client_path = father
+        for d in to_be_created:
+            new_client_path = os.path.join(new_client_path, d)
+            new_server_path = os.path.join(new_server_path, d)
+            push_path(new_client_path, new_server_path)
+
+        return new_server_path, filename
 
 
     def push_path(self, client_path, server_path):
