@@ -227,17 +227,17 @@ class Files(Resource):
         if u.get_server_path(client_path):
             return "An file of the same name already exists in the same path", HTTP_CONFLICT
 
-        server_path = u.create_server_path(client_path)
+        server_path, filename = u.create_server_path(client_path)
         os.makedirs(server_path)
 
         server_dir = os.getcwd()
         os.chdir(server_path)
 
         f = request.files["file_content"]
-        f.save(file_name)
+        f.save(filename)
         os.chdir(server_dir)
 
-        server_path = os.path.join(server_path, file_name)
+        server_path = os.path.join(server_path, filename)
         u.push_path(client_path, server_path)
         return "file uploaded", HTTP_CREATED
 
