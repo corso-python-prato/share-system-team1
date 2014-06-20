@@ -26,10 +26,9 @@ class RawBoxCmd(cmd.Cmd):
 	prompt = Message().color('HEADER', '(RawBox) ')
 	ruler = Message().color('INFO','~')
 
-	def __init__(self):
+	def __init__(self, comm_sock):
 		cmd.Cmd.__init__(self)
-		conf = load_config()
-		self.comm_sock = CmdMessageClient(conf['cmd_host'], int(conf['cmd_port']), self)
+		self.comm_sock = comm_sock
 		
 	def _create_user(self, username = None):
 		"""create user if not exists"""
@@ -55,22 +54,23 @@ class RawBoxCmd(cmd.Cmd):
 			Message('WARNING', 'invalid email')
 			email = raw_input('insert your user email: ')
 
-		param = 	{	
+		param = {	
 					'user': username, 
 					'psw': password, 
 					'email': email
 				}
 
 		self.comm_sock.send_message(command_type, param)
-		self.comm_sock.handle_read()
+		self.print_response(self.comm_sock.read_message())
 
 	def _create_group(self, *args):
 		"""create group/s"""
+
 		command_type = 'create_group'
 		param = {'group': args}
 
 		self.comm_sock.send_message(command_type, param)
-		self.comm_sock.handle_read()
+		self.print_response(self.comm_sock.read_message())
 
 	def _add_user(self, *args):
 		"""add user/s to a group """
@@ -95,7 +95,7 @@ class RawBoxCmd(cmd.Cmd):
 				'group': group,
 			}
 			self.comm_sock.send_message(command_type, param)
-			self.comm_sock.handle_read()
+			self.print_response(self.comm_sock.read_message())
 
 	def _add_admin(self, *args):
 		"""add admin/s to a group """
@@ -103,7 +103,7 @@ class RawBoxCmd(cmd.Cmd):
 		param = {'admin': args}
 
 		self.comm_sock.send_message(command_type, param)
-		self.comm_sock.handle_read()
+		self.print_response(self.comm_sock.read_message())
 
 	def error(self, *args):
 		print "hum... unknown command, please type help"
@@ -158,8 +158,10 @@ def main():
 	else:
 		os.system('clear')
 
+	conf = load_config()
+	comm_sock = CmdMessageClient(conf['cmd_host'], int(conf['cmd_port']))
 	try:
-		RawBoxCmd().cmdloop()
+		RawBoxCmd(comm_sock).cmdloop()
 	except KeyboardInterrupt:
 		print "[exit]"
 
