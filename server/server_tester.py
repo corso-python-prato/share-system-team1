@@ -142,4 +142,4 @@ class TestSequenceFunctions(unittest.TestCase):
 
 if __name__ == '__main__':
     # make tests!
-    unittest.main(exit=False)
+    unittest.main()
