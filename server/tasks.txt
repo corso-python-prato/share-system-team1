@@ -1,6 +1,5 @@
-· chunks
+· file transfer in chunks
 · Flask tests with authentication in POST
-· UUID for dir names? https://docs.python.org/2/library/uuid.html#uuid.uuid4
 · save history in csv or sqllite (troubles with append with json format)
 
 · dictionary of shared folders?

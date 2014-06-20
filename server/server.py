@@ -38,7 +38,7 @@ def to_md5(path, block_size=2**20):
 
     m = hashlib.md5()
     with open(path,'rb') as f:
-        for chunk in iter(lambda: f.read(block_size), b''): 
+        for chunk in iter(lambda: f.read(block_size), b''):
             m.update(chunk)
 
     return m.digest()
@@ -50,8 +50,6 @@ class User(object):
         · inside Snapshot: { md5 : [client_path1, client_path2] }
     server_path is for shared directories management '''
 
-# class initialization: first try with a config file, if fail initialize
-# from scratch
     users = {}
 
 # CLASS AND STATIC METHODS
@@ -78,7 +76,7 @@ class User(object):
 
         to_save = {
             "users" : {}
-        }        
+        }
         for u, v in cls.users.items():
             to_save["users"][u] = v.to_dict()
 
@@ -117,11 +115,15 @@ class User(object):
                     "Conflict while creating the directory for a new user"
             )
 
-    # object attributes
+    # OBJECT ATTRIBUTES
         self.psw = psw_hash
-        self.timestamp = time.time()        # last change
-        self.paths = {}     # path of each file and each directory of the user!
-                            # client_path : [server_path, md5]
+
+        # path of each file and each directory of the user:
+        #     client_path : [server_path, md5, timestamp]
+        self.paths = {}
+
+        # timestamp of the last change in the user's files
+        self.timestamp = time.time()
 
     # update users, file
         self.push_path("", full_path)
@@ -162,16 +164,16 @@ class User(object):
         for d in to_be_created:
             new_client_path = os.path.join(new_client_path, d)
             new_server_path = os.path.join(new_server_path, d)
-            push_path(new_client_path, new_server_path)
+            push_path(new_client_path, new_server_path, update_timestamp=False)
 
         return new_server_path, filename
 
 
-    def push_path(self, client_path, server_path, update_attributes=True):
+    def push_path(self, client_path, server_path, update_timestamp=True):
         md5 = to_md5(server_path)
         now = time.time()
         self.paths[client_path] = [server_path, md5, now]
-        if update_attributes:
+        if update_timestamp:
             self.timestamp = now
         # TODO: manage shared folder here. Something like:
         # for s, v in shared_folder.items():
@@ -213,17 +215,16 @@ class Files(Resource):
         
         directory_path, file_name = os.path.split(server_path)
         f = request.files["file_content"]
-        server_dir = os.getcwd()                    
+        server_dir = os.getcwd()
 
         try:
             os.chdir(directory_path)
             f.save(file_name)                   # ISSUE: non è possibile dare a save la path completa, senza usare i chdir?
             os.chdir(server_dir)
-        except IOError: 
+        except IOError:
             abort(HTTP_CONFLICT)
         else:
             u.push_path(client_path, server_path)
-            # TODO: check here if the directory is shared and notify to the other users
             return u.timestamp, HTTP_CREATED
 
 
@@ -315,7 +316,7 @@ class Actions(Resource):
                 u.push_path(client_dest, server_dest)
                 return u.timestamp
             else:
-                u.push_path(client_dest, server_dest, update_attributes=False)
+                u.push_path(client_dest, server_dest, update_timestamp=False)
                 u.rm_path(client_src)
                 return u.timestamp
 
@@ -345,7 +346,6 @@ def verify_password(username, password):
 
 
 @app.route("{}create_user".format(_API_PREFIX), methods = ["POST"])
-# @app.route("/API/v1/create_user", methods = ["POST"])
 def create_user():
         ''' Expected as POST data:
         { "user" : username, "psw" : password } '''
@@ -354,12 +354,12 @@ def create_user():
             psw = request.form["psw"]
         except KeyError:
             abort(HTTP_BAD_REQUEST)
+        
+        if user in User.users:
+            return "This user already exists", HTTP_CONFLICT
         else:
-            if user in User.users:
-                return "This user already exists", HTTP_CONFLICT
-            else:
-                User(user, psw)
-                return "user created", HTTP_CREATED
+            User(user, psw)
+            return "user created", HTTP_CREATED
 
 
 @app.route("/hidden_page")
