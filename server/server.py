@@ -233,7 +233,7 @@ class Files(Resource):
         else:
             u.push_path(client_path, server_path)
             # TODO: check here if the directory is shared and notify to the other users
-            return "File updated", HTTP_CREATED
+            return u.timestamp, HTTP_CREATED
 
 
     def post(self, client_path):
@@ -255,7 +255,7 @@ class Files(Resource):
 
         server_path = os.path.join(server_path, filename)
         u.push_path(client_path, server_path)
-        return "file uploaded", HTTP_CREATED
+        return u.timestamp, HTTP_CREATED
 
 
 class Actions(Resource):
@@ -278,7 +278,7 @@ class Actions(Resource):
             return abort(HTTP_CONFLICT)
         else:
             u.rm_path(client_path)
-            return "File delete complete"
+            return u.timestamp
 
 
     def _copy(self):
@@ -310,11 +310,11 @@ class Actions(Resource):
         else:
             if keep_the_original:
                 u.push_path(client_dest, server_dest)
-                return "File copy complete"
+                return u.timestamp
             else:
                 u.push_path(client_dest, server_dest, update_attributes=False)
                 u.rm_path(client_src)
-                return "File move complete"
+                return u.timestamp
 
 
     commands = {
