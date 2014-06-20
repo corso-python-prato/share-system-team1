@@ -183,7 +183,9 @@ class Files(Resource):
             abort(HTTP_NOT_FOUND)
         try:
             f = open(server_path, "r")
-            return f.read() 
+            content = f.read()
+            f.close()
+            return content
         except IOError:
             abort(HTTP_NOT_FOUND)
 
