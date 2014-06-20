@@ -130,7 +130,7 @@ class User(object):
         self.paths = {}     # path of each file and each directory of the user!
                             # client_path : [server_path, md5]
 
-    # update snapshot, users, file
+    # update users, file
         self.push_path("", full_path)
         User.users[username] = self
         User.save_users()
@@ -263,7 +263,19 @@ class Actions(Resource):
         """ Send a JSON with the timestamp of the last change in user
         directories and an md5 for each file """
         u = User.get_user(auth.username())
-        return u.snapshot.to_json()
+        tree = {}
+        for p, v in u.paths.items():
+            if not v[1] in tree:
+                tree[v[1]] = [(p, v[2])]
+            else:
+                tree[v[1]].append((p, v[2]))
+
+        snapshot = {
+            "tree" : tree,
+            "timestamp" : u.timestamp
+        }
+
+        return json.dump(snapshot)
 
 
     def _delete(self):
