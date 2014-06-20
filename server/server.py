@@ -54,9 +54,9 @@ class User(object):
 # from scratch
     users = {}
 
-# class methods
-    @classmethod
-    def user_class_init(cls):
+# CLASS AND STATIC METHODS
+    @staticmethod
+    def user_class_init():
         try:
             ud = open(USERS_DATA, "r")
             saved = json.load(ud)
@@ -68,7 +68,7 @@ class User(object):
             os.remove(USERS_DATA)
         else:
             for u, v in saved["users"].items():
-                User(u, v["psw"], v["paths"])
+                User(u, None, from_dict=v)
 
 
     @classmethod
@@ -91,15 +91,16 @@ class User(object):
         try:
             return cls.users[username]
         except KeyError:
-            raise ConflictError("User doesn't exist")
+            raise MissingUserError("User doesn't exist")
 
 
-# dynamic methods
-    def __init__(self, username, password, paths=None):
+# DYNAMIC METHODS
+    def __init__(self, username, clear_password, from_dict=None):
     # if restoring the server
-        if paths:
-            self.psw = password
-            self.paths = paths
+        if from_dict:
+            self.psw = from_dict["psw"]
+            self.paths = from_dict["paths"]
+            self.timestamp = from_dict["timestamp"]
             User.users[username] = self
             return
 
@@ -129,7 +130,7 @@ class User(object):
         return {
             "psw" : self.psw,
             "paths" : self.paths,
-            "timestamp" : self.timestamp,
+            "timestamp" : self.timestamp
         }
 
 
