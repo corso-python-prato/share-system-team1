@@ -129,7 +129,6 @@ class User(object):
         self.timestamp = time.time()        # last change
         self.paths = {}     # path of each file and each directory of the user!
                             # client_path : [server_path, md5]
-        self.global_md5 = compute_global_md5()
 
     # update snapshot, users, file
         self.push_path("", full_path)
@@ -144,7 +143,6 @@ class User(object):
             "psw" : self.psw,
             "paths" : self.paths,
             "timestamp" : self.timestamp,
-            "global_md5" : self.global_md5
         }
 
 
@@ -178,18 +176,12 @@ class User(object):
         return new_server_path, filename
 
 
-    def compute_global_md5(self):
-        # TODO: self.global_md5 = ....
-        return 0
-
-
     def push_path(self, client_path, server_path, update_attributes=True):
         md5 = to_md5(client_path)
         now = time.time()
         self.paths[client_path] = [server_path, md5, now]
         if update_attributes:
             self.timestamp = now
-            self.compute_global_md5()
         # TODO: manage shared folder here. Something like:
         # for s, v in shared_folder.items():
         #     if server_path.startswith(s):
@@ -198,7 +190,6 @@ class User(object):
 
     def rm_path(self, client_path):
         self.timestamp = time.time()
-        self.compute_global_md5()
         del self.paths[client_path]
 
 
