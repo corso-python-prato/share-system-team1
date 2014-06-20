@@ -12,16 +12,21 @@ curl  localhost:5000/hidden_page -u UserName:password
 curl --data "user=UserName&psw=password" localhost:5000/API/v1/create_user
 
 # example of diff request
-curl --data "timestamp=1402500509.062415" localhost:5000/API/v1/user/diffs -u UserName:password
+curl localhost:5000/API/v1/Files -u UserName:password
 
 
 #### FILES ACTIONS ####
-# example of upload
- curl -X POST -F file_content=@<file_name> -F file_name=<destination_file_name> http://localhost:5000/files/<path_of_the_file> -u UserName:password
+
+#GET download
+curl  -X GET localhost:5000/API/v1/files/<path_of_the_file> -u UserName:password
+
+#PUT update
+curl -X PUT -F file_content=@<file_name> localhost:5000/API/v1/files/<path_of_the_file> -u UserName:password
 
 
-# download
-curl localhost:5000/download/FileName -u UserName:password
+#POST example of upload
+curl -X POST -F file_content=@<file_name> http://localhost:5000/API/v1/files/<path_of_the_file> -u UserName:password
+
 
 
 # example of post and put request from daemon
