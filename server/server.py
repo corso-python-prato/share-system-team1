@@ -105,7 +105,10 @@ class User(object):
             return
 
     # else if I'm creating a new user
-        psw_hash = sha256_crypt.encrypt(password)
+        if username in User.users:
+            raise ConflictError("This username is already been used")
+
+        psw_hash = sha256_crypt.encrypt(clear_password)
         full_path = os.path.join(USERS_DIRECTORIES, username)
         try:
             os.mkdir(full_path)
@@ -333,9 +336,12 @@ class Actions(Resource):
 
 @auth.verify_password
 def verify_password(username, password):
-    if username not in users.users:
+    try:
+        u = User.get_user(username)
+    except MissingUserError:
         return False
-    return sha256_crypt.verify(password, users.users[username]["psw"])
+    else:
+        return sha256_crypt.verify(password, u.psw)
 
 
 @app.route("{}create_user".format(_API_PREFIX), methods = ["POST"])
