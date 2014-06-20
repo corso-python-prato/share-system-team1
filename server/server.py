@@ -54,21 +54,23 @@ class User(object):
 # from scratch
     users = {}
 
-    try:
-        ud = open(USERS_DATA, "r")
-        saved = json.load(ud)
-        ud.close()
-    # if error, create new structure from scratch
-    except IOError:
-        pass                # missing file
-    except ValueError:      # invalid json
-        os.remove(USERS_DATA)
-    else:
-        for u, v in saved["users"].items():
-            User(u, u["psw"], u["paths"])
+# class methods
+    @classmethod
+    def user_class_init(cls):
+        try:
+            ud = open(USERS_DATA, "r")
+            saved = json.load(ud)
+            ud.close()
+        # if error, create new structure from scratch
+        except IOError:
+            pass                # missing file
+        except ValueError:      # invalid json
+            os.remove(USERS_DATA)
+        else:
+            for u, v in saved["users"].items():
+                User(u, v["psw"], v["paths"])
 
 
-# other class methods
     @classmethod
     def save_users(cls, filename=None):
         if not filename:
@@ -98,7 +100,7 @@ class User(object):
         if paths:
             self.psw = password
             self.paths = paths
-            User.user[username] = self
+            User.users[username] = self
             return
 
     # else if I'm creating a new user
@@ -382,6 +384,7 @@ def backup_config_files(folder_name=None):
 def main():
     if not os.path.isdir(USERS_DIRECTORIES):
         os.mkdir(USERS_DIRECTORIES)
+    User.user_class_init()
     app.run(host="0.0.0.0",debug=True)         # TODO: remove debug=True
 
 
