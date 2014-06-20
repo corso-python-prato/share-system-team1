@@ -246,12 +246,6 @@ class Actions(Resource):
     def get_files(self):
         """ Send a JSON with the timestamp of the last change in user
         directories and an md5 for each file """
-        # {
-        #     "last_change" : timestamp_last_change
-        #     "files" : {
-        #         md5 : path
-        #     }
-        # }
         u = User.get_user(auth.username())
         return u.snapshot.to_json()
 
