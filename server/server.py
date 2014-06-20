@@ -266,40 +266,39 @@ class Actions(Resource):
 
 
     def _copy(self):
-        """ This function copies a file from src to dest """
-        u = User.get_user(auth.username())
-        client_src = request.form["file_src"]
-        client_dest = request.form["file_dest"]
-
-        server_src = u.get_server_path(client_src)
-        server_dest = u.create_server_path(client_dest)
-
-        try:
-            shutil.copy(server_src, server_dest)
-        except KeyError:
-            return abort(HTTP_CONFLICT)
-        else:
-            u.push_path(client_dest, server_dest)
-            return "File copy complete"
+        self._transfer(keep_the_original=True)
 
 
     def _move(self):
-        """ This function moves a file from src to dest"""
+        self._transfer(keep_the_original=False)
+
+
+    def _transfer(self, keep_the_original=True):
+        """ This function moves or copy a file from src to dest"""
         u = User.get_user(auth.username())
         client_src = request.form["file_src"]
         client_dest = request.form["file_dest"]
 
         server_src = u.get_server_path(client_src)
-        server_dest = u.create_server_path(client_dest)
+        server_dest, filename = u.create_server_path(client_dest)
+        os.makedirs(server_dest)
+        server_dest = os.path.join(server_dest, filename)
         
         try:
-            shutil.move(server_src, server_dest)
+            if keep_the_original:
+                shutil.copy(server_src, server_dest)
+            else:
+                shutil.move(server_src, server_dest)
         except KeyError:
             return abort(HTTP_CONFLICT)
         else:
-            u.rm_path(client_src)
             u.push_path(client_dest, server_dest)
-            return "File trasnfer complete"
+            if keep_the_original:
+                return "File copy complete"
+            else:
+                u.rm_path(client_src)
+                return "File move complete"
+
 
     commands = {
         "get_files": get_files,
