@@ -108,10 +108,17 @@ class TestSequenceFunctions(unittest.TestCase):
 
     # check if the backup function create the folder and the files
     def test_backup_config_files(self):
-        server.backup_config_files("test_backup")
+        successful =  server.backup_config_files("test_backup")
+        if not successful:
+            # the directory is already present due to an old failed test
+            shutil.rmtree("test_backup")
+            successful =  server.backup_config_files("test_backup")
+
+        self.assertTrue(successful)
+
         try:
             dir_content = os.listdir("test_backup")
-        except IOError:
+        except OSError:
             self.fail("Directory not created")
         else:
             self.assertIn(server.USERS_DATA, dir_content,

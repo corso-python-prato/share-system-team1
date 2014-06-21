@@ -383,7 +383,7 @@ def backup_config_files(folder_name=None):
 
     try:
         os.makedirs(folder_name)
-    except IOError:
+    except OSError:
         return False
     else:
         User.save_users(os.path.join(folder_name, USERS_DATA))
