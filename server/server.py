@@ -32,7 +32,7 @@ parser.add_argument("task", type=str)
 
 def to_md5(path, block_size=2**20):
     ''' if path is a file, return a md5;
-    if path is a directory, return False'''
+    if path is a directory, return False '''
     if os.path.isdir(path):
         return False
 
@@ -104,7 +104,9 @@ class User(object):
 
     # else if I'm creating a new user
         if username in User.users:
-            raise ConflictError("This username is already been used")
+            raise ConflictError(
+                "'{}'' is an username already taken".format(username)
+            )
 
         psw_hash = sha256_crypt.encrypt(clear_password)
         full_path = os.path.join(USERS_DIRECTORIES, username)
@@ -119,14 +121,14 @@ class User(object):
         self.psw = psw_hash
 
         # path of each file and each directory of the user:
-        #     client_path : [server_path, md5, timestamp]
+        #     { client_path : [server_path, md5, timestamp] }
         self.paths = {}
 
         # timestamp of the last change in the user's files
         self.timestamp = time.time()
 
     # update users, file
-        self.push_path("", full_path)
+        self.push_path("", full_path, update_timestamp=False)
         User.users[username] = self
         User.save_users()
 
@@ -381,7 +383,7 @@ def backup_config_files(folder_name=None):
 
     try:
         os.makedirs(folder_name)
-    except IOError:
+    except OSError:
         return False
     else:
         User.save_users(os.path.join(folder_name, USERS_DATA))

@@ -1,3 +1,5 @@
+· la create_user deve restituire un timestamp al client?
+
 · file transfer in chunks
 · Flask tests with authentication in POST
 · save history in csv or sqllite (troubles with append with json format)
