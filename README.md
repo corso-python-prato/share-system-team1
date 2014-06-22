@@ -9,8 +9,12 @@ or
 
     easy_install install 'requirements.txt'
 
+to run gui run rawbox.py inside GUI folder (WORK IN PROGRESS)
+
+    python rawbox.py
+
 <h2>More info</h2>    
-[Visit the Website](http://marcopretelliprove.altervista.org/RawBox/)
+[Visit the Website](http://marcopretelliprove.altervista.org/RawBox/) (WORK IN PROGRESS)
 
 <h2>Internal implementation</h2>
 Deamon Client
