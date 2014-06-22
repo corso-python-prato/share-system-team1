@@ -105,6 +105,39 @@ class ClientDaemonTest(unittest.TestCase):
 	def test_on_modified(self):
 		pass
 
+	def init_snapshot(self):
+		config = client_daemon.load_config()
+		return client_daemon.DirSnapshotManager(config['dir_path'], config['snapshot_file_path'])
+	
+	def test_syncronize_dispatcher(self):
+		snapshot_manager = self.init_snapshot()
+		mock_snap_server = {
+		'9406539a103956dc36cb7ad35547198c': [u'/Users/marc0/progetto/prove_deamon\\bla.txt'],
+		'a8f5f167f44f4964e6c998dee827110c': [ u'/Users/marc0/progetto/prove_deamon\\asdas\\gbla.txt'], 'c21e1af364fa17cc80e0bbec2dd2ce5c': [u'/Users/marc0/progetto/prove_deamon\\asdas\\asdasd.txt'], 'd41d8cd98f00b204e9800998ecf8427e': [u'/Users/marc0/progetto/prove_deamon\\dsa.txt', u'/Users/marc0/progetto/prove_deamon\\Nuovo documento di testo (2).txt', u'/Users/marc0/progetto/prove_deamon\\Nuovo documento di testo (3).txt', u'/Users/marc0/progetto/prove_deamon\\Nuovo documento di testo (4).txt', u'/Users/marc0/progetto/prove_deamon\\Nuovo documento di testo (5).txt', u'/Users/marc0/progetto/prove_deamon\\Nuovo documento di testo.txt', u'/Users/marc0/progetto/prove_deamon\\asdas\\Nuovo documento di testo.txt', u'/Users/marc0/progetto/prove_deamon\\asdas\\sdadsda.txt',
+		u'path_farlocca'],'a8f5f167f44f4964e6c998dee827110b':[u'farlocco_2'],
+		'a8f5f167f44f491524c998dee827110c':[u'/Users/marc0/progetto/prove_deamon\\asdas\\bla.txt']}
+		
+		print "\n{:*^60}\n".format("\nno deamon internal conflicts == timestamp\n")
+		snapshot_manager.syncronize_dispatcher(
+			server_timestamp = 123123,
+			server_snapshot = mock_snap_server)
+
+		print "\n{:*^60}\n".format("\nno deamon internal conflicts != timestamp\n")
+		snapshot_manager.syncronize_dispatcher(
+			server_timestamp = 123124,
+			server_snapshot = mock_snap_server)
+		
+		snapshot_manager.last_status['snapshot'] = "21451512512512512"
+
+		print "\n{:*^60}\n".format("\ndeamon internal conflicts == timestamp\n")
+		snapshot_manager.syncronize_dispatcher(
+			server_timestamp = 123123,
+			server_snapshot = mock_snap_server)
+
+		print "\n{:*^60}\n".format("\nno deamon internal conflicts != timestamp\n")
+		snapshot_manager.syncronize_dispatcher(
+			server_timestamp = 123124,
+			server_snapshot = mock_snap_server)
 	def diff_snapshot_paths(self):
 		snapshot_manager = self.init_snapshot()
 		#mock_equal = """[u'/Users/marc0/progetto/prove_deamon/asdas/asdasd.txt', u'/Users/marc0/progetto/prove_deamon/asdas/Nuovo documento di testo.txt', u'/Users/marc0/progetto/prove_deamon/dsa.txt', u'/Users/marc0/progetto/prove_deamon/Nuovo documento di testo (4).txt', u'/Users/marc0/progetto/prove_deamon/Nuovo documentodi testo (3).txt', u'/Users/marc0/progetto/prove_deamon/bla.txt', u'/Users/marc0/progetto/prove_deamon/asdas/sdadsda.txt', u'/Users/marc0/progetto/prove_deamon/Nuovo documento di testo (5).txt', u'/Users/marc0/progetto/prove_deamon/Nuovo documento di testo.txt', u'/Users/marc0/progetto/prove_deamon/Nuovo documento di testo (2).txt']"""
