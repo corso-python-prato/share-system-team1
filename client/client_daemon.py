@@ -358,6 +358,7 @@ class DirSnapshotManager(object):
             return json.load(f)
 
     def file_snapMd5(self, file_path):
+        """ calculate the md5 of a file """
         file_md5 = hashlib.md5()
         with open(file_path, 'rb') as afile:
             buf = afile.read(2048)
