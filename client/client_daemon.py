@@ -177,6 +177,7 @@ class ServerCommunicator(object):
                     "psw": password
             }
         }
+
         self._try_request(requests.post, success_log, error_log, **request)
 
 class FileSystemOperator(object):
@@ -346,15 +347,28 @@ class DirectoryEventHandler(FileSystemEventHandler):
 
 
 class DirSnapshotManager(object):
-    def __init__(self, dir_path, snapshot_file):
+    def __init__(self, dir_path, snapshot_file_path):
+        """ load the last global snapshot and create a instant_snapshot of local directory"""
         self.dir_path = dir_path
-        self.snapshot_file = snapshot_file
-        self.snapshot = self._load_snapshot()
-        diff = self.diff_snapthot(self.instant_snapshot())
+        self.snapshot_file_path = snapshot_file_path
+        self.last_status = self._load_status()
+        self.local_full_snapshot = self.instant_snapshot()
 
-    def _load_snapshot(self):
+    def local_check(self):
+        """ check id daemon is synchronized with local directory """
+        local_global_snapshot = self.global_md5()
+        last_global_snapthot = self.last_status['snapshot']
+        return local_global_snapshot == last_global_snapthot
+
+    def server_check(self, server_timestamp):
+        """ check if daemon timestamp is synchronized with server timestamp"""
+        server_timestamp = float(server_timestamp)
+        client_timestamp = float(self.last_status['timestamp'])
+        return server_timestamp > client_timestamp
+
+    def _load_status(self):
         """ load from file the last snapshot """
-        with open(self.snapshot_file) as f:
+        with open(self.snapshot_file_path) as f:
             return json.load(f)
 
     def file_snapMd5(self, file_path):
