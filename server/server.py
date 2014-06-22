@@ -153,22 +153,22 @@ class User(object):
         dir_list = directory_path.split("/")
         
         to_be_created = []
-        while os.path.join(dir_list) not in self.paths:
+        while os.path.join(*dir_list) not in self.paths:
             to_be_created.insert(0, dir_list.pop())
         
-        if not dir_list:
-            fathernew_client_path = ""
-        else:
-            father = os.path.join(dir_list)
+        father = os.path.join(*dir_list)
 
-        new_server_path = self.paths[new_client_path][0]
         new_client_path = father
+        new_server_path = self.paths[new_client_path][0]
         for d in to_be_created:
             new_client_path = os.path.join(new_client_path, d)
             new_server_path = os.path.join(new_server_path, d)
             push_path(new_client_path, new_server_path, update_timestamp=False)
 
-        return new_server_path, filename
+        if not os.path.exists(new_server_path):
+            os.makedirs(new_server_path)
+
+        return os.path.join(new_server_path, filename)
 
 
     def push_path(self, client_path, server_path, update_timestamp=True):
@@ -397,7 +397,7 @@ def main():
     app.run(host="0.0.0.0",debug=True)         # TODO: remove debug=True
 
 
-api.add_resource(Files, "{}files/<path:path>".format(_API_PREFIX))
+api.add_resource(Files, "{}files/<path:client_path>".format(_API_PREFIX))
 api.add_resource(Actions, "{}actions/<string:cmd>".format(_API_PREFIX))
 
 if __name__ == "__main__":
