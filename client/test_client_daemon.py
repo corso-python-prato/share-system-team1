@@ -3,15 +3,15 @@ import httpretty
 import unittest
 import requests
 import base64
+import json
 import sys
 import os
-import json
 
 class ClientDaemonTest(unittest.TestCase):
 	def setUp(self):
 		httpretty.enable()
 		httpretty.register_uri(httpretty.POST,
-		'http://127.0.0.1:5000/API/v1/files/test_mock/prova.txt',
+		'http://127.0.0.1:5000/API/v1/files/bla.txt',
 		data = {"response":"ok"})
 
 	def tearDown(self):
@@ -22,38 +22,42 @@ class ClientDaemonTest(unittest.TestCase):
 		password = "passwordSegretissima"
 		username = "usernameFarlocco"
 		
-		path = os.path.join("test_mock", "sub_folder",  "prova.txt")
+		file_path = '/Users/marc0/progetto/prove_deamon/bla.txt'
+		mock_file_content = open(file_path, 'r')
 
-		mock_file_content = open(path, 'r').read()
 		mock_auth_user = ":".join([username, password])
-		mock_path = '/API/v1/files/test_mock/sub_folder' 
-		mock_data = {
-				u'file_name': [u'prova.txt'], 
-				u'file_content': [unicode(mock_file_content)]
-			}
-
+		mock_data = 'asdasd'
 		client_daemon.ServerCommunicator(
 			'http://127.0.0.1:5000/API/v1', 
 			username, 
-			password).upload_file(path, put_file)
-		
+			password,
+			"/Users/marc0/progetto/prove_deamon").upload_file(file_path, put_file)
 		encoded = httpretty.last_request().headers['authorization'].split()[1]
 		authorization_decoded = base64.decodestring(encoded)
-		data = httpretty.last_request().parsed_body
+		#data = httpretty.last_request().parsed_body
 		path = httpretty.last_request().path
+		host = httpretty.last_request().headers['host']
+		method = httpretty.last_request().method
 		
 		#check if authorization is equals
 		self.assertEqual(authorization_decoded, mock_auth_user)
 		#check if data is equals
-		self.assertEqual(data, mock_data) 
-		#check if url is equals
-		self.assertEqual(path, mock_path)
+		#self.assertEqual(data, mock_data) 
+		#check if url and method is equals
+
+		self.assertEqual(path, '/API/v1/files/bla.txt')
+		self.assertEqual(host,'127.0.0.1:5000')
+		if put_file:
+			self.assertEqual(method, 'PUT')
+		else:
+			self.assertEqual(method, 'POST')
 
 	def test_download(self):
 		   pass
 
 	def test_upload_put(self):
-		self.test_upload(put_file = True)
+		pass
+		#self.test_upload(put_file = True)
 
 	def test_synchronize(self):
 		status_code = 200
