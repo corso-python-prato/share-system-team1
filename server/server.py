@@ -291,25 +291,25 @@ class Actions(Resource):
         client_dest = request.form["file_dest"]
 
         server_src = u.get_server_path(client_src)
-        server_dest, filename = u.create_server_path(client_dest)
-        os.makedirs(server_dest)
-        server_dest = os.path.join(server_dest, filename)
+        if not server_src:
+            abort(HTTP_NOT_FOUND)
+
+        server_dest = u.create_server_path(client_dest)
         
         try:
             if keep_the_original:
                 shutil.copy(server_src, server_dest)
             else:
                 shutil.move(server_src, server_dest)
-        except KeyError:
+        except IOError:
             return abort(HTTP_CONFLICT)
         else:
             if keep_the_original:
                 u.push_path(client_dest, server_dest)
-                return u.timestamp
             else:
                 u.push_path(client_dest, server_dest, update_timestamp=False)
                 u.rm_path(client_src)
-                return u.timestamp
+            return u.timestamp
 
 
     commands = {
