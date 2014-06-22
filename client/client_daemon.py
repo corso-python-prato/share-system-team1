@@ -380,19 +380,107 @@ class DirSnapshotManager(object):
                     dir_snapshot[file_md5] = [full_path]
         return dir_snapshot
 
-    def _save_snapshot(self):
-        with open(self.snapshot_file, 'w') as f:
-            f.write(json.dumps(self.snapshot))
+    def save_snapshot(self, timestamp, snapshot):
+        """ save snapshot to file """
+        with open(self.snapshot_file_path, 'w') as f:
+            f.write(json.dumps({"timestamp": timestamp, "snapshot": snapshot}))
 
-    def diff_snapthot(self, server_snapshot):
-        """ return the list of conflict """
-        return "diff_list"
+    def diff_snapshot_paths(self, snap_client, snap_server):
+        """ from 2 snapshot return 3 list of path difference:
+            list of new server path
+            list of new client path 
+            list of equal path 
+        """
+        client_paths = [val for subl in snap_client.values() for val in subl]
+        server_paths = [val for subl in snap_server.values() for val in subl]
+        new_server_paths = list(set(server_paths) - set(client_paths))
+        new_client_paths = list(set(client_paths) - set(server_paths))
+        equal_paths = list(set(client_paths).intersection(set(server_paths)))
+        
+        return new_client_paths, new_server_paths , equal_paths
+        
+    def find_file_md5(self, snapshot, new_path):
+        """ from snapshot and a path find the md5 of file inside snapshot"""
+        for md5, paths in snapshot.items():
+            for path in paths:
+                if path == new_path:
+                    return md5
 
+    def syncronize_dispatcher(self, server_timestamp, server_snapshot):
+        """ return the list of command to do """
+
+        local_timestamp = self.last_status['timestamp']
+        new_client_paths, new_server_paths, equal_paths =  self.diff_snapshot_paths(self.local_full_snapshot , server_snapshot)
+        print
+        #NO internal conflict
+        if self.local_check():  #1)
+            if server_timestamp > local_timestamp: #1) b.
+                for new_server_path in new_server_paths: #1) b 1
+                    if not self.find_file_md5(server_snapshot, new_server_path) in self.local_full_snapshot: #1) b 1 I
+                        print "download:\t" + new_server_path 
+                    else: #1) b 1 II
+                        print "copy or rename:\t" + new_server_path
+                        """ II. se esiste un file con lo stesso md5 e se esiste un altro path corrispondente
+                            allo stesso md5 faccio la copia del file, altrimenti lo rinomino 
+                        """
+                for equal_path in equal_paths: #1) b 2
+                    if self.find_file_md5(self.local_full_snapshot, equal_path) != self.find_file_md5(server_snapshot, equal_path):
+                        print "update download:\t" + equal_path
+                        """
+                        scarico la versione del server 
+                        """
+                    else:
+                        print "no action:\t" + equal_path
+                for new_client_path in new_client_paths: #1) b 3
+                    print "remove local:\t" + new_client_path
+                    """
+                    elimino il file locale
+                    """
+            else:
+                print "synchronized"
+        #internal conflicts
+        else: # 2)
+            if local_timestamp == server_timestamp: #2) a
+                print "push all" 
+                """
+                tutte le modifiche in locale vengono riportate sul server
+                """
+            elif server_timestamp > local_timestamp: #2) b
+                for new_server_path in new_server_paths: #2) b 1
+                    if not self.find_file_md5(server_snapshot, new_server_path) in self.local_full_snapshot: #2) b 1 I
+                        print  "download or remove timestamp check:\t" + new_server_path
+                        """
+                        si scarica il nuovo file o
+                         si cancella il file in remoto a seconda che il timestamp relativo sia
+                         maggiore o minore di quello del client
+                        """
+                    else: #2) b 1 II
+                        print  "copy or rename:\t" + new_server_path
+                        """
+                        copia o rinomina 
+                        """
+
+                for equal_path in equal_paths: #2) b 2
+                    if "file_timestamp_server" < "file_timestamp_client": #2) b 2 I
+                        print "server push:\t" + equal_path
+                        """
+                        aggiorno il server
+                         """
+                    else:  #2) b 2 II 
+                        print "create.conflicted:\t" + equal_path
+                        """
+                        duplicazione file con estensione 
+                        .conflicted e lo carico su server"""
+                for new_client_path in new_client_paths: #2) b 3
+                    print "remove remote\t" + new_client_path 
+                    """
+                    carico il file su server
+                    """ 
 
 def main():
     config = load_config()
-    snapshot_manager = DirSnapshotManager(config['dir_path'], config['snapshot_file'])
-
+    snapshot_manager = DirSnapshotManager(config['dir_path'], config['snapshot_file_path'])
+    
     server_com = ServerCommunicator(
         server_url = config['server_url'], 
         username = config['username'],
