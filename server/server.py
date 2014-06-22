@@ -128,7 +128,7 @@ class User(object):
         self.timestamp = time.time()
 
     # update users, file
-        self.push_path("", full_path, update_timestamp=False)
+        self.push_path("", full_path, update_user_data=False)
         User.users[username] = self
         User.save_users()
 
@@ -163,7 +163,7 @@ class User(object):
         for d in to_be_created:
             new_client_path = os.path.join(new_client_path, d)
             new_server_path = os.path.join(new_server_path, d)
-            push_path(new_client_path, new_server_path, update_timestamp=False)
+            push_path(new_client_path, new_server_path, update_user_data=False)
 
         if not os.path.exists(new_server_path):
             os.makedirs(new_server_path)
@@ -171,12 +171,13 @@ class User(object):
         return os.path.join(new_server_path, filename)
 
 
-    def push_path(self, client_path, server_path, update_timestamp=True):
+    def push_path(self, client_path, server_path, update_user_data=True):
         md5 = to_md5(server_path)
         now = time.time()
         self.paths[client_path] = [server_path, md5, now]
-        if update_timestamp:
+        if update_user_data:
             self.timestamp = now
+            User.save_users()
         # TODO: manage shared folder here. Something like:
         # for s, v in shared_folder.items():
         #     if server_path.startswith(s):
@@ -186,6 +187,7 @@ class User(object):
     def rm_path(self, client_path):
         self.timestamp = time.time()
         del self.paths[client_path]
+        User.save_users()
 
 
 class Resource(Resource):
@@ -199,7 +201,7 @@ class Files(Resource):
         u = User.get_user(auth.username())
         server_path = u.get_server_path(client_path)
         if not server_path:
-            abort(HTTP_NOT_FOUND)
+            return "File unreachable", HTTP_NOT_FOUND
 
         try:
             f = open(server_path, "r")
@@ -307,7 +309,7 @@ class Actions(Resource):
             if keep_the_original:
                 u.push_path(client_dest, server_dest)
             else:
-                u.push_path(client_dest, server_dest, update_timestamp=False)
+                u.push_path(client_dest, server_dest, update_user_data=False)
                 u.rm_path(client_src)
             return u.timestamp
 
