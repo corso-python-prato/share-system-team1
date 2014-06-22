@@ -105,6 +105,24 @@ class ClientDaemonTest(unittest.TestCase):
 	def test_on_modified(self):
 		pass
 
+	def diff_snapshot_paths(self):
+		snapshot_manager = self.init_snapshot()
+		#mock_equal = """[u'/Users/marc0/progetto/prove_deamon/asdas/asdasd.txt', u'/Users/marc0/progetto/prove_deamon/asdas/Nuovo documento di testo.txt', u'/Users/marc0/progetto/prove_deamon/dsa.txt', u'/Users/marc0/progetto/prove_deamon/Nuovo documento di testo (4).txt', u'/Users/marc0/progetto/prove_deamon/Nuovo documentodi testo (3).txt', u'/Users/marc0/progetto/prove_deamon/bla.txt', u'/Users/marc0/progetto/prove_deamon/asdas/sdadsda.txt', u'/Users/marc0/progetto/prove_deamon/Nuovo documento di testo (5).txt', u'/Users/marc0/progetto/prove_deamon/Nuovo documento di testo.txt', u'/Users/marc0/progetto/prove_deamon/Nuovo documento di testo (2).txt']"""
+		#mock_new_client = """[u'/Users/marc0/progetto/prove_deamon/asdas/bla.txt', u'/Users/marc0/progetto/prove_deamon/asd/gbla.txt', u'/Users/marc0/progetto/prove_deamon/asdas/gbla.txt']"""
+		#mock_new_server= """['path_farlocca']"""
+
+		snap_client = snapshot_manager.local_full_snapshot
+		snap_server = {'9406539a103956dc36cb7ad35547198c': [u'/Users/marc0/progetto/prove_deamon\\bla.txt'], 'a8f5f167f44f4964e6c998dee827110c': [u'/Users/marc0/progetto/prove_deamon\\asd\\gbla.txt', u'/Users/marc0/progetto/prove_deamon\\asdas\\bla.txt', u'/Users/marc0/progetto/prove_deamon\\asdas\\gbla.txt'], 'c21e1af364fa17cc80e0bbec2dd2ce5c': [u'/Users/marc0/progetto/prove_deamon\\asdas\\asdasd.txt'], 'd41d8cd98f00b204e9800998ecf8427e': [u'/Users/marc0/progetto/prove_deamon\\dsa.txt', u'/Users/marc0/progetto/prove_deamon\\Nuovo documento di testo (2).txt', u'/Users/marc0/progetto/prove_deamon\\Nuovo documento di testo (3).txt', u'/Users/marc0/progetto/prove_deamon\\Nuovo documento di testo (4).txt', u'/Users/marc0/progetto/prove_deamon\\Nuovo documento di testo (5).txt', u'/Users/marc0/progetto/prove_deamon\\Nuovo documento di testo.txt', u'/Users/marc0/progetto/prove_deamon\\asdas\\Nuovo documento di testo.txt', u'/Users/marc0/progetto/prove_deamon\\asdas\\sdadsda.txt', 
+		u'path_farlocca']}
+		new_client, new_server, equal = snapshot_manager.diff_snapshot_paths(snap_client, snap_server)
+		
+		#new_client = str(new_client).replace('\\\\','/')
+		#new_server = str(new_server).replace('\\\\','/')
+		#equal = str(equal).replace('\\\\','/')
+
+		#self.assertEqual(str(new_client), mock_new_client)
+		#self.assertEqual(str(equal), mock_equal)
+		#self.assertEqual(str(new_server), mock_new_server)
 
 if __name__ == '__main__':
 	unittest.main()
