@@ -200,6 +200,7 @@ class Files(Resource):
         server_path = u.get_server_path(client_path)
         if not server_path:
             abort(HTTP_NOT_FOUND)
+
         try:
             f = open(server_path, "r")
             content = f.read()
@@ -266,14 +267,13 @@ class Actions(Resource):
         u = User.get_user(auth.username())
         client_path = request.form["path"]
         server_path = u.get_server_path(client_path)
+        if not server_path:
+            abort(HTTP_NOT_FOUND)
 
-        try:
-            os.remove(server_path)
-        except KeyError:
-            return abort(HTTP_CONFLICT)
-        else:
-            u.rm_path(client_path)
-            return u.timestamp
+        os.remove(server_path)
+
+        u.rm_path(client_path)
+        return u.timestamp
 
 
     def _copy(self):
