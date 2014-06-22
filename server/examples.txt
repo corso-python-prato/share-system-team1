@@ -16,17 +16,14 @@ curl localhost:5000/API/v1/Files -u UserName:password
 
 
 #### FILES ACTIONS ####
-
-#GET download
+# GET download
 curl  -X GET localhost:5000/API/v1/files/<path_of_the_file> -u UserName:password
 
-#PUT update
-curl -X PUT -F file_content=@<file_name> localhost:5000/API/v1/files/<path_of_the_file> -u UserName:password
-
-
-#POST example of upload
+# POST example of upload
 curl -X POST -F file_content=@<file_name> http://localhost:5000/API/v1/files/<path_of_the_file> -u UserName:password
 
+# PUT update
+curl -X PUT -F file_content=@<file_name> localhost:5000/API/v1/files/<path_of_the_file> -u UserName:password
 
 
 # example of post and put request from daemon
