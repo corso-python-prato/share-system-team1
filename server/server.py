@@ -214,20 +214,14 @@ class Files(Resource):
         this function updates an existing file """
         u = User.get_user(auth.username())
         server_path = u.get_server_path(client_path)
+        if not server_path:
+            abort(HTTP_NOT_FOUND)
         
-        directory_path, file_name = os.path.split(server_path)
         f = request.files["file_content"]
-        server_dir = os.getcwd()
+        f.save(server_path)
 
-        try:
-            os.chdir(directory_path)
-            f.save(file_name)                   # ISSUE: non è possibile dare a save la path completa, senza usare i chdir?
-            os.chdir(server_dir)
-        except IOError:
-            abort(HTTP_CONFLICT)
-        else:
-            u.push_path(client_path, server_path)
-            return u.timestamp, HTTP_CREATED
+        u.push_path(client_path, server_path)
+        return u.timestamp, HTTP_CREATED
 
 
     def post(self, client_path):
@@ -235,19 +229,14 @@ class Files(Resource):
         this function upload a new file using POST """
         u = User.get_user(auth.username())
         if u.get_server_path(client_path):
-            return "An file of the same name already exists in the same path", HTTP_CONFLICT
+            return "A file of the same name already exists in the same path", \
+                    HTTP_CONFLICT
 
-        server_path, filename = u.create_server_path(client_path)
-        os.makedirs(server_path)
-
-        server_dir = os.getcwd()
-        os.chdir(server_path)
-
+        server_path = u.create_server_path(client_path)
+        
         f = request.files["file_content"]
-        f.save(filename)
-        os.chdir(server_dir)
-
-        server_path = os.path.join(server_path, filename)
+        f.save(server_path)
+        
         u.push_path(client_path, server_path)
         return u.timestamp, HTTP_CREATED
 
