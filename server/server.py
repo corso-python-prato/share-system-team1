@@ -41,7 +41,7 @@ def to_md5(path, block_size=2**20):
         for chunk in iter(lambda: f.read(block_size), b''):
             m.update(chunk)
 
-    return m.digest()
+    return m.hexdigest()
 
 
 class User(object):
