@@ -195,6 +195,25 @@ class Resource(Resource):
 
 
 class Files(Resource):
+    def get(self):
+            """ Send a JSON with the timestamp of the last change in user
+            directories and an md5 for each file """
+            u = User.get_user(auth.username())
+            tree = {}
+            for p, v in u.paths.items():
+                if not v[1] in tree:
+                    tree[v[1]] = [(p, v[2])]
+                else:
+                    tree[v[1]].append((p, v[2]))
+
+            snapshot = {
+                "tree" : tree,
+                "timestamp" : u.timestamp
+            }
+
+            return json.dump(snapshot)
+
+
     def get(self, client_path):
         """ Download
         this function return file content as a string using GET """
@@ -308,27 +327,6 @@ class Actions(Resource):
             return abort(HTTP_NOT_FOUND)
 
 
-@app.route("".join((_API_PREFIX, "/files")))
-@auth.login_required
-def get_snapshot(self):
-        """ Send a JSON with the timestamp of the last change in user
-        directories and an md5 for each file """
-        u = User.get_user(auth.username())
-        tree = {}
-        for p, v in u.paths.items():
-            if not v[1] in tree:
-                tree[v[1]] = [(p, v[2])]
-            else:
-                tree[v[1]].append((p, v[2]))
-
-        snapshot = {
-            "tree" : tree,
-            "timestamp" : u.timestamp
-        }
-
-        return json.dump(snapshot)
-
-
 @auth.verify_password
 def verify_password(username, password):
     try:
@@ -389,7 +387,7 @@ def main():
     app.run(host="0.0.0.0",debug=True)         # TODO: remove debug=True
 
 
-api.add_resource(Files, "{}files/<path:client_path>".format(_API_PREFIX))
+api.add_resource(Files, "{}files/<path:client_path>".format(_API_PREFIX), "{}files/".format(_API_PREFIX))
 api.add_resource(Actions, "{}actions/<string:cmd>".format(_API_PREFIX))
 
 if __name__ == "__main__":
