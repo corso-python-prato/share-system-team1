@@ -1,7 +1,7 @@
 #! /usr/bin/env python
 # -*- coding:utf-8 -*-
 
-import communicaton_system
+import communication_system
 import struct
 import unittest
 import json
@@ -21,7 +21,7 @@ class TestCmdMessageClient(unittest.TestCase):
         }
 
     def test_packing_message(self):
-        content = communicaton_system._packing_message(self.command_type, self.param)
+        content = communication_system._packing_message(self.command_type, self.param)
         pack_format = '!i{}s'.format(len(content) - struct.calcsize('i'))
         length, data = struct.unpack(pack_format, content)
         data = json.loads(data)
@@ -31,11 +31,11 @@ class TestCmdMessageClient(unittest.TestCase):
         cmd_struct = json.dumps(self.cmd_struct)
         pack_size = len(cmd_struct)
         data = struct.pack('!i', pack_size)
-        length = communicaton_system._unpacking_message(data)
+        length = communication_system._unpacking_message(data)
         self.assertEqual(length, pack_size)
         pack_format = '!{}s'.format(pack_size)
         data = struct.pack(pack_format, cmd_struct)
-        command = communicaton_system._unpacking_message(data, pack_format)
+        command = communication_system._unpacking_message(data, pack_format)
         self.assertEqual(command, self.cmd_struct)
       
         
