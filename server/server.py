@@ -153,20 +153,26 @@ class User(object):
         dir_list = directory_path.split("/")
         
         to_be_created = []
-        while os.path.join(*dir_list) not in self.paths:
+        while (len(dir_list) > 0) \
+                and (os.path.join(*dir_list) not in self.paths):
             to_be_created.insert(0, dir_list.pop())
         
-        father = os.path.join(*dir_list)
+        if len(dir_list) == 0:
+            father = ""
+        else:
+            father = os.path.join(*dir_list)
 
         new_client_path = father
         new_server_path = self.paths[new_client_path][0]
         for d in to_be_created:
             new_client_path = os.path.join(new_client_path, d)
             new_server_path = os.path.join(new_server_path, d)
-            push_path(new_client_path, new_server_path, update_user_data=False)
-
-        if not os.path.exists(new_server_path):
-            os.makedirs(new_server_path)
+            if not os.path.exists(new_server_path):
+                os.makedirs(new_server_path)
+            self.push_path(new_client_path,
+                    new_server_path,
+                    update_user_data=False
+            )
 
         return os.path.join(new_server_path, filename)
 
@@ -264,7 +270,7 @@ class Files(Resource):
                     HTTP_CONFLICT
 
         server_path = u.create_server_path(client_path)
-        
+       
         f = request.files["file_content"]
         f.save(server_path)
         
