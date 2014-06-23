@@ -8,7 +8,7 @@ import sys
 import re
 import os
 
-from communicaton_system import CmdMessageClient
+from communication_system import CmdMessageClient
 import asyncore
 from client_daemon import load_config
 
