@@ -35,7 +35,7 @@ def _unpacking_message(data, format=LENGTH_FORMAT):
     pkts = struct.unpack(format, data)
     data = pkts[0]
     if format != LENGTH_FORMAT:
-        data = json.loads(pkts[1])
+        data = json.loads(data)
     return data
 
 
@@ -48,7 +48,7 @@ class CommunicatorSock(asyncore.dispatcher_with_send):
         header = self.recv(struct.calcsize(LENGTH_FORMAT))
         data_length = self._unpacking_message(header)
         data = self.recv(data_length)
-        command = self._unpacking_message(data, '!i{}s'.format(data_length))
+        command = self._unpacking_message(data, '!{}s'.format(data_length))
         self._executer(command)
 
     def send_message(self, command_type, param=None):
