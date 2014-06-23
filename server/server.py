@@ -296,7 +296,6 @@ class Actions(Resource):
 
 
     commands = {
-        "get_files": get_files,
         "delete": _delete,
         "move": _move,
         "copy": _copy
@@ -309,7 +308,7 @@ class Actions(Resource):
             return abort(HTTP_NOT_FOUND)
 
 
-@app.route("".join(_API_PREFIX, "/files"))
+@app.route("".join((_API_PREFIX, "/files")))
 @auth.login_required
 def get_snapshot(self):
         """ Send a JSON with the timestamp of the last change in user
