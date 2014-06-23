@@ -205,22 +205,13 @@ class Files(Resource):
                 tree[v[1]] = [(p, v[2])]
             else:
                 tree[v[1]].append((p, v[2]))
-            """ Send a JSON with the timestamp of the last change in user
-            directories and an md5 for each file """
-            u = User.get_user(auth.username())
-            tree = {}
-            for p, v in u.paths.items():
-                if not v[1] in tree:
-                    tree[v[1]] = [(p, v[2])]
-                else:
-                    tree[v[1]].append((p, v[2]))
 
-            snapshot = {
-                "tree" : tree,
-                "timestamp" : u.timestamp
-            }
+        snapshot = {
+            "tree" : tree,
+            "timestamp" : u.timestamp
+        }
 
-            return json.dump(snapshot)
+        return json.dump(snapshot)
 
 
     def get(self, client_path):
