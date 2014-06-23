@@ -10,10 +10,14 @@ import json
 class TestCmdMessageClient(unittest.TestCase):
 
     def setUp(self):
-        self.command_type = "syncronized"
+        self.command_type = u'syncronized'
         self.param = {
-            "request": {},
-            "respose": {"yes": 201, "no": "300", },
+            u'request': {},
+            u'respose': {u'yes': 201, u'no': u'300', },
+        }
+        self.cmd_struct = {
+            u'request': self.command_type,
+            u'body': self.param,
         }
 
     def test_packing_message(self):
@@ -21,19 +25,18 @@ class TestCmdMessageClient(unittest.TestCase):
         pack_format = '!i{}s'.format(len(content) - struct.calcsize('i'))
         length, data = struct.unpack(pack_format, content)
         data = json.loads(data)
+        self.assertEqual(self.cmd_struct, data)
 
     def test_unpacking_message(self):
-        cmd_struct = {
-            'request': self.command_type,
-            'body': self.param,
-        }
-        cmd_struct = json.dumps(cmd_struct)
+        cmd_struct = json.dumps(self.cmd_struct)
         pack_size = len(cmd_struct)
         data = struct.pack('!i', pack_size)
         length = communicaton_system._unpacking_message(data)
-        pack_format = '!i{}s'.format(pack_size)
-        data = struct.pack(pack_format, pack_size, cmd_struct)
+        self.assertEqual(length, pack_size)
+        pack_format = '!{}s'.format(pack_size)
+        data = struct.pack(pack_format, cmd_struct)
         command = communicaton_system._unpacking_message(data, pack_format)
+        self.assertEqual(command, self.cmd_struct)
       
         
 if __name__ == '__main__':
