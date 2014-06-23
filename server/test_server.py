@@ -46,8 +46,10 @@ class TestSequenceFunctions(unittest.TestCase):
 
     def user_demo(self, user=None, psw=None):
         if not user:
+            random.seed(10)
             user = "".join(random.sample(string.letters, 5))
         if not psw:
+            random.seed(10)
             psw = "".join(random.sample(string.letters, 5))
 
         with server.app.test_client() as tc:
@@ -63,7 +65,7 @@ class TestSequenceFunctions(unittest.TestCase):
     def test_welcome(self):
         with server.app.test_client() as tc:
             rv = tc.get("/")
-            self.assertEqual(rv.status_code, 200)
+            self.assertEqual(rv.status_code, server.HTTP_OK)
             welcomed = rv.get_data().startswith("Welcome on the Server!")
             self.assertTrue(welcomed)
 
@@ -73,7 +75,7 @@ class TestSequenceFunctions(unittest.TestCase):
         dirs_counter = len(os.listdir(server.USERS_DIRECTORIES))
         with server.app.test_client() as tc:
             rv = self.user_demo()
-            self.assertEqual(rv.status_code, 201)
+            self.assertEqual(rv.status_code, server.HTTP_CREATED)
         
         # check if a directory is created
         new_counter = len(os.listdir(server.USERS_DIRECTORIES))
@@ -87,7 +89,7 @@ class TestSequenceFunctions(unittest.TestCase):
         with server.app.test_client() as tc:
             self.user_demo(user, psw)
             rv = self.user_demo(user, psw)
-            self.assertEqual(rv.status_code, 409)
+            self.assertEqual(rv.status_code, server.HTTP_CONFLICT)
 
 
     # check a GET authentication access
@@ -95,7 +97,7 @@ class TestSequenceFunctions(unittest.TestCase):
         user = "Giovannina"
         psw = "cracracra"
         rv = self.user_demo(user, psw)
-        self.assertEqual(rv.status_code, 201)
+        self.assertEqual(rv.status_code, server.HTTP_CREATED)
 
         headers = {
             'Authorization': 'Basic ' + b64encode("{0}:{1}".format(user, psw))
@@ -103,7 +105,7 @@ class TestSequenceFunctions(unittest.TestCase):
 
         with server.app.test_client() as tc:
             rv = tc.get("/hidden_page", headers=headers)
-            self.assertEqual(rv.status_code, 200)
+            self.assertEqual(rv.status_code, server.HTTP_OK)
 
 
     # check if the backup function create the folder and the files
@@ -125,10 +127,42 @@ class TestSequenceFunctions(unittest.TestCase):
                     msg="'user_data' missing in backup folder")
         shutil.rmtree("test_backup")
 
+
     # TODO:
     # def test_to_md5(self):
     #     self.assertEqual(TEST_DIRECTORY, )
 
+
+    def test_files_post(self):
+        user = "test_post"
+        psw = "test_post"
+        rv = self.user_demo(user, psw)
+        self.assertEqual(rv.status_code, 201)
+
+        headers = {
+            "Authorization": "Basic " + b64encode("{0}:{1}".format(user, psw))
+        }
+
+        content = "Hello my dear,\nit's a beautiful day here in Compiobbi."
+        with open("somefile.txt", "w") as f:
+            f.write(content)
+
+        f = open("somefile.txt", "r")
+        path = "somepath/somefile.txt"
+        with server.app.test_client() as tc:
+            rv = tc.post(
+                "{}files/{}".format(server._API_PREFIX, path),
+                headers = headers,
+                data = {
+                    "file_content": f
+                    # "file_name": "somefile.txt"
+                }
+            )
+            self.assertEqual(rv.status_code, 201)
+        f.close()
+        with open("{}{}/{}".format(TEST_DIRECTORY, user, path)) as f:
+            uploaded_content = f.read()
+            self.assertEqual(content, uploaded_content)
 
 
 if __name__ == '__main__':
