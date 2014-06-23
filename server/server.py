@@ -19,6 +19,7 @@ HTTP_CONFLICT = 409
 HTTP_CREATED = 201
 HTTP_NOT_FOUND = 404
 HTTP_BAD_REQUEST = 400
+HTTP_OK = 200
 
 app = Flask(__name__)
 api = Api(app)
@@ -153,20 +154,26 @@ class User(object):
         dir_list = directory_path.split("/")
         
         to_be_created = []
-        while os.path.join(*dir_list) not in self.paths:
+        while (len(dir_list) > 0) \
+                and (os.path.join(*dir_list) not in self.paths):
             to_be_created.insert(0, dir_list.pop())
         
-        father = os.path.join(*dir_list)
+        if len(dir_list) == 0:
+            father = ""
+        else:
+            father = os.path.join(*dir_list)
 
         new_client_path = father
         new_server_path = self.paths[new_client_path][0]
         for d in to_be_created:
             new_client_path = os.path.join(new_client_path, d)
             new_server_path = os.path.join(new_server_path, d)
-            push_path(new_client_path, new_server_path, update_user_data=False)
-
-        if not os.path.exists(new_server_path):
-            os.makedirs(new_server_path)
+            if not os.path.exists(new_server_path):
+                os.makedirs(new_server_path)
+            self.push_path(new_client_path,
+                    new_server_path,
+                    update_user_data=False
+            )
 
         return os.path.join(new_server_path, filename)
 
@@ -195,6 +202,25 @@ class Resource(Resource):
 
 
 class Files(Resource):
+    def get(self):
+        """ Send a JSON with the timestamp of the last change in user
+        directories and an md5 for each file """
+        u = User.get_user(auth.username())
+        tree = {}
+        for p, v in u.paths.items():
+            if not v[1] in tree:
+                tree[v[1]] = [(p, v[2])]
+            else:
+                tree[v[1]].append((p, v[2]))
+
+        snapshot = {
+            "tree" : tree,
+            "timestamp" : u.timestamp
+        }
+
+        return json.dump(snapshot)
+
+
     def get(self, client_path):
         """ Download
         this function return file content as a string using GET """
@@ -236,7 +262,7 @@ class Files(Resource):
                     HTTP_CONFLICT
 
         server_path = u.create_server_path(client_path)
-        
+       
         f = request.files["file_content"]
         f.save(server_path)
         
@@ -245,25 +271,6 @@ class Files(Resource):
 
 
 class Actions(Resource):
-    def get_files(self):
-        """ Send a JSON with the timestamp of the last change in user
-        directories and an md5 for each file """
-        u = User.get_user(auth.username())
-        tree = {}
-        for p, v in u.paths.items():
-            if not v[1] in tree:
-                tree[v[1]] = [(p, v[2])]
-            else:
-                tree[v[1]].append((p, v[2]))
-
-        snapshot = {
-            "tree" : tree,
-            "timestamp" : u.timestamp
-        }
-
-        return json.dump(snapshot)
-
-
     def _delete(self):
         """ This function deletes a selected file """
         u = User.get_user(auth.username())
@@ -315,7 +322,6 @@ class Actions(Resource):
 
 
     commands = {
-        "get_files": get_files,
         "delete": _delete,
         "move": _move,
         "copy": _copy
@@ -388,7 +394,7 @@ def main():
     app.run(host="0.0.0.0",debug=True)         # TODO: remove debug=True
 
 
-api.add_resource(Files, "{}files/<path:client_path>".format(_API_PREFIX))
+api.add_resource(Files, "{}files/<path:client_path>".format(_API_PREFIX), "{}files/".format(_API_PREFIX))
 api.add_resource(Actions, "{}actions/<string:cmd>".format(_API_PREFIX))
 
 if __name__ == "__main__":
