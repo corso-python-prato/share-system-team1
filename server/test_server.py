@@ -57,22 +57,6 @@ class TestSequenceFunctions(unittest.TestCase):
                         "psw" : psw
                     }
             )
-
-
-    # check id uniqueness
-    # DANGER current comodifications of users.counter_id
-    def test_id(self):
-        tmp = server.users.counter_id
-        
-        nums = []
-        for i in range(10):
-            nums.append(server.users.get_id())
-
-        for i, n in enumerate(nums):
-            for j in range(i+1, len(nums)):
-                self.assertNotEqual(n, nums[j])
-
-        server.users.counter_id = tmp
     
 
     # check if the server works
@@ -137,10 +121,17 @@ class TestSequenceFunctions(unittest.TestCase):
 
     # check if the backup function create the folder and the files
     def test_backup_config_files(self):
-        server.backup_config_files("test_backup")
+        successful =  server.backup_config_files("test_backup")
+        if not successful:
+            # the directory is already present due to an old failed test
+            shutil.rmtree("test_backup")
+            successful =  server.backup_config_files("test_backup")
+
+        self.assertTrue(successful)
+
         try:
             dir_content = os.listdir("test_backup")
-        except IOError:
+        except OSError:
             self.fail("Directory not created")
         else:
             self.assertIn(server.USERS_DATA, dir_content,

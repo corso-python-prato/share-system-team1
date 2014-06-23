@@ -33,16 +33,16 @@ parser.add_argument("task", type=str)
 
 def to_md5(path, block_size=2**20):
     ''' if path is a file, return a md5;
-    if path is a directory, return False'''
+    if path is a directory, return False '''
     if os.path.isdir(path):
         return False
 
     m = hashlib.md5()
     with open(path,'rb') as f:
-        for chunk in iter(lambda: f.read(block_size), b''): 
+        for chunk in iter(lambda: f.read(block_size), b''):
             m.update(chunk)
 
-    return m.digest()
+    return m.hexdigest()
 
 
 class User(object):
@@ -51,25 +51,25 @@ class User(object):
         · inside Snapshot: { md5 : [client_path1, client_path2] }
     server_path is for shared directories management '''
 
-# class initialization: first try with a config file, if fail initialize
-# from scratch
     users = {}
 
-    try:
-        ud = open(USERS_DATA, "r")
-        saved = json.load(ud)
-        ud.close()
-    # if error, create new structure from scratch
-    except IOError:
-        pass                # missing file
-    except ValueError:      # invalid json
-        os.remove(USERS_DATA)
-    else:
-        for u, v in saved["users"].items():
-            User(u, u["psw"], u["paths"])
+# CLASS AND STATIC METHODS
+    @staticmethod
+    def user_class_init():
+        try:
+            ud = open(USERS_DATA, "r")
+            saved = json.load(ud)
+            ud.close()
+        # if error, create new structure from scratch
+        except IOError:
+            pass                # missing file
+        except ValueError:      # invalid json
+            os.remove(USERS_DATA)
+        else:
+            for u, v in saved["users"].items():
+                User(u, None, from_dict=v)
 
 
-# other class methods
     @classmethod
     def save_users(cls, filename=None):
         if not filename:
@@ -77,7 +77,7 @@ class User(object):
 
         to_save = {
             "users" : {}
-        }        
+        }
         for u, v in cls.users.items():
             to_save["users"][u] = v.to_dict()
 
@@ -90,20 +90,26 @@ class User(object):
         try:
             return cls.users[username]
         except KeyError:
-            raise ConflictError("User doesn't exist")
+            raise MissingUserError("User doesn't exist")
 
 
-# dynamic methods
-    def __init__(self, username, password, paths=None):
+# DYNAMIC METHODS
+    def __init__(self, username, clear_password, from_dict=None):
     # if restoring the server
-        if paths:
-            self.psw = password
-            self.paths = paths
-            User.user[username] = self
+        if from_dict:
+            self.psw = from_dict["psw"]
+            self.paths = from_dict["paths"]
+            self.timestamp = from_dict["timestamp"]
+            User.users[username] = self
             return
 
     # else if I'm creating a new user
-        psw_hash = sha256_crypt.encrypt(password)
+        if username in User.users:
+            raise ConflictError(
+                "'{}'' is an username already taken".format(username)
+            )
+
+        psw_hash = sha256_crypt.encrypt(clear_password)
         full_path = os.path.join(USERS_DIRECTORIES, username)
         try:
             os.mkdir(full_path)
@@ -112,14 +118,18 @@ class User(object):
                     "Conflict while creating the directory for a new user"
             )
 
-    # object attributes
+    # OBJECT ATTRIBUTES
         self.psw = psw_hash
-        self.timestamp = time.time()        # last change
-        self.paths = {}     # path of each file and each directory of the user!
-                            # client_path : [server_path, md5]
+
+        # path of each file and each directory of the user:
+        #     { client_path : [server_path, md5, timestamp] }
+        self.paths = {}
+
+        # timestamp of the last change in the user's files
+        self.timestamp = time.time()
 
     # update users, file
-        self.push_path("", full_path)
+        self.push_path("", full_path, update_user_data=False)
         User.users[username] = self
         User.save_users()
 
@@ -128,7 +138,7 @@ class User(object):
         return {
             "psw" : self.psw,
             "paths" : self.paths,
-            "timestamp" : self.timestamp,
+            "timestamp" : self.timestamp
         }
 
 
@@ -144,30 +154,31 @@ class User(object):
         dir_list = directory_path.split("/")
         
         to_be_created = []
-        while os.path.join(dir_list) not in self.paths:
+        while os.path.join(*dir_list) not in self.paths:
             to_be_created.insert(0, dir_list.pop())
         
-        if not dir_list:
-            fathernew_client_path = ""
-        else:
-            father = os.path.join(dir_list)
+        father = os.path.join(*dir_list)
 
-        new_server_path = self.paths[new_client_path][0]
         new_client_path = father
+        new_server_path = self.paths[new_client_path][0]
         for d in to_be_created:
             new_client_path = os.path.join(new_client_path, d)
             new_server_path = os.path.join(new_server_path, d)
-            push_path(new_client_path, new_server_path)
+            push_path(new_client_path, new_server_path, update_user_data=False)
 
-        return new_server_path, filename
+        if not os.path.exists(new_server_path):
+            os.makedirs(new_server_path)
+
+        return os.path.join(new_server_path, filename)
 
 
-    def push_path(self, client_path, server_path, update_attributes=True):
+    def push_path(self, client_path, server_path, update_user_data=True):
         md5 = to_md5(server_path)
         now = time.time()
         self.paths[client_path] = [server_path, md5, now]
-        if update_attributes:
+        if update_user_data:
             self.timestamp = now
+            User.save_users()
         # TODO: manage shared folder here. Something like:
         # for s, v in shared_folder.items():
         #     if server_path.startswith(s):
@@ -177,6 +188,7 @@ class User(object):
     def rm_path(self, client_path):
         self.timestamp = time.time()
         del self.paths[client_path]
+        User.save_users()
 
 
 class Resource(Resource):
@@ -190,7 +202,8 @@ class Files(Resource):
         u = User.get_user(auth.username())
         server_path = u.get_server_path(client_path)
         if not server_path:
-            abort(HTTP_NOT_FOUND)
+            return "File unreachable", HTTP_NOT_FOUND
+
         try:
             f = open(server_path, "r")
             content = f.read()
@@ -205,21 +218,14 @@ class Files(Resource):
         this function updates an existing file """
         u = User.get_user(auth.username())
         server_path = u.get_server_path(client_path)
+        if not server_path:
+            abort(HTTP_NOT_FOUND)
         
-        directory_path, file_name = os.path.split(server_path)
         f = request.files["file_content"]
-        server_dir = os.getcwd()                    
+        f.save(server_path)
 
-        try:
-            os.chdir(directory_path)
-            f.save(file_name)                   # ISSUE: non è possibile dare a save la path completa, senza usare i chdir?
-            os.chdir(server_dir)
-        except IOError: 
-            abort(HTTP_CONFLICT)
-        else:
-            u.push_path(client_path, server_path)
-            # TODO: check here if the directory is shared and notify to the other users
-            return u.timestamp, HTTP_CREATED
+        u.push_path(client_path, server_path)
+        return u.timestamp, HTTP_CREATED
 
 
     def post(self, client_path):
@@ -227,19 +233,14 @@ class Files(Resource):
         this function upload a new file using POST """
         u = User.get_user(auth.username())
         if u.get_server_path(client_path):
-            return "An file of the same name already exists in the same path", HTTP_CONFLICT
+            return "A file of the same name already exists in the same path", \
+                    HTTP_CONFLICT
 
-        server_path, filename = u.create_server_path(client_path)
-        os.makedirs(server_path)
-
-        server_dir = os.getcwd()
-        os.chdir(server_path)
-
+        server_path = u.create_server_path(client_path)
+        
         f = request.files["file_content"]
-        f.save(filename)
-        os.chdir(server_dir)
-
-        server_path = os.path.join(server_path, filename)
+        f.save(server_path)
+        
         u.push_path(client_path, server_path)
         return u.timestamp, HTTP_CREATED
 
@@ -269,14 +270,13 @@ class Actions(Resource):
         u = User.get_user(auth.username())
         client_path = request.form["path"]
         server_path = u.get_server_path(client_path)
+        if not server_path:
+            abort(HTTP_NOT_FOUND)
 
-        try:
-            os.remove(server_path)
-        except KeyError:
-            return abort(HTTP_CONFLICT)
-        else:
-            u.rm_path(client_path)
-            return u.timestamp
+        os.remove(server_path)
+
+        u.rm_path(client_path)
+        return u.timestamp
 
 
     def _copy(self):
@@ -294,25 +294,25 @@ class Actions(Resource):
         client_dest = request.form["file_dest"]
 
         server_src = u.get_server_path(client_src)
-        server_dest, filename = u.create_server_path(client_dest)
-        os.makedirs(server_dest)
-        server_dest = os.path.join(server_dest, filename)
+        if not server_src:
+            abort(HTTP_NOT_FOUND)
+
+        server_dest = u.create_server_path(client_dest)
         
         try:
             if keep_the_original:
                 shutil.copy(server_src, server_dest)
             else:
                 shutil.move(server_src, server_dest)
-        except KeyError:
+        except IOError:
             return abort(HTTP_CONFLICT)
         else:
             if keep_the_original:
                 u.push_path(client_dest, server_dest)
-                return u.timestamp
             else:
-                u.push_path(client_dest, server_dest, update_attributes=False)
+                u.push_path(client_dest, server_dest, update_user_data=False)
                 u.rm_path(client_src)
-                return u.timestamp
+            return u.timestamp
 
 
     commands = {
@@ -331,13 +331,15 @@ class Actions(Resource):
 
 @auth.verify_password
 def verify_password(username, password):
-    if username not in users.users:
+    try:
+        u = User.get_user(username)
+    except MissingUserError:
         return False
-    return sha256_crypt.verify(password, users.users[username]["psw"])
+    else:
+        return sha256_crypt.verify(password, u.psw)
 
 
 @app.route("{}create_user".format(_API_PREFIX), methods = ["POST"])
-# @app.route("/API/v1/create_user", methods = ["POST"])
 def create_user():
         ''' Expected as POST data:
         { "user" : username, "psw" : password } '''
@@ -346,12 +348,12 @@ def create_user():
             psw = request.form["psw"]
         except KeyError:
             abort(HTTP_BAD_REQUEST)
+        
+        if user in User.users:
+            return "This user already exists", HTTP_CONFLICT
         else:
-            if user in User.users:
-                return "This user already exists", HTTP_CONFLICT
-            else:
-                User(user, psw)
-                return "user created", HTTP_CREATED
+            User(user, psw)
+            return "user created", HTTP_CREATED
 
 
 @app.route("/hidden_page")
@@ -373,7 +375,7 @@ def backup_config_files(folder_name=None):
 
     try:
         os.makedirs(folder_name)
-    except IOError:
+    except OSError:
         return False
     else:
         User.save_users(os.path.join(folder_name, USERS_DATA))
@@ -383,10 +385,11 @@ def backup_config_files(folder_name=None):
 def main():
     if not os.path.isdir(USERS_DIRECTORIES):
         os.mkdir(USERS_DIRECTORIES)
+    User.user_class_init()
     app.run(host="0.0.0.0",debug=True)         # TODO: remove debug=True
 
 
-api.add_resource(Files, "{}files/<path:path>".format(_API_PREFIX))
+api.add_resource(Files, "{}files/<path:client_path>".format(_API_PREFIX))
 api.add_resource(Actions, "{}actions/<string:cmd>".format(_API_PREFIX))
 
 if __name__ == "__main__":
