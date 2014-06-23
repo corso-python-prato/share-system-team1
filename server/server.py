@@ -245,25 +245,6 @@ class Files(Resource):
 
 
 class Actions(Resource):
-    def get_files(self):
-        """ Send a JSON with the timestamp of the last change in user
-        directories and an md5 for each file """
-        u = User.get_user(auth.username())
-        tree = {}
-        for p, v in u.paths.items():
-            if not v[1] in tree:
-                tree[v[1]] = [(p, v[2])]
-            else:
-                tree[v[1]].append((p, v[2]))
-
-        snapshot = {
-            "tree" : tree,
-            "timestamp" : u.timestamp
-        }
-
-        return json.dump(snapshot)
-
-
     def _delete(self):
         """ This function deletes a selected file """
         u = User.get_user(auth.username())
@@ -326,6 +307,27 @@ class Actions(Resource):
             return Actions.commands[cmd](self)
         except KeyError:
             return abort(HTTP_NOT_FOUND)
+
+
+@app.route("".join(_API_PREFIX, "/files"))
+@auth.login_required
+def get_snapshot(self):
+        """ Send a JSON with the timestamp of the last change in user
+        directories and an md5 for each file """
+        u = User.get_user(auth.username())
+        tree = {}
+        for p, v in u.paths.items():
+            if not v[1] in tree:
+                tree[v[1]] = [(p, v[2])]
+            else:
+                tree[v[1]].append((p, v[2]))
+
+        snapshot = {
+            "tree" : tree,
+            "timestamp" : u.timestamp
+        }
+
+        return json.dump(snapshot)
 
 
 @auth.verify_password
