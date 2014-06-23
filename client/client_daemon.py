@@ -17,13 +17,14 @@ import time
 import json
 import os
 
+
 class ServerCommunicator(object):
 
     def __init__(self, server_url, username, password, dir_path):
         self.auth = HTTPBasicAuth(username, password)
         self.server_url = server_url
         self.dir_path = dir_path
-        self.timestamp = None   #timestamp for Synchronization
+        self.timestamp = None   # timestamp for Synchronization
         try:
             with open('timestamp.json', 'r') as timestamp_file:
                 self.timestamp = timestamp_file.load()[0]
@@ -35,7 +36,7 @@ class ServerCommunicator(object):
         while True:
             try:
                 request_result = callback(
-                    auth = self.auth,
+                    auth=self.auth,
                     *args, **kwargs)
                 print success
                 return request_result
@@ -51,7 +52,7 @@ class ServerCommunicator(object):
         sync = self._try_request(requests.get, "Success", "Fail", **request)
         with open("timestamp.json", "w") as timestamp_file:
             timestamp_file.dump(sync.text.load()[0])
-        diffs = diff_snapshots(sync.text)
+        diffs = syncronize_dispatcher(*sync.text.load())
         for tstamp, obj in diffs.iteritems():
             req = obj[0]
             args = obj[1]
@@ -81,7 +82,7 @@ class ServerCommunicator(object):
         success_log = "file downloaded! " + dst_path
 
         server_url = "{}/files/{}".format(
-            self.server_url, 
+            self.server_url,
             self.get_url_relpath(dst_path))
 
         request = {"url": server_url}
@@ -90,25 +91,24 @@ class ServerCommunicator(object):
         local_path = self.get_abspath(dst_path)
         return local_path, r.text
     
-
-    def upload_file(self, dst_path, put_file = False):
+    def upload_file(self, dst_path, put_file=False):
         """ upload a file to server """
 
         file_content = ''
         try:
             file_content = open(dst_path, 'rb')
         except IOError:
-            return False #Atomic create and delete error!
+            return False  # Atomic create and delete error!
 
         server_url = "{}/files/{}".format(
-            self.server_url, 
+            self.server_url,
             self.get_url_relpath(dst_path))
 
         error_log = "ERROR upload request " + dst_path
         success_log = "file uploaded! " + dst_path
         request = {
             "url": server_url,
-            "files": {'file_content':file_content}
+            "files": {'file_content': file_content}
         }
 
         if put_file:
@@ -166,22 +166,23 @@ class ServerCommunicator(object):
     def create_user(self, username, password):
         
         error_log = "User creation error"
-        success_log = "user created!" 
+        success_log = "user created!"
 
         server_url = "{}/user/create".format(self.server_url)
 
         request = {
             "url": server_url,
-            "data":{
-                    "user": username,
-                    "psw": password
+            "data": {
+                "user": username,
+                "psw": password
             }
         }
 
         self._try_request(requests.post, success_log, error_log, **request)
 
+
 class FileSystemOperator(object):
-    
+
     def __init__(self, event_handler, server_com):
         self.event_handler = event_handler
         self.server_com = server_com
@@ -205,7 +206,7 @@ class FileSystemOperator(object):
         self.send_lock(self.server_com.get_abspath(path))
         abs_path, content = self.server_com.download_file(path)
         try:
-            os.makedirs(os.path.split(abs_path)[0], 0755 )
+            os.makedirs(os.path.split(abs_path)[0], 0755)
         except OSError:
             pass
         with open(abs_path, 'w') as f:
@@ -214,8 +215,8 @@ class FileSystemOperator(object):
         self.send_unlock()
 
     def move_a_file(self, origin_path, dst_path):
-        """ 
-        move a file 
+        """
+        move a file
 
             send lock to watchdog for origin and dst path
             create directory chain for dst_path
@@ -225,14 +226,15 @@ class FileSystemOperator(object):
         self.send_lock(self.server_com.get_abspath(origin_path))
         self.send_lock(self.server_com.get_abspath(dst_path))
         try:
-            os.makedirs(os.path.split(dst_path)[0], 0755 )
+            os.makedirs(os.path.split(dst_path)[0], 0755)
         except OSError:
             pass
         shutil.move(origin_path, dst_path)
         self.send_unlock()
 
     def copy_a_file(self, origin_path, dst_path):
-        """ copy a file 
+        """
+        copy a file
 
             send lock to watchdog for origin and dest path
             create directory chain for dst_path
@@ -242,15 +244,16 @@ class FileSystemOperator(object):
         self.send_lock(self.server_com.get_abspath(origin_path))
         self.send_lock(self.server_com.get_abspath(dst_path))
         try:
-            os.makedirs(os.path.split(dst_path)[0], 0755 )
+            os.makedirs(os.path.split(dst_path)[0], 0755)
         except OSError:
             pass
         shutil.copyfile(origin_path, dst_path)
         self.send_unlock()
 
     def delete_a_file(self, path):
-        """ 
-        delete a file 
+        """
+        delete a file
+
             send lock to watchdog
             delete file
             send unlock to watchdog
@@ -261,6 +264,7 @@ class FileSystemOperator(object):
         except IOError:
             pass
         self.send_unlock()
+
 
 def load_config():
     with open('config.json', 'r') as config_file:
@@ -276,8 +280,8 @@ class DirectoryEventHandler(FileSystemEventHandler):
         self.path_ignored = []
         
     def _is_copy(self, abs_path):
-        """ 
-        check if a file_md5 already exists in my local snapshot 
+        """
+        check if a file_md5 already exists in my local snapshot
         IF IS A COPY : return the first path of already exists file
         ELSE: return False
         """
@@ -341,7 +345,7 @@ class DirectoryEventHandler(FileSystemEventHandler):
         
         if event.src_path not in self.path_ignored:
             if not event.is_directory:
-                self.cmd.upload_file(event.src_path, put_file = True)
+                self.cmd.upload_file(event.src_path, put_file=True)
         else:
             print "ingnored modified on ", event.src_path
 
@@ -405,10 +409,11 @@ class DirSnapshotManager(object):
             f.write(json.dumps({"timestamp": timestamp, "snapshot": snapshot}))
 
     def diff_snapshot_paths(self, snap_client, snap_server):
-        """ from 2 snapshot return 3 list of path difference:
+        """
+            from 2 snapshot return 3 list of path difference:
             list of new server path
-            list of new client path 
-            list of equal path 
+            list of new client path
+            list of equal path
         """
         client_paths = [val for subl in snap_client.values() for val in subl]
         server_paths = [val for subl in snap_server.values() for val in subl]
@@ -416,7 +421,7 @@ class DirSnapshotManager(object):
         new_client_paths = list(set(client_paths) - set(server_paths))
         equal_paths = list(set(client_paths).intersection(set(server_paths)))
         
-        return new_client_paths, new_server_paths , equal_paths
+        return new_client_paths, new_server_paths, equal_paths
         
     def find_file_md5(self, snapshot, new_path):
         """ from snapshot and a path find the md5 of file inside snapshot"""
@@ -432,25 +437,25 @@ class DirSnapshotManager(object):
         new_client_paths, new_server_paths, equal_paths =  self.diff_snapshot_paths(self.local_full_snapshot , server_snapshot)
         print
         #NO internal conflict
-        if self.local_check():  #1)
-            if server_timestamp > local_timestamp: #1) b.
-                for new_server_path in new_server_paths: #1) b 1
+        if self.local_check():  # 1)
+            if server_timestamp > local_timestamp:  # 1) b.
+                for new_server_path in new_server_paths:  # 1) b 1
                     if not self.find_file_md5(server_snapshot, new_server_path) in self.local_full_snapshot: #1) b 1 I
-                        print "download:\t" + new_server_path 
-                    else: #1) b 1 II
+                        print "download:\t" + new_server_path
+                    else:  # 1) b 1 II
                         print "copy or rename:\t" + new_server_path
                         """ II. se esiste un file con lo stesso md5 e se esiste un altro path corrispondente
                             allo stesso md5 faccio la copia del file, altrimenti lo rinomino 
                         """
-                for equal_path in equal_paths: #1) b 2
+                for equal_path in equal_paths:  # 1) b 2
                     if self.find_file_md5(self.local_full_snapshot, equal_path) != self.find_file_md5(server_snapshot, equal_path):
                         print "update download:\t" + equal_path
                         """
-                        scarico la versione del server 
+                        scarico la versione del server
                         """
                     else:
                         print "no action:\t" + equal_path
-                for new_client_path in new_client_paths: #1) b 3
+                for new_client_path in new_client_paths:  # 1) b 3
                     print "remove local:\t" + new_client_path
                     """
                     elimino il file locale
@@ -458,14 +463,14 @@ class DirSnapshotManager(object):
             else:
                 print "synchronized"
         #internal conflicts
-        else: # 2)
-            if local_timestamp == server_timestamp: #2) a
-                print "push all" 
+        else:  # 2)
+            if local_timestamp == server_timestamp:  # 2) a
+                print "push all"
                 """
                 tutte le modifiche in locale vengono riportate sul server
                 """
-            elif server_timestamp > local_timestamp: #2) b
-                for new_server_path in new_server_paths: #2) b 1
+            elif server_timestamp > local_timestamp:  # 2) b
+                for new_server_path in new_server_paths:  # 2) b 1
                     if not self.find_file_md5(server_snapshot, new_server_path) in self.local_full_snapshot: #2) b 1 I
                         print  "download or remove timestamp check:\t" + new_server_path
                         """
@@ -473,38 +478,39 @@ class DirSnapshotManager(object):
                          si cancella il file in remoto a seconda che il timestamp relativo sia
                          maggiore o minore di quello del client
                         """
-                    else: #2) b 1 II
-                        print  "copy or rename:\t" + new_server_path
+                    else:  # 2) b 1 II
+                        print "copy or rename:\t" + new_server_path
                         """
-                        copia o rinomina 
+                        copia o rinomina
                         """
 
-                for equal_path in equal_paths: #2) b 2
-                    if "file_timestamp_server" < "file_timestamp_client": #2) b 2 I
+                for equal_path in equal_paths:  # 2) b 2
+                    if "file_timestamp_server" < "file_timestamp_client":  # 2) b 2 I
                         print "server push:\t" + equal_path
                         """
                         aggiorno il server
                          """
-                    else:  #2) b 2 II 
+                    else:  # 2) b 2 II 
                         print "create.conflicted:\t" + equal_path
                         """
-                        duplicazione file con estensione 
+                        duplicazione file con estensione
                         .conflicted e lo carico su server"""
-                for new_client_path in new_client_paths: #2) b 3
-                    print "remove remote\t" + new_client_path 
+                for new_client_path in new_client_paths:  # 2) b 3
+                    print "remove remote\t" + new_client_path
                     """
                     carico il file su server
-                    """ 
+                    """
+
 
 def main():
     config = load_config()
     snapshot_manager = DirSnapshotManager(config['dir_path'], config['snapshot_file_path'])
     
     server_com = ServerCommunicator(
-        server_url = config['server_url'], 
-        username = config['username'],
-        password = config['password'],
-        dir_path = config['dir_path'])
+        server_url=config['server_url'],
+        username=config['username'],
+        password=config['password'],
+        dir_path=config['dir_path'])
 
     event_handler = DirectoryEventHandler(server_com, snapshot_manager)
     file_system_op = FileSystemOperator(event_handler, server_com)
