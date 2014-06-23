@@ -148,7 +148,7 @@ class TestSequenceFunctions(unittest.TestCase):
     #     self.assertEqual(TEST_DIRECTORY, )
 
 
-    def files_post(self):
+    def test_files_post(self):
         f = open(DEMO_FILE, "r")
         with server.app.test_client() as tc:
             rv = tc.post(
@@ -164,15 +164,21 @@ class TestSequenceFunctions(unittest.TestCase):
 
 
     def test_files_get(self):
-        self.files_post()
+        client_path = os.path.join("prr", DEMO_FILE)
+        server_path = os.path.join(TEST_DIRECTORY, DEMO_USER, client_path)
+        os.makedirs(os.path.dirname(server_path))
+        shutil.copy(DEMO_FILE, server_path)
+
+        server.User.users[DEMO_USER].paths[client_path] = [server_path, 0, 0]
+
         with server.app.test_client() as tc:
             rv = tc.get(
-                "{}files/{}".format(server._API_PREFIX, DEMO_PATH),
+                "{}files/{}".format(server._API_PREFIX, client_path),
                 headers = DEMO_HEADERS
             )
             self.assertEqual(rv.status_code, 200)
         
-        with open("{}{}/{}".format(TEST_DIRECTORY, DEMO_USER, DEMO_PATH)) as f:
+        with open(server_path) as f:
             got_content = f.read()
             self.assertEqual(DEMO_CONTENT, got_content)
 
