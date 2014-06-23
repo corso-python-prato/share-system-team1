@@ -13,12 +13,38 @@ from base64 import b64encode
 TEST_DIRECTORY = "test_users_dirs/"
 TEST_USER_DATA = "test_user_data.json"
 
+DEMO_USER = "i_am_an_user@rawbox.it"
+DEMO_PSW = "very_secret_password"
+DEMO_HEADERS = {
+    "Authorization": "Basic " + b64encode("{0}:{1}".format(DEMO_USER, DEMO_PSW))
+}
+DEMO_FILE = "somefile.txt"
+DEMO_PATH = "somepath/somefile.txt"
+DEMO_CONTENT = "Hello my dear,\nit's a beautiful day here in Compiobbi."
+
+
+def create_demo_user(user=None, psw=None):
+    if not user:
+        random.seed(10)
+        user = "".join(random.sample(string.letters, 5))
+    if not psw:
+        random.seed(10)
+        psw = "".join(random.sample(string.letters, 5))
+
+    with server.app.test_client() as tc:
+        return tc.post("/API/v1/create_user",
+                data = {
+                    "user" : user,
+                    "psw" : psw
+                }
+        )
+
 
 class TestSequenceFunctions(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-    # set a test "USERS_DIRECTORIES"
+        # set a test "USERS_DIRECTORIES"
         try:
             os.mkdir(TEST_DIRECTORY)
         except OSError:
@@ -27,14 +53,20 @@ class TestSequenceFunctions(unittest.TestCase):
 
         server.USERS_DIRECTORIES = TEST_DIRECTORY
     
-    # set a test "USER_DATA" json
+        # set a test "USER_DATA" json
         open(TEST_USER_DATA, "w").close()
         server.USERS_DATA = TEST_USER_DATA
+
+        # demo user configuration
+        create_demo_user(DEMO_USER, DEMO_PSW)
+        with open(DEMO_FILE, "w") as f:
+            f.write(DEMO_CONTENT)
 
 
     @classmethod
     def tearDownClass(cls):
-    # restore previous status
+        # restore previous status
+        os.remove(DEMO_FILE)
         os.remove(TEST_USER_DATA)
         shutil.rmtree(TEST_DIRECTORY)
 
@@ -42,23 +74,6 @@ class TestSequenceFunctions(unittest.TestCase):
     def setUp(self):
         server.app.config.update(TESTING=True)
         server.app.testing = True
-
-
-    def user_demo(self, user=None, psw=None):
-        if not user:
-            random.seed(10)
-            user = "".join(random.sample(string.letters, 5))
-        if not psw:
-            random.seed(10)
-            psw = "".join(random.sample(string.letters, 5))
-
-        with server.app.test_client() as tc:
-            return tc.post("/API/v1/create_user",
-                    data = {
-                        "user" : user,
-                        "psw" : psw
-                    }
-            )
     
 
     # check if the server works
@@ -74,7 +89,7 @@ class TestSequenceFunctions(unittest.TestCase):
     def test_correct_user_creation(self):
         dirs_counter = len(os.listdir(server.USERS_DIRECTORIES))
         with server.app.test_client() as tc:
-            rv = self.user_demo()
+            rv = create_demo_user()
             self.assertEqual(rv.status_code, server.HTTP_CREATED)
         
         # check if a directory is created
@@ -87,8 +102,8 @@ class TestSequenceFunctions(unittest.TestCase):
         user = "Gianni"
         psw = "IloveJava"
         with server.app.test_client() as tc:
-            self.user_demo(user, psw)
-            rv = self.user_demo(user, psw)
+            create_demo_user(user, psw)
+            rv = create_demo_user(user, psw)
             self.assertEqual(rv.status_code, server.HTTP_CONFLICT)
 
 
@@ -96,7 +111,7 @@ class TestSequenceFunctions(unittest.TestCase):
     def test_correct_hidden_page(self):
         user = "Giovannina"
         psw = "cracracra"
-        rv = self.user_demo(user, psw)
+        rv = create_demo_user(user, psw)
         self.assertEqual(rv.status_code, server.HTTP_CREATED)
 
         headers = {
@@ -134,35 +149,18 @@ class TestSequenceFunctions(unittest.TestCase):
 
 
     def test_files_post(self):
-        user = "test_post"
-        psw = "test_post"
-        rv = self.user_demo(user, psw)
-        self.assertEqual(rv.status_code, 201)
-
-        headers = {
-            "Authorization": "Basic " + b64encode("{0}:{1}".format(user, psw))
-        }
-
-        content = "Hello my dear,\nit's a beautiful day here in Compiobbi."
-        with open("somefile.txt", "w") as f:
-            f.write(content)
-
-        f = open("somefile.txt", "r")
-        path = "somepath/somefile.txt"
+        f = open(DEMO_FILE, "r")
         with server.app.test_client() as tc:
             rv = tc.post(
-                "{}files/{}".format(server._API_PREFIX, path),
-                headers = headers,
-                data = {
-                    "file_content": f
-                    # "file_name": "somefile.txt"
-                }
+                "{}files/{}".format(server._API_PREFIX, DEMO_PATH),
+                headers = DEMO_HEADERS,
+                data = { "file_content": f }
             )
             self.assertEqual(rv.status_code, 201)
         f.close()
-        with open("{}{}/{}".format(TEST_DIRECTORY, user, path)) as f:
+        with open("{}{}/{}".format(TEST_DIRECTORY, DEMO_USER, DEMO_PATH)) as f:
             uploaded_content = f.read()
-            self.assertEqual(content, uploaded_content)
+            self.assertEqual(DEMO_CONTENT, uploaded_content)
 
 
 if __name__ == '__main__':
