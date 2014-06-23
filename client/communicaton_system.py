@@ -101,3 +101,4 @@ class CmdMessageClient(CommunicatorSock):
         data = self.recv(data_length)
         command = unpacking_message(data, '!{}s'.format(data_length))
         return command
+        
