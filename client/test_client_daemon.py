@@ -21,7 +21,6 @@ class ClientDaemonTest(unittest.TestCase):
 	def test_upload(self, put_file = False):
 		password = "passwordSegretissima"
 		username = "usernameFarlocco"
-		
 		file_path = '/Users/marc0/progetto/prove_deamon/bla.txt'
 		mock_file_content = open(file_path, 'r')
 
@@ -58,7 +57,23 @@ class ClientDaemonTest(unittest.TestCase):
 	def test_upload_put(self):
 		pass
 		#self.test_upload(put_file = True)
+	
+	def test_delete(self):
+		pass
 
+	def test_on_moved(self):
+		pass
+
+	def test_on_created(self):
+		pass
+
+	def test_on_deleted(self):
+		pass
+
+	def test_on_modified(self):
+		pass
+
+	"""
 	def test_synchronize(self):
 		status_code = 200
 
@@ -89,6 +104,9 @@ class ClientDaemonTest(unittest.TestCase):
 					'req_move': fakemove_a_file,
 					'req_copy': fakecopy_a_file
 				}.get(req)(args) 
+
+	"""
+
 
 	def test_delete(self):
 		pass
@@ -138,6 +156,7 @@ class ClientDaemonTest(unittest.TestCase):
 		snapshot_manager.syncronize_dispatcher(
 			server_timestamp = 123124,
 			server_snapshot = mock_snap_server)
+		
 	def diff_snapshot_paths(self):
 		snapshot_manager = self.init_snapshot()
 		#mock_equal = """[u'/Users/marc0/progetto/prove_deamon/asdas/asdasd.txt', u'/Users/marc0/progetto/prove_deamon/asdas/Nuovo documento di testo.txt', u'/Users/marc0/progetto/prove_deamon/dsa.txt', u'/Users/marc0/progetto/prove_deamon/Nuovo documento di testo (4).txt', u'/Users/marc0/progetto/prove_deamon/Nuovo documentodi testo (3).txt', u'/Users/marc0/progetto/prove_deamon/bla.txt', u'/Users/marc0/progetto/prove_deamon/asdas/sdadsda.txt', u'/Users/marc0/progetto/prove_deamon/Nuovo documento di testo (5).txt', u'/Users/marc0/progetto/prove_deamon/Nuovo documento di testo.txt', u'/Users/marc0/progetto/prove_deamon/Nuovo documento di testo (2).txt']"""
@@ -157,6 +176,6 @@ class ClientDaemonTest(unittest.TestCase):
 		#self.assertEqual(str(equal), mock_equal)
 		#self.assertEqual(str(new_server), mock_new_server)
 
+
 if __name__ == '__main__':
 	unittest.main()
-
