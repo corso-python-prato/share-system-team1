@@ -46,8 +46,10 @@ class TestSequenceFunctions(unittest.TestCase):
 
     def user_demo(self, user=None, psw=None):
         if not user:
+            random.seed(10)
             user = "".join(random.sample(string.letters, 5))
         if not psw:
+            random.seed(10)
             psw = "".join(random.sample(string.letters, 5))
 
         with server.app.test_client() as tc:
@@ -105,19 +107,6 @@ class TestSequenceFunctions(unittest.TestCase):
             rv = tc.get("/hidden_page", headers=headers)
             self.assertEqual(rv.status_code, server.HTTP_OK)
 
-
-    def test_files_get(self):
-        user = "provaget"
-        psw = "provaget"
-        rv = self.user_demo(user,psw)
-
-        headers = {
-            'Authorization': 'Basic ' + b64encode("{0}:{1}".format(user, psw))
-        }
-
-        with server.app.test_client() as tc:
-            rv = tc.get("API/v1/files", headers=headers)
-            self.assertEqual(rv.status_code, server.HTTP_OK)
 
     # check if the backup function create the folder and the files
     def test_backup_config_files(self):
