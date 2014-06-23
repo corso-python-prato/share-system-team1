@@ -148,7 +148,7 @@ class TestSequenceFunctions(unittest.TestCase):
     #     self.assertEqual(TEST_DIRECTORY, )
 
 
-    def test_files_post(self):
+    def files_post(self):
         f = open(DEMO_FILE, "r")
         with server.app.test_client() as tc:
             rv = tc.post(
@@ -162,28 +162,19 @@ class TestSequenceFunctions(unittest.TestCase):
             uploaded_content = f.read()
             self.assertEqual(DEMO_CONTENT, uploaded_content)
 
+
     def test_files_get(self):
-        user = "test_get"
-        psw = "test_get"
-        rv = self.user_demo(user, psw)
-        self.assertEqual(rv.status_code, 201)
-
-        headers = {
-            "Authorization": "Basic " + b64encode("{0}:{1}".format(user, psw))
-        }
-
-        self.test_files_post()
-
+        self.files_post()
         with server.app.test_client() as tc:
             rv = tc.get(
-                "{}files/{}".format(server._API_PREFIX, path),
-                headers = headers
+                "{}files/{}".format(server._API_PREFIX, DEMO_PATH),
+                headers = DEMO_HEADERS
             )
             self.assertEqual(rv.status_code, 200)
-
-        with open("{}{}/{}".format(TEST_DIRECTORY, user, path)) as f:
-            getted_content = f.read()
-            self.assertEqual(content, getted_content)
+        
+        with open("{}{}/{}".format(TEST_DIRECTORY, DEMO_USER, DEMO_PATH)) as f:
+            got_content = f.read()
+            self.assertEqual(DEMO_CONTENT, got_content)
 
 
 if __name__ == '__main__':
