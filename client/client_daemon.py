@@ -43,35 +43,24 @@ class ServerCommunicator(object):
                 time.sleep(retry_delay)
                 print error
 
-    def synchronize(self):
+    def synchronize(self, operation_handler):
+        """Synchronize client and server"""
 
-        """ 
-        Requests if client is synchronized with server with a continuous iteration
-        If client isn't synchronized, the server answers with a json object containing
-        a series of timestamp, path and type of request.
-        If client is synchronized, the server answers with code 204.
-        """
-
-        server_url = "{}/diffs".format(self.server_url)
-        request_sync = {
-            "url": server_url,
-            "data": self.timestamp,
-            "auth": self.auth
-        }
-        sync = self._try_request(requests.get, "ok", "no", **request_sync)   
-        if sync.status_code != 204:
-            diffs = json.load(sync.text)
-            for tstamp, obj in diffs.iteritems():
-                self.timestamp = tstamp #update self timestamp
-                req = obj[0]
-                args = obj[1]
-                {
-                    'req_get': self.operator.write_a_file,
-                    'req_delete': self.operator._delete_a_file,
-                    'req_move': self.operator.move_a_file,
-                    'req_copy': self.operator.copy_a_file
-                }.get(req)(args)    
-
+        server_url = "{}/files".format(self.server_url)
+        request = {"url": server_url}
+        sync = self._try_request(requests.get, "Success", "Fail", **request)
+        with open("timestamp.json", "w") as timestamp_file:
+            timestamp_file.dump(sync.text.load()[0])
+        diffs = diff_snapshots(sync.text)
+        for tstamp, obj in diffs.iteritems():
+            req = obj[0]
+            args = obj[1]
+            {
+                'req_get': operation_handler.write_a_file,
+                'req_delete': operation_handler.delete_a_file,
+                'req_move': operation_handler.move_a_file,
+                'req_copy': operation_handler.copy_a_file
+            }.get(req)(args)
 
     def get_abspath(self, dst_path):
         """ from relative path return absolute path """
@@ -188,6 +177,7 @@ class ServerCommunicator(object):
                     "psw": password
             }
         }
+
         self._try_request(requests.post, success_log, error_log, **request)
 
 class FileSystemOperator(object):
@@ -357,18 +347,32 @@ class DirectoryEventHandler(FileSystemEventHandler):
 
 
 class DirSnapshotManager(object):
-    def __init__(self, dir_path, snapshot_file):
+    def __init__(self, dir_path, snapshot_file_path):
+        """ load the last global snapshot and create a instant_snapshot of local directory"""
         self.dir_path = dir_path
-        self.snapshot_file = snapshot_file
-        self.snapshot = self._load_snapshot()
-        diff = self.diff_snapthot(self.instant_snapshot())
+        self.snapshot_file_path = snapshot_file_path
+        self.last_status = self._load_status()
+        self.local_full_snapshot = self.instant_snapshot()
 
-    def _load_snapshot(self):
+    def local_check(self):
+        """ check id daemon is synchronized with local directory """
+        local_global_snapshot = self.global_md5()
+        last_global_snapthot = self.last_status['snapshot']
+        return local_global_snapshot == last_global_snapthot
+
+    def server_check(self, server_timestamp):
+        """ check if daemon timestamp is synchronized with server timestamp"""
+        server_timestamp = float(server_timestamp)
+        client_timestamp = float(self.last_status['timestamp'])
+        return server_timestamp > client_timestamp
+
+    def _load_status(self):
         """ load from file the last snapshot """
-        with open(self.snapshot_file) as f:
+        with open(self.snapshot_file_path) as f:
             return json.load(f)
 
     def file_snapMd5(self, file_path):
+        """ calculate the md5 of a file """
         file_md5 = hashlib.md5()
         with open(file_path, 'rb') as afile:
             buf = afile.read(2048)
@@ -376,6 +380,10 @@ class DirSnapshotManager(object):
                 file_md5.update(buf)
                 buf = afile.read(2048)
         return file_md5.hexdigest()
+
+    def global_md5(self):
+        """ calculate the global md5 of local_full_snapshot """
+        return hashlib.md5(str(self.local_full_snapshot)).hexdigest()
 
     def instant_snapshot(self):
         """ create a snapshot of directory """
@@ -391,19 +399,107 @@ class DirSnapshotManager(object):
                     dir_snapshot[file_md5] = [full_path]
         return dir_snapshot
 
-    def _save_snapshot(self):
-        with open(self.snapshot_file, 'w') as f:
-            f.write(json.dumps(self.snapshot))
+    def save_snapshot(self, timestamp, snapshot):
+        """ save snapshot to file """
+        with open(self.snapshot_file_path, 'w') as f:
+            f.write(json.dumps({"timestamp": timestamp, "snapshot": snapshot}))
 
-    def diff_snapthot(self, server_snapshot):
-        """ return the list of conflict """
-        return "diff_list"
+    def diff_snapshot_paths(self, snap_client, snap_server):
+        """ from 2 snapshot return 3 list of path difference:
+            list of new server path
+            list of new client path 
+            list of equal path 
+        """
+        client_paths = [val for subl in snap_client.values() for val in subl]
+        server_paths = [val for subl in snap_server.values() for val in subl]
+        new_server_paths = list(set(server_paths) - set(client_paths))
+        new_client_paths = list(set(client_paths) - set(server_paths))
+        equal_paths = list(set(client_paths).intersection(set(server_paths)))
+        
+        return new_client_paths, new_server_paths , equal_paths
+        
+    def find_file_md5(self, snapshot, new_path):
+        """ from snapshot and a path find the md5 of file inside snapshot"""
+        for md5, paths in snapshot.items():
+            for path in paths:
+                if path == new_path:
+                    return md5
 
+    def syncronize_dispatcher(self, server_timestamp, server_snapshot):
+        """ return the list of command to do """
+
+        local_timestamp = self.last_status['timestamp']
+        new_client_paths, new_server_paths, equal_paths =  self.diff_snapshot_paths(self.local_full_snapshot , server_snapshot)
+        print
+        #NO internal conflict
+        if self.local_check():  #1)
+            if server_timestamp > local_timestamp: #1) b.
+                for new_server_path in new_server_paths: #1) b 1
+                    if not self.find_file_md5(server_snapshot, new_server_path) in self.local_full_snapshot: #1) b 1 I
+                        print "download:\t" + new_server_path 
+                    else: #1) b 1 II
+                        print "copy or rename:\t" + new_server_path
+                        """ II. se esiste un file con lo stesso md5 e se esiste un altro path corrispondente
+                            allo stesso md5 faccio la copia del file, altrimenti lo rinomino 
+                        """
+                for equal_path in equal_paths: #1) b 2
+                    if self.find_file_md5(self.local_full_snapshot, equal_path) != self.find_file_md5(server_snapshot, equal_path):
+                        print "update download:\t" + equal_path
+                        """
+                        scarico la versione del server 
+                        """
+                    else:
+                        print "no action:\t" + equal_path
+                for new_client_path in new_client_paths: #1) b 3
+                    print "remove local:\t" + new_client_path
+                    """
+                    elimino il file locale
+                    """
+            else:
+                print "synchronized"
+        #internal conflicts
+        else: # 2)
+            if local_timestamp == server_timestamp: #2) a
+                print "push all" 
+                """
+                tutte le modifiche in locale vengono riportate sul server
+                """
+            elif server_timestamp > local_timestamp: #2) b
+                for new_server_path in new_server_paths: #2) b 1
+                    if not self.find_file_md5(server_snapshot, new_server_path) in self.local_full_snapshot: #2) b 1 I
+                        print  "download or remove timestamp check:\t" + new_server_path
+                        """
+                        si scarica il nuovo file o
+                         si cancella il file in remoto a seconda che il timestamp relativo sia
+                         maggiore o minore di quello del client
+                        """
+                    else: #2) b 1 II
+                        print  "copy or rename:\t" + new_server_path
+                        """
+                        copia o rinomina 
+                        """
+
+                for equal_path in equal_paths: #2) b 2
+                    if "file_timestamp_server" < "file_timestamp_client": #2) b 2 I
+                        print "server push:\t" + equal_path
+                        """
+                        aggiorno il server
+                         """
+                    else:  #2) b 2 II 
+                        print "create.conflicted:\t" + equal_path
+                        """
+                        duplicazione file con estensione 
+                        .conflicted e lo carico su server"""
+                for new_client_path in new_client_paths: #2) b 3
+                    print "remove remote\t" + new_client_path 
+                    """
+                    carico il file su server
+                    """ 
 
 def main():
     config = load_config()
-    snapshot_manager = DirSnapshotManager(config['dir_path'], config['snapshot_file'])
-
+    snapshot_manager = DirSnapshotManager(config['dir_path'], config['snapshot_file_path'])
+    
     server_com = ServerCommunicator(
         server_url = config['server_url'], 
         username = config['username'],
@@ -422,7 +518,7 @@ def main():
 
     try:
         while True:
-            #server_com.synchronize()
+            #server_com.synchronize(file_system_op)
             time.sleep(1)
     except KeyboardInterrupt:
         observer.stop()
