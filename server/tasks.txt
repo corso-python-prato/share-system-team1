@@ -1,3 +1,8 @@
+· indentazione commenti
+· change dir generale per test
+· controllo ../../../
+
+
 · la create_user deve restituire un timestamp al client?
 
 · file transfer in chunks
