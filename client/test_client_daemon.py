@@ -57,7 +57,7 @@ class ClientDaemonTest(unittest.TestCase):
     def init_snapshot(self):
         config = client_daemon.load_config()
         return client_daemon.DirSnapshotManager(config['dir_path'], config['snapshot_file_path'])
-    
+        
     def test_syncronize_dispatcher(self):
         snapshot_manager = self.init_snapshot()
 
@@ -146,4 +146,3 @@ class ClientDaemonTest(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-
