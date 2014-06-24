@@ -3,6 +3,7 @@
 
 from communication_system import CmdMessageClient
 from client_daemon import load_config
+from colorMessage import Message
 import platform
 import asyncore
 import getpass
@@ -11,8 +12,6 @@ import sys
 import re
 import os
 
-sys.path.insert(0, 'utility/')
-from colorMessage import Message
 
 def take_input(message, password = False):
     if not  password:
