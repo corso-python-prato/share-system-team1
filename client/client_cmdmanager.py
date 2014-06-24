@@ -20,18 +20,11 @@ def take_input(message, password = False):
     else:
         return getpass.getpass(message)
 
-class RawBoxCmd(cmd.Cmd):
-    """RawBox command line interface"""
-
-    intro = Message().color('INFO', '##### Hello guy!... or maybe girl, welcome to RawBox ######\ntype ? to see help\n\n')
-    doc_header = Message().color('INFO', "command list, type ? <topic> to see more :)")
-    prompt = Message().color('HEADER', '(RawBox) ')
-    ruler = Message().color('INFO', '~')
+class RawBoxExecuter(object):
 
     def __init__(self, comm_sock):
-        cmd.Cmd.__init__(self)
         self.comm_sock = comm_sock
-        
+
     def _create_user(self, username=None):
         """create user if not exists"""
         command_type = 'create_user'
@@ -104,6 +97,22 @@ class RawBoxCmd(cmd.Cmd):
         self.comm_sock.send_message(command_type, param)
         self.print_response(self.comm_sock.read_message())
 
+    def print_response(self, response):
+        print 'Response for "{}" command\nresult: {}'.format(response['request'], response['body'])
+
+
+class RawBoxCmd(cmd.Cmd):
+    """RawBox command line interface"""
+
+    intro = Message().color('INFO', '##### Hello guy!... or maybe girl, welcome to RawBox ######\ntype ? to see help\n\n')
+    doc_header = Message().color('INFO', "command list, type ? <topic> to see more :)")
+    prompt = Message().color('HEADER', '(RawBox) ')
+    ruler = Message().color('INFO', '~')
+
+    def __init__(self, executer):
+        cmd.Cmd.__init__(self)
+        self.executer = executer
+        
     def error(self, *args):
         print "hum... unknown command, please type help"
 
@@ -116,8 +125,8 @@ class RawBoxCmd(cmd.Cmd):
             command = line.split()[0]
             arguments = line.split()[1:]
             {
-                'user': self._add_user,
-                'admin': self._add_admin,
+                'user': self.executer._add_user,
+                'admin': self.executer._add_admin,
             }.get(command, self.error)(arguments)
         else:
             Message('INFO', self.do_add.__doc__)
@@ -131,8 +140,8 @@ class RawBoxCmd(cmd.Cmd):
             command = line.split()[0]
             arguments = line.split()[1:]
             {
-                'user': self._create_user,
-                'group': self._create_group,
+                'user': self.executer._create_user,
+                'group': self.executer._create_group,
             }.get(command, self.error)(arguments)
         else:
             Message('INFO', self.do_create.__doc__)
@@ -147,9 +156,6 @@ class RawBoxCmd(cmd.Cmd):
         if take_input('[Exit] are you sure? y/n ') == 'y':
             return True
 
-    def print_response(self, response):
-        print 'Response for "{}" command\nresult: {}'.format(response['request'], response['body'])
-
 
 def main():
     if platform.system() == 'Windows':
@@ -160,7 +166,7 @@ def main():
     conf = load_config()
     comm_sock = CmdMessageClient(conf['cmd_host'], int(conf['cmd_port']))
     try:
-        RawBoxCmd(comm_sock).cmdloop()
+        RawBoxCmd(RawBoxExecuter(comm_sock)).cmdloop()
     except KeyboardInterrupt:
         print "[exit]"
 
