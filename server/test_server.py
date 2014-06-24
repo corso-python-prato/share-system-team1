@@ -98,9 +98,24 @@ class TestSequenceFunctions(unittest.TestCase):
             self.assertEqual(rv.status_code, server.HTTP_CONFLICT)
 
 
-    # TODO:
-    # def test_to_md5(self):
-    #     self.assertEqual(TEST_DIRECTORY, )
+    def test_to_md5(self):
+        # check if two files with the same content have the same md5        
+        second_file = "second_file.txt"
+        with open(second_file, "w") as f:
+            f.write(DEMO_CONTENT)
+
+        first_md5 = server.to_md5(DEMO_FILE)
+        second_md5 = server.to_md5(second_file)
+        self.assertEqual(first_md5, second_md5)
+
+        os.remove(second_file)
+
+        # check if, for a directory, returns False
+        tmp_dir = "aloha"
+        os.mkdir(tmp_dir)
+        self.assertFalse(server.to_md5(tmp_dir))
+
+        os.rmdir(tmp_dir)
 
 
     def test_files_post(self):
