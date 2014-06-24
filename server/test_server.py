@@ -24,6 +24,24 @@ DEMO_PATH = "somepath/somefile.txt"
 DEMO_CONTENT = "Hello my dear,\nit's a beautiful day here in Compiobbi."
 
 
+def transfer(path, flag=True):
+    client_path, server_path = set_tmp_params(path)
+    new_path = "nuova"
+    if flag:
+        func = "copy"
+    else:
+        func = "move"
+    with server.app.test_client() as tc:
+        rv = tc.post(
+               "{}actions/{}".format(server._API_PREFIX, func),
+                headers = DEMO_HEADERS,
+                data = { "file_src": client_path,
+                         "file_dest" : os.path.join(new_path, DEMO_FILE)
+            }
+            )
+        return rv
+
+
 def set_tmp_params(father_dir):
     ''' Add a file in user's directory, in the path passed in argument 
     Please, use path here with only a word (not "dir/subdir") '''
@@ -188,9 +206,31 @@ class TestSequenceFunctions(unittest.TestCase):
             self.assertEqual(DEMO_CONTENT, got_content)
 
 
-    def test_delete_file(self):
-        client_path, server_path = set_tmp_params("arr")
+    def test_files_put(self):
+        client_path = os.path.join("srr", DEMO_FILE)
+        server_path = os.path.join(TEST_DIRECTORY, DEMO_USER, client_path)
+        os.makedirs(os.path.dirname(server_path))
+        shutil.copy(DEMO_FILE, server_path)
 
+        server.User.users[DEMO_USER].paths[client_path] = [server_path, 0, 0]
+
+        if ("test_users_dirs/i_am_an_user@rawbox.it/sr/somefile.txt" in server.User.users[DEMO_USER].paths[client_path]):
+            f = open(DEMO_FILE, "r")
+            with server.app.test_client() as tc:
+                rv = tc.put(
+                    "{}files/{}".format(server._API_PREFIX, DEMO_PATH),
+                    headers = DEMO_HEADERS,
+                    data = { "file_content": f }
+                )
+                self.assertEqual(rv.status_code, 201)
+            f.close()
+            with open("{}{}/{}".format(TEST_DIRECTORY, DEMO_USER, DEMO_PATH)) as f:
+                put_content = f.read()
+                self.assertEqual(DEMO_CONTENT, put_content)
+
+    def test_actions_delete(self):
+        client_path, server_path = set_tmp_params("arr")
+        full_server_path = os.path.join(server_path, DEMO_FILE)
         with server.app.test_client() as tc:
             rv = tc.post(
                 "{}actions/delete".format(server._API_PREFIX),
@@ -198,6 +238,21 @@ class TestSequenceFunctions(unittest.TestCase):
                 data = { "path": client_path }
             )
             self.assertEqual(rv.status_code, 200)
+
+            self.assertEqual(os.path.isfile(full_server_path), False)
+            #check if the file is correctly removed from the dictionary
+            self.assertEqual(server_path in server.User.users[DEMO_USER].paths, False)
+
+    def test_actions_copy(self):
+        rv = transfer("cp", True)
+        self.assertEqual(rv.status_code, 200)
+        #full_server_path = os.path.join(server_path, DEMO_FILE)
+
+
+    def test_actions_move(self):
+        rv = transfer("mv", False)
+        self.assertEqual(rv.status_code, 200)
+        #full_server_path = os.path.join(server_path, DEMO_FILE)
 
 
 if __name__ == '__main__':
