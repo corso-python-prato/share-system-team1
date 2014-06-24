@@ -209,14 +209,8 @@ class TestSequenceFunctions(unittest.TestCase):
 
 
     def test_files_put(self):
-        client_path = os.path.join("srr", DEMO_FILE)
-        server_path = os.path.join(TEST_DIRECTORY, DEMO_USER, client_path)
-        os.makedirs(os.path.dirname(server_path))
-        shutil.copy(DEMO_FILE, server_path)
-
-        server.User.users[DEMO_USER].paths[client_path] = [server_path, 0, 0]
-
-        if ("test_users_dirs/i_am_an_user@rawbox.it/sr/somefile.txt" in server.User.users[DEMO_USER].paths[client_path]):
+        client_path, server_path = set_tmp_params("pt")
+        if (server_path in server.User.users[DEMO_USER].paths[client_path]):
             f = open(DEMO_FILE, "r")
             with server.app.test_client() as tc:
                 rv = tc.put(
