@@ -53,7 +53,7 @@ class User(object):
 
     users = {}
 
-# CLASS AND STATIC METHODS
+    # CLASS AND STATIC METHODS
     @staticmethod
     def user_class_init():
         try:
@@ -93,9 +93,9 @@ class User(object):
             raise MissingUserError("User doesn't exist")
 
 
-# DYNAMIC METHODS
+    # DYNAMIC METHODS
     def __init__(self, username, clear_password, from_dict=None):
-    # if restoring the server
+        # if restoring the server
         if from_dict:
             self.psw = from_dict["psw"]
             self.paths = from_dict["paths"]
@@ -103,7 +103,7 @@ class User(object):
             User.users[username] = self
             return
 
-    # else if I'm creating a new user
+        # else if I'm creating a new user
         if username in User.users:
             raise ConflictError(
                 "'{}'' is an username already taken".format(username)
@@ -118,7 +118,7 @@ class User(object):
                     "Conflict while creating the directory for a new user"
             )
 
-    # OBJECT ATTRIBUTES
+        # OBJECT ATTRIBUTES
         self.psw = psw_hash
 
         # path of each file and each directory of the user:
@@ -128,7 +128,7 @@ class User(object):
         # timestamp of the last change in the user's files
         self.timestamp = time.time()
 
-    # update users, file
+        # update users, file
         self.push_path("", full_path, update_user_data=False)
         User.users[username] = self
         User.save_users()
@@ -150,6 +150,11 @@ class User(object):
 
 
     def create_server_path(self, client_path):
+        # the client_path do not have to contain "../"
+        if (client_path.startswith("../")) or ("/../" in client_path):
+            abort(HTTP_BAD_REQUEST)
+
+        # search the first directory father already present
         directory_path, filename = os.path.split(client_path)
         dir_list = directory_path.split("/")
         
@@ -163,6 +168,7 @@ class User(object):
         else:
             father = os.path.join(*dir_list)
 
+        # create all the new subdirs and add them to paths
         new_client_path = father
         new_server_path = self.paths[new_client_path][0]
         for d in to_be_created:
@@ -209,12 +215,18 @@ class Files(Resource):
         tree = {}
         for p, v in u.paths.items():
             if not v[1] in tree:
-                tree[v[1]] = [(p, v[2])]
+                tree[v[1]] = [{
+                    "path": p,
+                    "timestamp": v[2]
+                }]
             else:
-                tree[v[1]].append((p, v[2]))
+                tree[v[1]].append({
+                    "path": p,
+                    "timestamp": v[2]
+                })
 
         snapshot = {
-            "tree" : tree,
+            "snapshot" : tree,
             "timestamp" : u.timestamp
         }
 
@@ -359,32 +371,6 @@ def create_user():
         else:
             User(user, psw)
             return "user created", HTTP_CREATED
-
-
-@app.route("/hidden_page")
-@auth.login_required
-def hidden_page():
-    return "Hello {}\n".format(auth.username())
-
-
-@app.route("/")
-def welcome():
-    local_time = datetime.datetime.now()
-    formatted_time = local_time.strftime("%Y-%m-%d %H:%M")
-    return "Welcome on the Server!\n{}\n".format(formatted_time)
-
-
-def backup_config_files(folder_name=None):
-    if not folder_name:
-        folder_name = os.path.join("backup", str(time.time()))
-
-    try:
-        os.makedirs(folder_name)
-    except OSError:
-        return False
-    else:
-        User.save_users(os.path.join(folder_name, USERS_DATA))
-        return True
 
 
 def main():

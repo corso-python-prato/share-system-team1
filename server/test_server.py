@@ -23,6 +23,34 @@ DEMO_PATH = "somepath/somefile.txt"
 DEMO_CONTENT = "Hello my dear,\nit's a beautiful day here in Compiobbi."
 
 
+def tranfer_test(path, flag=True):
+    client_path, server_path = set_tmp_params(path)
+    new_path = "nuova"
+    if flag:
+        func = "copy"
+    else:
+        func = "move"
+    with server.app.test_client() as tc:
+        rv = tc.post(
+               "{}actions/{}".format(server._API_PREFIX, func),
+                headers = DEMO_HEADERS,
+                data = { "file_src": client_path,
+                         "file_dest" : os.path.join(new_path, DEMO_FILE)
+            }
+            )
+        return rv
+
+def set_tmp_params(path):
+    client_path = os.path.join(path, DEMO_FILE)
+    server_path = os.path.join(TEST_DIRECTORY, DEMO_USER, client_path)
+    os.makedirs(os.path.dirname(server_path))
+    shutil.copy(DEMO_FILE, server_path)
+
+    server.User.users[DEMO_USER].paths[client_path] = [server_path, 0, 0] 
+
+    return client_path, server_path
+
+
 def create_demo_user(user=None, psw=None):
     if not user:
         random.seed(10)
@@ -74,15 +102,6 @@ class TestSequenceFunctions(unittest.TestCase):
     def setUp(self):
         server.app.config.update(TESTING=True)
         server.app.testing = True
-    
-
-    # check if the server works
-    def test_welcome(self):
-        with server.app.test_client() as tc:
-            rv = tc.get("/")
-            self.assertEqual(rv.status_code, server.HTTP_OK)
-            welcomed = rv.get_data().startswith("Welcome on the Server!")
-            self.assertTrue(welcomed)
 
 
     # check if a new user is correctly created
@@ -107,45 +126,47 @@ class TestSequenceFunctions(unittest.TestCase):
             self.assertEqual(rv.status_code, server.HTTP_CONFLICT)
 
 
-    # check a GET authentication access
-    def test_correct_hidden_page(self):
-        user = "Giovannina"
-        psw = "cracracra"
-        rv = create_demo_user(user, psw)
-        self.assertEqual(rv.status_code, server.HTTP_CREATED)
+    def test_to_md5(self):
+        # check if two files with the same content have the same md5        
+        second_file = "second_file.txt"
+        with open(second_file, "w") as f:
+            f.write(DEMO_CONTENT)
 
-        headers = {
-            'Authorization': 'Basic ' + b64encode("{0}:{1}".format(user, psw))
-        }
+        first_md5 = server.to_md5(DEMO_FILE)
+        second_md5 = server.to_md5(second_file)
+        self.assertEqual(first_md5, second_md5)
 
+        os.remove(second_file)
+
+        # check if, for a directory, returns False
+        tmp_dir = "aloha"
+        os.mkdir(tmp_dir)
+        self.assertFalse(server.to_md5(tmp_dir))
+
+        os.rmdir(tmp_dir)
+
+
+    def test_create_server_path(self):
+        # check if aborts when you pass invalid paths:
+        f = open(DEMO_FILE, "r")
         with server.app.test_client() as tc:
-            rv = tc.get("/hidden_page", headers=headers)
-            self.assertEqual(rv.status_code, server.HTTP_OK)
+            rv = tc.post(
+                "{}files/{}".format(server._API_PREFIX, "../file.txt"),
+                headers = DEMO_HEADERS,
+                data = { "file_content": f }
+            )
+            self.assertEqual(rv.status_code, 400)
+        f.close()
 
-
-    # check if the backup function create the folder and the files
-    def test_backup_config_files(self):
-        successful =  server.backup_config_files("test_backup")
-        if not successful:
-            # the directory is already present due to an old failed test
-            shutil.rmtree("test_backup")
-            successful =  server.backup_config_files("test_backup")
-
-        self.assertTrue(successful)
-
-        try:
-            dir_content = os.listdir("test_backup")
-        except OSError:
-            self.fail("Directory not created")
-        else:
-            self.assertIn(server.USERS_DATA, dir_content,
-                    msg="'user_data' missing in backup folder")
-        shutil.rmtree("test_backup")
-
-
-    # TODO:
-    # def test_to_md5(self):
-    #     self.assertEqual(TEST_DIRECTORY, )
+        f = open(DEMO_FILE, "r")
+        with server.app.test_client() as tc:
+            rv = tc.post(
+                "{}files/{}".format(server._API_PREFIX, "folder/../file.txt"),
+                headers = DEMO_HEADERS,
+                data = { "file_content": f }
+            )
+            self.assertEqual(rv.status_code, 400)
+        f.close()
 
 
     def test_files_post(self):
@@ -164,12 +185,7 @@ class TestSequenceFunctions(unittest.TestCase):
 
 
     def test_files_get(self):
-        client_path = os.path.join("prr", DEMO_FILE)
-        server_path = os.path.join(TEST_DIRECTORY, DEMO_USER, client_path)
-        os.makedirs(os.path.dirname(server_path))
-        shutil.copy(DEMO_FILE, server_path)
-
-        server.User.users[DEMO_USER].paths[client_path] = [server_path, 0, 0]
+        client_path, server_path = set_tmp_params("prr")
 
         with server.app.test_client() as tc:
             rv = tc.get(
@@ -181,6 +197,7 @@ class TestSequenceFunctions(unittest.TestCase):
         with open(server_path) as f:
             got_content = f.read()
             self.assertEqual(DEMO_CONTENT, got_content)
+
 
     def test_files_put(self):
         client_path = os.path.join("srr", DEMO_FILE)
@@ -203,6 +220,32 @@ class TestSequenceFunctions(unittest.TestCase):
             with open("{}{}/{}".format(TEST_DIRECTORY, DEMO_USER, DEMO_PATH)) as f:
                 put_content = f.read()
                 self.assertEqual(DEMO_CONTENT, put_content)
+
+    def test_actions_delete(self):
+        client_path, server_path = set_tmp_params("arr")
+        full_server_path = os.path.join(server_path, DEMO_FILE)
+        with server.app.test_client() as tc:
+            rv = tc.post(
+                "{}actions/delete".format(server._API_PREFIX),
+                headers = DEMO_HEADERS,
+                data = { "path": client_path }
+                )
+            self.assertEqual(rv.status_code, 200)
+
+            self.assertEqual(os.path.isfile(full_server_path), False)
+            #check if the file is correctly removed from the dictionary
+            self.assertEqual(server_path in server.User.users[DEMO_USER].paths, False)
+
+    def test_actions_copy(self):
+        rv = tranfer_test("cp", True)
+        self.assertEqual(rv.status_code, 200)
+        #full_server_path = os.path.join(server_path, DEMO_FILE)
+
+
+    def test_actions_move(self):
+        rv = tranfer_test("mv", False)
+        self.assertEqual(rv.status_code, 200)
+        #full_server_path = os.path.join(server_path, DEMO_FILE)
 
 
 if __name__ == '__main__':
