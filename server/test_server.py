@@ -188,7 +188,7 @@ class TestSequenceFunctions(unittest.TestCase):
             self.assertEqual(DEMO_CONTENT, got_content)
 
     def test_delete_file(self):
-        pass
+        client_path, server_path = set_tmp_params("arr")
 
 
 
