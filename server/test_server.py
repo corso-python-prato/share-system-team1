@@ -23,6 +23,23 @@ DEMO_PATH = "somepath/somefile.txt"
 DEMO_CONTENT = "Hello my dear,\nit's a beautiful day here in Compiobbi."
 
 
+def tranfer_test(path, flag=True):
+        client_path, server_path = set_tmp_params(path)
+        new_path = "nuova"
+        if flag:
+            func = "copy"
+        else:
+            func = "move"
+        with server.app.test_client() as tc:
+            rv = tc.post(
+                "{}actions/{}".format(server._API_PREFIX, func),
+                headers = DEMO_HEADERS,
+                data = { "file_src": client_path,
+                         "file_dest" : os.path.join(new_path, DEMO_FILE)
+                 }
+                )
+            return rv
+
 def set_tmp_params(path):
         client_path = os.path.join(path, DEMO_FILE)
         server_path = os.path.join(TEST_DIRECTORY, DEMO_USER, client_path)
@@ -166,6 +183,14 @@ class TestSequenceFunctions(unittest.TestCase):
                 headers = DEMO_HEADERS,
                 data = { "path": client_path }
                 )
+            self.assertEqual(rv.status_code, 200)
+
+    def test_copy_file(self):
+            rv = tranfer_test("cp", True)
+            self.assertEqual(rv.status_code, 200)
+
+    def test_move_file(self):
+            rv = tranfer_test("mv", False)
             self.assertEqual(rv.status_code, 200)
 
 
