@@ -76,15 +76,6 @@ class TestSequenceFunctions(unittest.TestCase):
         server.app.testing = True
     
 
-    # check if the server works
-    def test_welcome(self):
-        with server.app.test_client() as tc:
-            rv = tc.get("/")
-            self.assertEqual(rv.status_code, server.HTTP_OK)
-            welcomed = rv.get_data().startswith("Welcome on the Server!")
-            self.assertTrue(welcomed)
-
-
     # check if a new user is correctly created
     def test_correct_user_creation(self):
         dirs_counter = len(os.listdir(server.USERS_DIRECTORIES))
@@ -105,42 +96,6 @@ class TestSequenceFunctions(unittest.TestCase):
             create_demo_user(user, psw)
             rv = create_demo_user(user, psw)
             self.assertEqual(rv.status_code, server.HTTP_CONFLICT)
-
-
-    # check a GET authentication access
-    def test_correct_hidden_page(self):
-        user = "Giovannina"
-        psw = "cracracra"
-        rv = create_demo_user(user, psw)
-        self.assertEqual(rv.status_code, server.HTTP_CREATED)
-
-        headers = {
-            'Authorization': 'Basic ' + b64encode("{0}:{1}".format(user, psw))
-        }
-
-        with server.app.test_client() as tc:
-            rv = tc.get("/hidden_page", headers=headers)
-            self.assertEqual(rv.status_code, server.HTTP_OK)
-
-
-    # check if the backup function create the folder and the files
-    def test_backup_config_files(self):
-        successful =  server.backup_config_files("test_backup")
-        if not successful:
-            # the directory is already present due to an old failed test
-            shutil.rmtree("test_backup")
-            successful =  server.backup_config_files("test_backup")
-
-        self.assertTrue(successful)
-
-        try:
-            dir_content = os.listdir("test_backup")
-        except OSError:
-            self.fail("Directory not created")
-        else:
-            self.assertIn(server.USERS_DATA, dir_content,
-                    msg="'user_data' missing in backup folder")
-        shutil.rmtree("test_backup")
 
 
     # TODO:

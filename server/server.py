@@ -53,7 +53,7 @@ class User(object):
 
     users = {}
 
-# CLASS AND STATIC METHODS
+    # CLASS AND STATIC METHODS
     @staticmethod
     def user_class_init():
         try:
@@ -93,9 +93,9 @@ class User(object):
             raise MissingUserError("User doesn't exist")
 
 
-# DYNAMIC METHODS
+    # DYNAMIC METHODS
     def __init__(self, username, clear_password, from_dict=None):
-    # if restoring the server
+        # if restoring the server
         if from_dict:
             self.psw = from_dict["psw"]
             self.paths = from_dict["paths"]
@@ -103,7 +103,7 @@ class User(object):
             User.users[username] = self
             return
 
-    # else if I'm creating a new user
+        # else if I'm creating a new user
         if username in User.users:
             raise ConflictError(
                 "'{}'' is an username already taken".format(username)
@@ -118,7 +118,7 @@ class User(object):
                     "Conflict while creating the directory for a new user"
             )
 
-    # OBJECT ATTRIBUTES
+        # OBJECT ATTRIBUTES
         self.psw = psw_hash
 
         # path of each file and each directory of the user:
@@ -128,7 +128,7 @@ class User(object):
         # timestamp of the last change in the user's files
         self.timestamp = time.time()
 
-    # update users, file
+        # update users, file
         self.push_path("", full_path, update_user_data=False)
         User.users[username] = self
         User.save_users()
@@ -359,32 +359,6 @@ def create_user():
         else:
             User(user, psw)
             return "user created", HTTP_CREATED
-
-
-@app.route("/hidden_page")
-@auth.login_required
-def hidden_page():
-    return "Hello {}\n".format(auth.username())
-
-
-@app.route("/")
-def welcome():
-    local_time = datetime.datetime.now()
-    formatted_time = local_time.strftime("%Y-%m-%d %H:%M")
-    return "Welcome on the Server!\n{}\n".format(formatted_time)
-
-
-def backup_config_files(folder_name=None):
-    if not folder_name:
-        folder_name = os.path.join("backup", str(time.time()))
-
-    try:
-        os.makedirs(folder_name)
-    except OSError:
-        return False
-    else:
-        User.save_users(os.path.join(folder_name, USERS_DATA))
-        return True
 
 
 def main():
