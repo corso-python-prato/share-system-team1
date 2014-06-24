@@ -22,15 +22,17 @@ DEMO_HEADERS = {
 DEMO_FILE = "somefile.txt"
 DEMO_PATH = "somepath/somefile.txt"
 DEMO_CONTENT = "Hello my dear,\nit's a beautiful day here in Compiobbi."
-
+DEMO_DEST_COPY_PATH = "new_cp"
+DEMO_DEST_MOVE_PATH = "new_mv"
 
 def transfer(path, flag=True):
     client_path, server_path = set_tmp_params(path)
-    new_path = "nuova"
     if flag:
         func = "copy"
+        new_path = "{}/{}".format(DEMO_DEST_COPY_PATH, path)
     else:
         func = "move"
+        new_path = "{}/{}".format(DEMO_DEST_MOVE_PATH, path)
     with server.app.test_client() as tc:
         rv = tc.post(
                "{}actions/{}".format(server._API_PREFIX, func),
@@ -39,7 +41,7 @@ def transfer(path, flag=True):
                          "file_dest" : os.path.join(new_path, DEMO_FILE)
             }
             )
-        return rv
+        return rv, client_path, server_path
 
 
 def set_tmp_params(father_dir):
@@ -192,7 +194,7 @@ class TestSequenceFunctions(unittest.TestCase):
 
 
     def test_files_get(self):
-        client_path, server_path = set_tmp_params("prr")
+        client_path, server_path = set_tmp_params("dwn")
 
         with server.app.test_client() as tc:
             rv = tc.get(
@@ -200,21 +202,15 @@ class TestSequenceFunctions(unittest.TestCase):
                 headers = DEMO_HEADERS
             )
             self.assertEqual(rv.status_code, 200)
-        
+
         with open(server_path) as f:
             got_content = f.read()
             self.assertEqual(DEMO_CONTENT, got_content)
 
 
     def test_files_put(self):
-        client_path = os.path.join("srr", DEMO_FILE)
-        server_path = os.path.join(TEST_DIRECTORY, DEMO_USER, client_path)
-        os.makedirs(os.path.dirname(server_path))
-        shutil.copy(DEMO_FILE, server_path)
-
-        server.User.users[DEMO_USER].paths[client_path] = [server_path, 0, 0]
-
-        if ("test_users_dirs/i_am_an_user@rawbox.it/sr/somefile.txt" in server.User.users[DEMO_USER].paths[client_path]):
+        client_path, server_path = set_tmp_params("pt")
+        if (server_path in server.User.users[DEMO_USER].paths[client_path]):
             f = open(DEMO_FILE, "r")
             with server.app.test_client() as tc:
                 rv = tc.put(
@@ -229,7 +225,7 @@ class TestSequenceFunctions(unittest.TestCase):
                 self.assertEqual(DEMO_CONTENT, put_content)
 
     def test_actions_delete(self):
-        client_path, server_path = set_tmp_params("arr")
+        client_path, server_path = set_tmp_params("dlt")
         full_server_path = os.path.join(server_path, DEMO_FILE)
         with server.app.test_client() as tc:
             rv = tc.post(
@@ -238,21 +234,29 @@ class TestSequenceFunctions(unittest.TestCase):
                 data = { "path": client_path }
             )
             self.assertEqual(rv.status_code, 200)
-
             self.assertEqual(os.path.isfile(full_server_path), False)
             #check if the file is correctly removed from the dictionary
             self.assertEqual(server_path in server.User.users[DEMO_USER].paths, False)
 
     def test_actions_copy(self):
-        rv = transfer("cp", True)
+        rv, client_path, server_path = transfer("cp", True)
         self.assertEqual(rv.status_code, 200)
-        #full_server_path = os.path.join(server_path, DEMO_FILE)
+        full_dest_path = os.path.join(TEST_DIRECTORY, DEMO_USER, DEMO_DEST_COPY_PATH, client_path)
+        self.assertEqual(os.path.isfile(server_path), True)
+        self.assertEqual("cp/{}".format(DEMO_FILE) in server.User.users[DEMO_USER].paths, True)
+        self.assertEqual(os.path.isfile(full_dest_path), True)
+        self.assertEqual("{}/cp/{}".format(DEMO_DEST_COPY_PATH, DEMO_FILE) in server.User.users[DEMO_USER].paths, True)
 
 
     def test_actions_move(self):
-        rv = transfer("mv", False)
+        rv, client_path, server_path = transfer("mv", False)
         self.assertEqual(rv.status_code, 200)
-        #full_server_path = os.path.join(server_path, DEMO_FILE)
+        full_dest_path = os.path.join(TEST_DIRECTORY, DEMO_USER, DEMO_DEST_MOVE_PATH, client_path)
+        self.assertEqual(os.path.isfile(server_path), False)
+        self.assertEqual("mv/{}".format(DEMO_FILE) in server.User.users[DEMO_USER].paths, False)
+        self.assertEqual(os.path.isfile(full_dest_path), True)
+        self.assertEqual("{}/mv/{}".format(DEMO_DEST_MOVE_PATH, DEMO_FILE) in server.User.users[DEMO_USER].paths, True)
+
 
 
     def test_files_differences(self):
