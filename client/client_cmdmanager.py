@@ -1,16 +1,15 @@
 #!/usr/bin/env python
 #-*- coding: utf-8 -*-
 
+from communication_system import CmdMessageClient
+from client_daemon import load_config
 import platform
+import asyncore
 import getpass
 import cmd
 import sys
 import re
 import os
-
-from communication_system import CmdMessageClient
-import asyncore
-from client_daemon import load_config
 
 sys.path.insert(0, 'utility/')
 from colorMessage import Message
