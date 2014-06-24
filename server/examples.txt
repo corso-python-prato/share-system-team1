@@ -12,7 +12,7 @@ curl  localhost:5000/hidden_page -u UserName:password
 curl --data "user=UserName&psw=password" localhost:5000/API/v1/create_user
 
 # example of diff request
-curl localhost:5000/API/v1/Files -u UserName:password
+curl localhost:5000/API/v1/files/ -u UserName:password
 
 
 #### FILES ####
