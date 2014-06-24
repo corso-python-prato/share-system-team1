@@ -16,7 +16,8 @@ TEST_USER_DATA = "test_user_data.json"
 DEMO_USER = "i_am_an_user@rawbox.it"
 DEMO_PSW = "very_secret_password"
 DEMO_HEADERS = {
-    "Authorization": "Basic " + b64encode("{0}:{1}".format(DEMO_USER, DEMO_PSW))
+    "Authorization": "Basic "
+    + b64encode("{0}:{1}".format(DEMO_USER, DEMO_PSW))
 }
 DEMO_FILE = "somefile.txt"
 DEMO_PATH = "somepath/somefile.txt"
@@ -24,12 +25,13 @@ DEMO_CONTENT = "Hello my dear,\nit's a beautiful day here in Compiobbi."
 
 
 def set_tmp_params(path):
+    ''' Add a file in user's directory, in the path passed in argument '''
     client_path = os.path.join(path, DEMO_FILE)
     server_path = os.path.join(TEST_DIRECTORY, DEMO_USER, client_path)
     os.makedirs(os.path.dirname(server_path))
     shutil.copy(DEMO_FILE, server_path)
 
-    server.User.users[DEMO_USER].paths[client_path] = [server_path, 0, 0] 
+    server.User.users[DEMO_USER].paths[client_path] = [server_path, 0, 0]
 
     return client_path, server_path
 
@@ -110,7 +112,7 @@ class TestSequenceFunctions(unittest.TestCase):
 
 
     def test_to_md5(self):
-        # check if two files with the same content have the same md5        
+        # check if two files with the same content have the same md5
         second_file = "second_file.txt"
         with open(second_file, "w") as f:
             f.write(DEMO_CONTENT)
@@ -191,8 +193,6 @@ class TestSequenceFunctions(unittest.TestCase):
                 data = { "path": client_path }
                 )
             self.assertEqual(rv.status_code, 200)
-
-
 
 
 if __name__ == '__main__':
