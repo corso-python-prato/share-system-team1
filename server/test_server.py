@@ -23,7 +23,7 @@ DEMO_PATH = "somepath/somefile.txt"
 DEMO_CONTENT = "Hello my dear,\nit's a beautiful day here in Compiobbi."
 
 
-def tranfer_test(path, flag=True):
+def tranfer(path, flag=True):
     client_path, server_path = set_tmp_params(path)
     new_path = "nuova"
     if flag:
@@ -214,13 +214,13 @@ class TestSequenceFunctions(unittest.TestCase):
             self.assertEqual(server_path in server.User.users[DEMO_USER].paths, False)
 
     def test_actions_copy(self):
-        rv = tranfer_test("cp", True)
+        rv = tranfer("cp", True)
         self.assertEqual(rv.status_code, 200)
         #full_server_path = os.path.join(server_path, DEMO_FILE)
 
 
     def test_actions_move(self):
-        rv = tranfer_test("mv", False)
+        rv = tranfer("mv", False)
         self.assertEqual(rv.status_code, 200)
         #full_server_path = os.path.join(server_path, DEMO_FILE)
 
