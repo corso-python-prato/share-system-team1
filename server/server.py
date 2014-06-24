@@ -215,12 +215,18 @@ class Files(Resource):
         tree = {}
         for p, v in u.paths.items():
             if not v[1] in tree:
-                tree[v[1]] = [(p, v[2])]
+                tree[v[1]] = [{
+                    "path": p,
+                    "timestamp": v[2]
+                }]
             else:
-                tree[v[1]].append((p, v[2]))
+                tree[v[1]].append({
+                    "path": p,
+                    "timestamp": v[2]
+                })
 
         snapshot = {
-            "tree" : tree,
+            "snapshot" : tree,
             "timestamp" : u.timestamp
         }
 
