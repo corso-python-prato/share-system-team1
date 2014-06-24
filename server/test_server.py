@@ -198,6 +198,29 @@ class TestSequenceFunctions(unittest.TestCase):
             got_content = f.read()
             self.assertEqual(DEMO_CONTENT, got_content)
 
+
+    def test_files_put(self):
+        client_path = os.path.join("srr", DEMO_FILE)
+        server_path = os.path.join(TEST_DIRECTORY, DEMO_USER, client_path)
+        os.makedirs(os.path.dirname(server_path))
+        shutil.copy(DEMO_FILE, server_path)
+
+        server.User.users[DEMO_USER].paths[client_path] = [server_path, 0, 0]
+
+        if ("test_users_dirs/i_am_an_user@rawbox.it/sr/somefile.txt" in server.User.users[DEMO_USER].paths[client_path]):
+            f = open(DEMO_FILE, "r")
+            with server.app.test_client() as tc:
+                rv = tc.put(
+                    "{}files/{}".format(server._API_PREFIX, DEMO_PATH),
+                    headers = DEMO_HEADERS,
+                    data = { "file_content": f }
+                )
+                self.assertEqual(rv.status_code, 201)
+            f.close()
+            with open("{}{}/{}".format(TEST_DIRECTORY, DEMO_USER, DEMO_PATH)) as f:
+                put_content = f.read()
+                self.assertEqual(DEMO_CONTENT, put_content)
+
     def test_actions_delete(self):
         client_path, server_path = set_tmp_params("arr")
         full_server_path = os.path.join(server_path, DEMO_FILE)
