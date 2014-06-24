@@ -24,14 +24,15 @@ DEMO_CONTENT = "Hello my dear,\nit's a beautiful day here in Compiobbi."
 
 
 def set_tmp_params(path):
-        client_path = os.path.join(path, DEMO_FILE)
-        server_path = os.path.join(TEST_DIRECTORY, DEMO_USER, client_path)
-        os.makedirs(os.path.dirname(server_path))
-        shutil.copy(DEMO_FILE, server_path)
+    client_path = os.path.join(path, DEMO_FILE)
+    server_path = os.path.join(TEST_DIRECTORY, DEMO_USER, client_path)
+    os.makedirs(os.path.dirname(server_path))
+    shutil.copy(DEMO_FILE, server_path)
 
-        server.User.users[DEMO_USER].paths[client_path] = [server_path, 0, 0] 
+    server.User.users[DEMO_USER].paths[client_path] = [server_path, 0, 0] 
 
-        return client_path, server_path
+    return client_path, server_path
+
 
 def create_demo_user(user=None, psw=None):
     if not user:
@@ -126,6 +127,29 @@ class TestSequenceFunctions(unittest.TestCase):
         self.assertFalse(server.to_md5(tmp_dir))
 
         os.rmdir(tmp_dir)
+
+
+    def test_create_server_path(self):
+        # check if aborts when you pass invalid paths:
+        f = open(DEMO_FILE, "r")
+        with server.app.test_client() as tc:
+            rv = tc.post(
+                "{}files/{}".format(server._API_PREFIX, "../file.txt"),
+                headers = DEMO_HEADERS,
+                data = { "file_content": f }
+            )
+            self.assertEqual(rv.status_code, 400)
+        f.close()
+
+        f = open(DEMO_FILE, "r")
+        with server.app.test_client() as tc:
+            rv = tc.post(
+                "{}files/{}".format(server._API_PREFIX, "folder/../file.txt"),
+                headers = DEMO_HEADERS,
+                data = { "file_content": f }
+            )
+            self.assertEqual(rv.status_code, 400)
+        f.close()
 
 
     def test_files_post(self):
