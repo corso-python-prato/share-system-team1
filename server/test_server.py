@@ -24,14 +24,18 @@ DEMO_PATH = "somepath/somefile.txt"
 DEMO_CONTENT = "Hello my dear,\nit's a beautiful day here in Compiobbi."
 
 
-def set_tmp_params(path):
-    ''' Add a file in user's directory, in the path passed in argument '''
-    client_path = os.path.join(path, DEMO_FILE)
+def set_tmp_params(father_dir):
+    ''' Add a file in user's directory, in the path passed in argument 
+    Please, use path here with only a word (not "dir/subdir") '''
+    client_path = os.path.join(father_dir, DEMO_FILE)
     server_path = os.path.join(TEST_DIRECTORY, DEMO_USER, client_path)
     os.makedirs(os.path.dirname(server_path))
     shutil.copy(DEMO_FILE, server_path)
 
-    server.User.users[DEMO_USER].paths[client_path] = [server_path, 0, 0]
+    server_father_path = os.path.join(TEST_DIRECTORY, DEMO_USER, father_dir)
+    u = server.User.users[DEMO_USER]
+    u.paths[father_dir] = [server_father_path, 0, False]
+    u.paths[client_path] = [server_path, 0, 0]
 
     return client_path, server_path
 
@@ -183,6 +187,7 @@ class TestSequenceFunctions(unittest.TestCase):
             got_content = f.read()
             self.assertEqual(DEMO_CONTENT, got_content)
 
+
     def test_delete_file(self):
         client_path, server_path = set_tmp_params("arr")
 
@@ -191,7 +196,7 @@ class TestSequenceFunctions(unittest.TestCase):
                 "{}actions/delete".format(server._API_PREFIX),
                 headers = DEMO_HEADERS,
                 data = { "path": client_path }
-                )
+            )
             self.assertEqual(rv.status_code, 200)
 
 
