@@ -245,8 +245,7 @@ class TestSequenceFunctions(unittest.TestCase):
             self.assertEqual(server_path in server.User.users[DEMO_USER].paths, False)
 
     def test_actions_copy(self):
-        rv, client_path, server_path = tranfer_test("cp", True)
-        rv = transfer("cp", True)
+        rv, client_path, server_path = transfer("cp", True)
         self.assertEqual(rv.status_code, 200)
         full_dest_path = os.path.join(TEST_DIRECTORY, DEMO_USER, DEMO_DEST_COPY_PATH, client_path)
         self.assertEqual(os.path.isfile(server_path), True)
@@ -256,8 +255,7 @@ class TestSequenceFunctions(unittest.TestCase):
 
 
     def test_actions_move(self):
-        rv, client_path, server_path = tranfer_test("mv", False)
-        rv = transfer("mv", False)
+        rv, client_path, server_path = transfer("mv", False)
         self.assertEqual(rv.status_code, 200)
         full_dest_path = os.path.join(TEST_DIRECTORY, DEMO_USER, DEMO_DEST_MOVE_PATH, client_path)
         self.assertEqual(os.path.isfile(server_path), False)
