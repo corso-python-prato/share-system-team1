@@ -225,12 +225,15 @@ class Resource(Resource):
 
 
 class Files(Resource):
-    def get(self):
+    def _diffs(self):
         """ Send a JSON with the timestamp of the last change in user
         directories and an md5 for each file """
         u = User.get_user(auth.username())
         tree = {}
         for p, v in u.paths.items():
+            if not v[1]:
+                continue
+
             if not v[1] in tree:
                 tree[v[1]] = [{
                     "path": p,
@@ -247,12 +250,12 @@ class Files(Resource):
             "timestamp" : u.timestamp
         }
 
-        return json.dump(snapshot)
+        return snapshot, HTTP_OK
+        # return json.dumps(snapshot), HTTP_OK
 
 
-    def get(self, client_path):
-        """ Download
-        this function return file content as a string using GET """
+    def _download(self, client_path):
+        """ This function returns file content as a string using GET """
         u = User.get_user(auth.username())
         server_path = u.get_server_path(client_path)
         if not server_path:
@@ -265,6 +268,13 @@ class Files(Resource):
             return content
         except IOError:
             abort(HTTP_NOT_FOUND)
+
+
+    def get(self, client_path=None):
+        if not client_path:
+            return self._diffs()
+        else:
+            return self._download(client_path)
 
 
     def put(self, client_path):

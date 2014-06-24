@@ -255,6 +255,93 @@ class TestSequenceFunctions(unittest.TestCase):
         #full_server_path = os.path.join(server_path, DEMO_FILE)
 
 
+    def test_files_differences(self):
+        user = "complex_user@gmail.com"
+        psw = "complex_password"
+        create_demo_user(user, psw)
+        headers = {
+            "Authorization": "Basic "
+            + b64encode("{0}:{1}".format(user, psw))
+        }
+
+        # first check: user created just now
+        with server.app.test_client() as tc:
+            rv = tc.get(
+                "{}files/".format(server._API_PREFIX),
+                headers = headers
+            )
+        self.assertEqual(rv.status_code, 200)
+        snapshot1 = json.loads(rv.data)
+        self.assertFalse(snapshot1["snapshot"])
+
+        # second check: insert some files
+        path1 = "path1/cool_filename.txt"
+        path2 = "path2/path3/yo.jpg"
+
+        with server.app.test_client() as tc:
+            # upload a couple of files
+            f = open(DEMO_FILE, "r")            
+            rv = tc.post(
+                "{}files/{}".format(server._API_PREFIX, path1),
+                headers = headers,
+                data = { "file_content": f }
+            )
+            self.assertEqual(rv.status_code, 201)
+            f.close()
+            f = open(DEMO_FILE, "r")
+            rv = tc.post(
+                "{}files/{}".format(server._API_PREFIX, path2),
+                headers = headers,
+                data = { "file_content": f }
+            )
+            self.assertEqual(rv.status_code, 201)
+            f.close()
+
+            # new diffs?
+            rv = tc.get(
+                "{}files/".format(server._API_PREFIX),
+                headers = headers
+            )
+        self.assertEqual(rv.status_code, 200)
+        
+        snapshot2 = json.loads(rv.data)
+        self.assertGreater(snapshot2["timestamp"], snapshot1["timestamp"])
+        self.assertEqual(len(snapshot2["snapshot"]), 1)
+        
+        for s in snapshot2["snapshot"].values():
+            self.assertEqual(len(s), 2)
+
+        # third check: delete a file
+        with server.app.test_client() as tc:
+            rv = tc.post(
+                "{}actions/delete".format(server._API_PREFIX),
+                headers = headers,
+                data = { "path": path2 }
+            )
+            self.assertEqual(rv.status_code, 200)
+
+
+
+            rv = tc.get(
+                "{}files/".format(server._API_PREFIX),
+                headers = headers
+            )
+        self.assertEqual(rv.status_code, 200)
+
+        snapshot3 = json.loads(rv.data)
+        self.assertGreater(snapshot3["timestamp"], snapshot2["timestamp"])
+        self.assertEqual(len(snapshot3["snapshot"]), 1)
+
+        for s in snapshot3["snapshot"].values():
+            self.assertEqual(len(s), 1)
+
+
+
+
+
+
+
+
 if __name__ == '__main__':
     # make tests!
     unittest.main()
