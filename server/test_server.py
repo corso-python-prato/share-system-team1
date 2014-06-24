@@ -220,7 +220,10 @@ class TestSequenceFunctions(unittest.TestCase):
                 )
                 self.assertEqual(rv.status_code, 201)
             f.close()
-            with open("{}{}/{}".format(TEST_DIRECTORY, DEMO_USER, DEMO_PATH)) as f:
+            with open("{}{}/{}".format(
+                    TEST_DIRECTORY,
+                    DEMO_USER,
+                    DEMO_PATH)) as f:
                 put_content = f.read()
                 self.assertEqual(DEMO_CONTENT, put_content)
 
@@ -236,26 +239,51 @@ class TestSequenceFunctions(unittest.TestCase):
             self.assertEqual(rv.status_code, 200)
             self.assertEqual(os.path.isfile(full_server_path), False)
             #check if the file is correctly removed from the dictionary
-            self.assertEqual(server_path in server.User.users[DEMO_USER].paths, False)
+            self.assertEqual(
+                    server_path in server.User.users[DEMO_USER].paths,
+                    False
+            )
+
 
     def test_actions_copy(self):
         rv, client_path, server_path = transfer("cp", True)
         self.assertEqual(rv.status_code, 200)
-        full_dest_path = os.path.join(TEST_DIRECTORY, DEMO_USER, DEMO_DEST_COPY_PATH, client_path)
+
+        full_dest_path = os.path.join(TEST_DIRECTORY,
+                DEMO_USER,
+                DEMO_DEST_COPY_PATH,
+                client_path)
+        
         self.assertEqual(os.path.isfile(server_path), True)
-        self.assertEqual("cp/{}".format(DEMO_FILE) in server.User.users[DEMO_USER].paths, True)
+
+        u = server.User.users[DEMO_USER]
+        self.assertEqual("cp/{}".format(DEMO_FILE) in u.paths, True)
         self.assertEqual(os.path.isfile(full_dest_path), True)
-        self.assertEqual("{}/cp/{}".format(DEMO_DEST_COPY_PATH, DEMO_FILE) in server.User.users[DEMO_USER].paths, True)
+        self.assertEqual(
+                "{}/cp/{}".format(DEMO_DEST_COPY_PATH, DEMO_FILE) in u.paths,
+                True
+        )
 
 
     def test_actions_move(self):
         rv, client_path, server_path = transfer("mv", False)
         self.assertEqual(rv.status_code, 200)
-        full_dest_path = os.path.join(TEST_DIRECTORY, DEMO_USER, DEMO_DEST_MOVE_PATH, client_path)
+
+        full_dest_path = os.path.join(
+                TEST_DIRECTORY,
+                DEMO_USER,
+                DEMO_DEST_MOVE_PATH,
+                client_path
+        )
         self.assertEqual(os.path.isfile(server_path), False)
-        self.assertEqual("mv/{}".format(DEMO_FILE) in server.User.users[DEMO_USER].paths, False)
+
+        u = server.User.users[DEMO_USER]
+        self.assertEqual("mv/{}".format(DEMO_FILE) in u.paths, False)
         self.assertEqual(os.path.isfile(full_dest_path), True)
-        self.assertEqual("{}/mv/{}".format(DEMO_DEST_MOVE_PATH, DEMO_FILE) in server.User.users[DEMO_USER].paths, True)
+        self.assertEqual(
+                "{}/mv/{}".format(DEMO_DEST_MOVE_PATH, DEMO_FILE) in u.paths,
+                True
+        )
 
 
 
@@ -338,12 +366,6 @@ class TestSequenceFunctions(unittest.TestCase):
 
         for s in snapshot3["snapshot"].values():
             self.assertEqual(len(s), 1)
-
-
-
-
-
-
 
 
 if __name__ == '__main__':
