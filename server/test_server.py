@@ -184,6 +184,15 @@ class TestSequenceFunctions(unittest.TestCase):
     def test_delete_file(self):
         client_path, server_path = set_tmp_params("arr")
 
+        with server.app.test_client() as tc:
+            rv = tc.post(
+                "{}actions/delete".format(server._API_PREFIX),
+                headers = DEMO_HEADERS,
+                data = { "path": client_path }
+                )
+            self.assertEqual(rv.status_code, 200)
+
+
 
 
 if __name__ == '__main__':
