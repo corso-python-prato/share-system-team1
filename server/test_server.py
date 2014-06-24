@@ -86,15 +86,6 @@ class TestSequenceFunctions(unittest.TestCase):
         server.app.testing = True
 
 
-    # check if the server works
-    def test_welcome(self):
-        with server.app.test_client() as tc:
-            rv = tc.get("/")
-            self.assertEqual(rv.status_code, server.HTTP_OK)
-            welcomed = rv.get_data().startswith("Welcome on the Server!")
-            self.assertTrue(welcomed)
-
-
     # check if a new user is correctly created
     def test_correct_user_creation(self):
         dirs_counter = len(os.listdir(server.USERS_DIRECTORIES))
@@ -117,45 +108,24 @@ class TestSequenceFunctions(unittest.TestCase):
             self.assertEqual(rv.status_code, server.HTTP_CONFLICT)
 
 
-    # check a GET authentication access
-    def test_correct_hidden_page(self):
-        user = "Giovannina"
-        psw = "cracracra"
-        rv = create_demo_user(user, psw)
-        self.assertEqual(rv.status_code, server.HTTP_CREATED)
+    def test_to_md5(self):
+        # check if two files with the same content have the same md5        
+        second_file = "second_file.txt"
+        with open(second_file, "w") as f:
+            f.write(DEMO_CONTENT)
 
-        headers = {
-            'Authorization': 'Basic ' + b64encode("{0}:{1}".format(user, psw))
-        }
+        first_md5 = server.to_md5(DEMO_FILE)
+        second_md5 = server.to_md5(second_file)
+        self.assertEqual(first_md5, second_md5)
 
-        with server.app.test_client() as tc:
-            rv = tc.get("/hidden_page", headers=headers)
-            self.assertEqual(rv.status_code, server.HTTP_OK)
+        os.remove(second_file)
 
+        # check if, for a directory, returns False
+        tmp_dir = "aloha"
+        os.mkdir(tmp_dir)
+        self.assertFalse(server.to_md5(tmp_dir))
 
-    # check if the backup function create the folder and the files
-    def test_backup_config_files(self):
-        successful =  server.backup_config_files("test_backup")
-        if not successful:
-            # the directory is already present due to an old failed test
-            shutil.rmtree("test_backup")
-            successful =  server.backup_config_files("test_backup")
-
-        self.assertTrue(successful)
-
-        try:
-            dir_content = os.listdir("test_backup")
-        except OSError:
-            self.fail("Directory not created")
-        else:
-            self.assertIn(server.USERS_DATA, dir_content,
-                    msg="'user_data' missing in backup folder")
-        shutil.rmtree("test_backup")
-
-
-    # TODO:
-    # def test_to_md5(self):
-    #     self.assertEqual(TEST_DIRECTORY, )
+        os.rmdir(tmp_dir)
 
 
     def test_files_post(self):
