@@ -24,21 +24,21 @@ DEMO_CONTENT = "Hello my dear,\nit's a beautiful day here in Compiobbi."
 
 
 def tranfer_test(path, flag=True):
-        client_path, server_path = set_tmp_params(path)
-        new_path = "nuova"
-        if flag:
-            func = "copy"
-        else:
-            func = "move"
-        with server.app.test_client() as tc:
-            rv = tc.post(
-                "{}actions/{}".format(server._API_PREFIX, func),
+    client_path, server_path = set_tmp_params(path)
+    new_path = "nuova"
+    if flag:
+        func = "copy"
+    else:
+        func = "move"
+    with server.app.test_client() as tc:
+        rv = tc.post(
+               "{}actions/{}".format(server._API_PREFIX, func),
                 headers = DEMO_HEADERS,
                 data = { "file_src": client_path,
                          "file_dest" : os.path.join(new_path, DEMO_FILE)
-                 }
-                )
-            return rv
+            }
+            )
+        return rv
 
 def set_tmp_params(path):
     client_path = os.path.join(path, DEMO_FILE)
@@ -198,7 +198,7 @@ class TestSequenceFunctions(unittest.TestCase):
             got_content = f.read()
             self.assertEqual(DEMO_CONTENT, got_content)
 
-    def test_delete_file(self):
+    def test_actions_delete(self):
         client_path, server_path = set_tmp_params("arr")
         full_server_path = os.path.join(server_path, DEMO_FILE)
         with server.app.test_client() as tc:
@@ -209,18 +209,20 @@ class TestSequenceFunctions(unittest.TestCase):
                 )
             self.assertEqual(rv.status_code, 200)
 
-    def test_copy_file(self):
-            rv = tranfer_test("cp", True)
-            self.assertEqual(rv.status_code, 200)
+            self.assertEqual(os.path.isfile(full_server_path), False)
+            #check if the file is correctly removed from the dictionary
+            self.assertEqual(server_path in server.User.users[DEMO_USER].paths, False)
 
-    def test_move_file(self):
-            rv = tranfer_test("mv", False)
-            self.assertEqual(rv.status_code, 200)
+    def test_actions_copy(self):
+        rv = tranfer_test("cp", True)
+        self.assertEqual(rv.status_code, 200)
+        #full_server_path = os.path.join(server_path, DEMO_FILE)
 
-        self.assertEqual(os.path.isfile(full_server_path), False)
-        
-        #check if the file is correctly removed from the dictionary
-        self.assertEqual(server_path in server.User.users[DEMO_USER].paths, False)
+
+    def test_actions_move(self):
+        rv = tranfer_test("mv", False)
+        self.assertEqual(rv.status_code, 200)
+        #full_server_path = os.path.join(server_path, DEMO_FILE)
 
 
 if __name__ == '__main__':
