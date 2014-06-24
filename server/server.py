@@ -150,6 +150,11 @@ class User(object):
 
 
     def create_server_path(self, client_path):
+        # the client_path do not have to contain "../"
+        if (client_path.startswith("../")) or ("/../" in client_path):
+            abort(HTTP_BAD_REQUEST)
+
+        # search the first directory father already present
         directory_path, filename = os.path.split(client_path)
         dir_list = directory_path.split("/")
         
@@ -163,6 +168,7 @@ class User(object):
         else:
             father = os.path.join(*dir_list)
 
+        # create all the new subdirs and add them to paths
         new_client_path = father
         new_server_path = self.paths[new_client_path][0]
         for d in to_be_created:
@@ -209,12 +215,18 @@ class Files(Resource):
         tree = {}
         for p, v in u.paths.items():
             if not v[1] in tree:
-                tree[v[1]] = [(p, v[2])]
+                tree[v[1]] = [{
+                    "path": p,
+                    "timestamp": v[2]
+                }]
             else:
-                tree[v[1]].append((p, v[2]))
+                tree[v[1]].append({
+                    "path": p,
+                    "timestamp": v[2]
+                })
 
         snapshot = {
-            "tree" : tree,
+            "snapshot" : tree,
             "timestamp" : u.timestamp
         }
 

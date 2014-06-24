@@ -41,14 +41,15 @@ def tranfer_test(path, flag=True):
             return rv
 
 def set_tmp_params(path):
-        client_path = os.path.join(path, DEMO_FILE)
-        server_path = os.path.join(TEST_DIRECTORY, DEMO_USER, client_path)
-        os.makedirs(os.path.dirname(server_path))
-        shutil.copy(DEMO_FILE, server_path)
+    client_path = os.path.join(path, DEMO_FILE)
+    server_path = os.path.join(TEST_DIRECTORY, DEMO_USER, client_path)
+    os.makedirs(os.path.dirname(server_path))
+    shutil.copy(DEMO_FILE, server_path)
 
-        server.User.users[DEMO_USER].paths[client_path] = [server_path, 0, 0] 
+    server.User.users[DEMO_USER].paths[client_path] = [server_path, 0, 0] 
 
-        return client_path, server_path
+    return client_path, server_path
+
 
 def create_demo_user(user=None, psw=None):
     if not user:
@@ -145,6 +146,29 @@ class TestSequenceFunctions(unittest.TestCase):
         os.rmdir(tmp_dir)
 
 
+    def test_create_server_path(self):
+        # check if aborts when you pass invalid paths:
+        f = open(DEMO_FILE, "r")
+        with server.app.test_client() as tc:
+            rv = tc.post(
+                "{}files/{}".format(server._API_PREFIX, "../file.txt"),
+                headers = DEMO_HEADERS,
+                data = { "file_content": f }
+            )
+            self.assertEqual(rv.status_code, 400)
+        f.close()
+
+        f = open(DEMO_FILE, "r")
+        with server.app.test_client() as tc:
+            rv = tc.post(
+                "{}files/{}".format(server._API_PREFIX, "folder/../file.txt"),
+                headers = DEMO_HEADERS,
+                data = { "file_content": f }
+            )
+            self.assertEqual(rv.status_code, 400)
+        f.close()
+
+
     def test_files_post(self):
         f = open(DEMO_FILE, "r")
         with server.app.test_client() as tc:
@@ -176,7 +200,7 @@ class TestSequenceFunctions(unittest.TestCase):
 
     def test_delete_file(self):
         client_path, server_path = set_tmp_params("arr")
-
+        full_server_path = os.path.join(server_path, DEMO_FILE)
         with server.app.test_client() as tc:
             rv = tc.post(
                 "{}actions/delete".format(server._API_PREFIX),
@@ -193,7 +217,10 @@ class TestSequenceFunctions(unittest.TestCase):
             rv = tranfer_test("mv", False)
             self.assertEqual(rv.status_code, 200)
 
-
+        self.assertEqual(os.path.isfile(full_server_path), False)
+        
+        #check if the file is correctly removed from the dictionary
+        self.assertEqual(server_path in server.User.users[DEMO_USER].paths, False)
 
 
 if __name__ == '__main__':
