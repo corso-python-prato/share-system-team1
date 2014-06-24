@@ -15,6 +15,11 @@ from client_daemon import load_config
 sys.path.insert(0, 'utility/')
 from colorMessage import Message
 
+def take_input(message, password = False):
+    if not  password:
+        return raw_input(message)
+    else:
+        return getpass.getpass(message)
 
 class RawBoxCmd(cmd.Cmd):
     """RawBox command line interface"""
@@ -33,23 +38,23 @@ class RawBoxCmd(cmd.Cmd):
         command_type = 'create_user'
 
         if not username:
-            username = raw_input('insert your user name: ')
+            username = take_input('insert your user name: ')
         else:
             username = " ".join(username)
 
-        password = getpass.getpass('insert your password: ')
-        rpt_password = getpass.getpass('Repeat your password: ')
+        password = take_input('insert your password: ', password = True)
+        rpt_password = take_input('Repeat your password: ', password = True)
         while password != rpt_password:
             Message('WARNING', 'password not matched')
-            password = getpass.getpass('insert your password: ')
-            rpt_password = getpass.getpass('Repeat your password: ')
+            password = take_input('insert your password: ', password = True)
+            rpt_password = take_input('Repeat your password: ', password = True)
 
         email_regex = re.compile('[^@]+@[^@]+\.[^@]+')
-        email = raw_input('insert your user email: ')
+        email = take_input('insert your user email: ')
         
         while not email_regex.match(email):
             Message('WARNING', 'invalid email')
-            email = raw_input('insert your user email: ')
+            email = take_input('insert your user email: ')
 
         param = {
                 'user': username,
@@ -135,12 +140,12 @@ class RawBoxCmd(cmd.Cmd):
 
     def do_q(self, line=None):
         """ exit from RawBox"""
-        if raw_input('[Exit] are you sure? y/n ') == 'y':
+        if take_input('[Exit] are you sure? y/n ') == 'y':
             return True
 
     def do_quit(self, line=None):
         """ exit from RawBox"""
-        if raw_input('[Exit] are you sure? y/n ') == 'y':
+        if take_input('[Exit] are you sure? y/n ') == 'y':
             return True
 
     def print_response(self, response):
