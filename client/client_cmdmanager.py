@@ -12,9 +12,6 @@ from communication_system import CmdMessageClient
 import asyncore
 from client_daemon import load_config
 
-sys.path.insert(0, 'temp_mock/')
-import fakerequests as requests
-
 sys.path.insert(0, 'utility/')
 from colorMessage import Message
 
