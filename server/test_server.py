@@ -23,6 +23,16 @@ DEMO_PATH = "somepath/somefile.txt"
 DEMO_CONTENT = "Hello my dear,\nit's a beautiful day here in Compiobbi."
 
 
+def set_tmp_params(path):
+        client_path = os.path.join(path, DEMO_FILE)
+        server_path = os.path.join(TEST_DIRECTORY, DEMO_USER, client_path)
+        os.makedirs(os.path.dirname(server_path))
+        shutil.copy(DEMO_FILE, server_path)
+
+        server.User.users[DEMO_USER].paths[client_path] = [server_path, 0, 0] 
+
+        return client_path, server_path
+
 def create_demo_user(user=None, psw=None):
     if not user:
         random.seed(10)
@@ -74,7 +84,7 @@ class TestSequenceFunctions(unittest.TestCase):
     def setUp(self):
         server.app.config.update(TESTING=True)
         server.app.testing = True
-    
+
 
     # check if the server works
     def test_welcome(self):
@@ -164,12 +174,7 @@ class TestSequenceFunctions(unittest.TestCase):
 
 
     def test_files_get(self):
-        client_path = os.path.join("prr", DEMO_FILE)
-        server_path = os.path.join(TEST_DIRECTORY, DEMO_USER, client_path)
-        os.makedirs(os.path.dirname(server_path))
-        shutil.copy(DEMO_FILE, server_path)
-
-        server.User.users[DEMO_USER].paths[client_path] = [server_path, 0, 0]
+        client_path, server_path = set_tmp_params("prr")
 
         with server.app.test_client() as tc:
             rv = tc.get(
@@ -181,6 +186,10 @@ class TestSequenceFunctions(unittest.TestCase):
         with open(server_path) as f:
             got_content = f.read()
             self.assertEqual(DEMO_CONTENT, got_content)
+
+    def test_delete_file(self):
+        pass
+
 
 
 if __name__ == '__main__':
