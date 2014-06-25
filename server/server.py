@@ -32,8 +32,8 @@ parser.add_argument("task", type=str)
 
 
 def to_md5(path, block_size=2**20):
-    ''' if path is a file, return a md5;
-    if path is a directory, return False '''
+    """ if path is a file, return a md5;
+    if path is a directory, return False """
     if os.path.isdir(path):
         return False
 
@@ -46,10 +46,10 @@ def to_md5(path, block_size=2**20):
 
 
 class User(object):
-    ''' maintaining two dictionaries:
+    """ maintaining two dictionaries:
         · paths     = { client_path : [server_path, md5] }
         · inside Snapshot: { md5 : [client_path1, client_path2] }
-    server_path is for shared directories management '''
+    server_path is for shared directories management """
 
     users = {}
 
@@ -103,7 +103,7 @@ class User(object):
         # else if I'm creating a new user
         if username in User.users:
             raise ConflictError(
-                "'{}'' is an username already taken".format(username)
+                "'{}' is an username already taken".format(username)
             )
 
         psw_hash = sha256_crypt.encrypt(clear_password)
@@ -220,7 +220,8 @@ class Resource(Resource):
 class Files(Resource):
     def _diffs(self):
         """ Send a JSON with the timestamp of the last change in user
-        directories and an md5 for each file """
+        directories and an md5 for each file
+        Expected GET method without path """
         u = User.get_user(auth.username())
         tree = {}
         for p, v in u.paths.items():
@@ -247,14 +248,16 @@ class Files(Resource):
         # return json.dumps(snapshot), HTTP_OK
 
     def _download(self, client_path):
-        """ This function returns file content as a string using GET """
+        """Download
+        Returns file content as a byte string
+        Expected GET method with path"""
         u = User.get_user(auth.username())
         server_path = u.get_server_path(client_path)
         if not server_path:
             return "File unreachable", HTTP_NOT_FOUND
 
         try:
-            f = open(server_path, "r")
+            f = open(server_path, "rb")
             content = f.read()
             f.close()
             return content
@@ -268,8 +271,10 @@ class Files(Resource):
             return self._download(client_path)
 
     def put(self, client_path):
-        """ Put
-        this function updates an existing file """
+        """ Update
+        Updates an existing file
+        Expected as POST data:
+        { "file_content" : <file>} """
         u = User.get_user(auth.username())
         server_path = u.get_server_path(client_path)
         if not server_path:
@@ -283,7 +288,9 @@ class Files(Resource):
 
     def post(self, client_path):
         """ Upload
-        this function upload a new file using POST """
+        Upload a new file
+        Expected as POST data:
+        { "file_content" : <file>} """
         u = User.get_user(auth.username())
         if u.get_server_path(client_path):
             return "A file of the same name already exists in the same path", \
@@ -300,7 +307,8 @@ class Files(Resource):
 
 class Actions(Resource):
     def _delete(self):
-        """ This function deletes a selected file """
+        """ Expected as POST data:
+        { "path" : <path>} """
         u = User.get_user(auth.username())
         client_path = request.form["path"]
         server_path = u.get_server_path(client_path)
@@ -319,7 +327,10 @@ class Actions(Resource):
         self._transfer(keep_the_original=False)
 
     def _transfer(self, keep_the_original=True):
-        """ This function moves or copy a file from src to dest"""
+        """ Moves or copy a file from src to dest
+        depending on keep_the_original value
+        Expected as POST data:
+        { "file_src": <path>, "file_dest": <path> }"""
         u = User.get_user(auth.username())
         client_src = request.form["file_src"]
         client_dest = request.form["file_dest"]
@@ -370,8 +381,8 @@ def verify_password(username, password):
 
 @app.route("{}create_user".format(_API_PREFIX), methods=["POST"])
 def create_user():
-        ''' Expected as POST data:
-        { "user" : username, "psw" : password } '''
+        """ Expected as POST data:
+        { "user": <username>, "psw": <password> } """
         try:
             user = request.form["user"]
             psw = request.form["psw"]
