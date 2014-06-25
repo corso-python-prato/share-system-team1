@@ -144,26 +144,24 @@ class TestSequenceFunctions(unittest.TestCase):
         server.app.testing = True
 
 
-    # check if a new user is correctly created
-    def test_correct_user_creation(self):
+    def test_create_user(self):
+        # check if a new user is correctly created
         dirs_counter = len(os.listdir(server.USERS_DIRECTORIES))
-        with server.app.test_client() as tc:
-            rv = create_demo_user()
-            self.assertEqual(rv.status_code, server.HTTP_CREATED)
+
+        user = "Gianni"
+        psw = "IloveJava"
+        client = TestClient(user, psw)
+        rv = client.create_demo_user()
+        self.assertEqual(rv.status_code, server.HTTP_CREATED)
         
         # check if a directory is created
         new_counter = len(os.listdir(server.USERS_DIRECTORIES))
         self.assertEqual(dirs_counter+1, new_counter)
 
-
-    # check if, when the user already exists, 'create_user' returns an error
-    def test_user_who_already_exists(self):
-        user = "Gianni"
-        psw = "IloveJava"
-        with server.app.test_client() as tc:
-            create_demo_user(user, psw)
-            rv = create_demo_user(user, psw)
-            self.assertEqual(rv.status_code, server.HTTP_CONFLICT)
+        # check if, when the user already exists, 'create_user' returns an
+        # error
+        rv = client.create_demo_user()
+        self.assertEqual(rv.status_code, server.HTTP_CONFLICT)
 
 
     def test_to_md5(self):
