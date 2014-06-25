@@ -47,6 +47,14 @@ class Main(QtGui.QDialog, Ui_Dialog):
     def create_group(self):
         group = str(self.ui.lineEdit_8.text())
         executer._create_group(group)
+
+    def load_status(self, snapshot_file_path):
+        with open("../"+snapshot_file_path, 'r') as f:
+            timestamp = json.load(f)['timestamp']
+        qtimestamp = QtCore.QDateTime();
+        qtimestamp.setTime_t(int(timestamp));
+        self.ui.dateTimeEdit.setDateTime(qtimestamp)
+
     def __del__ (self):
         self.ui = None
 
