@@ -25,6 +25,7 @@ DEMO_CONTENT = "Hello my dear,\nit's a beautiful day here in Compiobbi."
 DEMO_DEST_COPY_PATH = "new_cp"
 DEMO_DEST_MOVE_PATH = "new_mv"
 
+
 def transfer(path, flag=True):
     client_path, server_path = set_tmp_params(path)
     if flag:
@@ -75,6 +76,36 @@ def create_demo_user(user=None, psw=None):
                     "psw" : psw
                 }
         )
+
+
+class TestClient(object):
+
+    def __init__(self, user, psw):
+        self.user = user
+        self.psw = psw
+        self.headers = {
+            "Authorization": "Basic "
+            + b64encode("{0}:{1}".format(user, psw))
+        }
+        self.tc = server.app.test_client()
+        self.VERBS = {
+            "post": self.tc.post,
+            "get": self.tc.get
+        }
+
+    def call(self, HTTP_verb, url, data=None, auth=True):
+        return self.VERBS[HTTP_verb](
+            server._API_PREFIX + url,
+            data = data,
+            headers = self.headers if auth else None
+        )
+
+    def create_demo_user(self):
+        data = {
+            "user": self.user,
+            "psw": self.psw
+        }
+        return self.call("post", "create_user", data, auth=False)
 
 
 class TestSequenceFunctions(unittest.TestCase):
@@ -286,54 +317,32 @@ class TestSequenceFunctions(unittest.TestCase):
         )
 
 
-
     def test_files_differences(self):
-        user = "complex_user@gmail.com"
-        psw = "complex_password"
-        create_demo_user(user, psw)
-        headers = {
-            "Authorization": "Basic "
-            + b64encode("{0}:{1}".format(user, psw))
-        }
+        client = TestClient(
+            user="complex_user@gmail.com",
+            psw="complex_password"
+        )
+        client.create_demo_user()
 
         # first check: user created just now
-        with server.app.test_client() as tc:
-            rv = tc.get(
-                "{}files/".format(server._API_PREFIX),
-                headers = headers
-            )
+        rv = client.call("get", "files/")
         self.assertEqual(rv.status_code, 200)
         snapshot1 = json.loads(rv.data)
         self.assertFalse(snapshot1["snapshot"])
 
         # second check: insert some files
-        path1 = "path1/cool_filename.txt"
-        path2 = "path2/path3/yo.jpg"
-
-        with server.app.test_client() as tc:
-            # upload a couple of files
-            f = open(DEMO_FILE, "r")            
-            rv = tc.post(
-                "{}files/{}".format(server._API_PREFIX, path1),
-                headers = headers,
-                data = { "file_content": f }
-            )
-            self.assertEqual(rv.status_code, 201)
-            f.close()
+        some_paths = [
+            "path1/cool_filename.txt",
+            "path2/path3/yo.jpg"
+        ]
+        for p in some_paths:
             f = open(DEMO_FILE, "r")
-            rv = tc.post(
-                "{}files/{}".format(server._API_PREFIX, path2),
-                headers = headers,
-                data = { "file_content": f }
-            )
-            self.assertEqual(rv.status_code, 201)
+            data = { "file_content": f }
+            rv = client.call("post", "files/"+p, data)
             f.close()
+            self.assertEqual(rv.status_code, 201)
 
-            # new diffs?
-            rv = tc.get(
-                "{}files/".format(server._API_PREFIX),
-                headers = headers
-            )
+        rv = client.call("get", "files/")
         self.assertEqual(rv.status_code, 200)
         
         snapshot2 = json.loads(rv.data)
@@ -344,20 +353,11 @@ class TestSequenceFunctions(unittest.TestCase):
             self.assertEqual(len(s), 2)
 
         # third check: delete a file
-        with server.app.test_client() as tc:
-            rv = tc.post(
-                "{}actions/delete".format(server._API_PREFIX),
-                headers = headers,
-                data = { "path": path2 }
-            )
-            self.assertEqual(rv.status_code, 200)
+        data = { "path": some_paths[1] }
+        rv = client.call("post", "actions/delete", data)
+        self.assertEqual(rv.status_code, 200)
 
-
-
-            rv = tc.get(
-                "{}files/".format(server._API_PREFIX),
-                headers = headers
-            )
+        rv = client.call("get", "files/")
         self.assertEqual(rv.status_code, 200)
 
         snapshot3 = json.loads(rv.data)
