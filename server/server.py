@@ -38,7 +38,7 @@ def to_md5(path, block_size=2**20):
         return False
 
     m = hashlib.md5()
-    with open(path,'rb') as f:
+    with open(path, 'rb') as f:
         for chunk in iter(lambda: f.read(block_size), b''):
             m.update(chunk)
 
@@ -69,14 +69,13 @@ class User(object):
             for u, v in saved["users"].items():
                 User(u, None, from_dict=v)
 
-
     @classmethod
     def save_users(cls, filename=None):
         if not filename:
             filename = USERS_DATA
 
         to_save = {
-            "users" : {}
+            "users": {}
         }
         for u, v in cls.users.items():
             to_save["users"][u] = v.to_dict()
@@ -84,14 +83,12 @@ class User(object):
         with open(filename, "w") as f:
             json.dump(to_save, f)
 
-
     @classmethod
     def get_user(cls, username):
         try:
             return cls.users[username]
         except KeyError:
             raise MissingUserError("User doesn't exist")
-
 
     # DYNAMIC METHODS
     def __init__(self, username, clear_password, from_dict=None):
@@ -115,7 +112,7 @@ class User(object):
             os.mkdir(full_path)
         except OSError:
             raise ConflictError(
-                    "Conflict while creating the directory for a new user"
+                "Conflict while creating the directory for a new user"
             )
 
         # OBJECT ATTRIBUTES
@@ -133,21 +130,18 @@ class User(object):
         User.users[username] = self
         User.save_users()
 
-
     def to_dict(self):
         return {
-            "psw" : self.psw,
-            "paths" : self.paths,
-            "timestamp" : self.timestamp
+            "psw": self.psw,
+            "paths": self.paths,
+            "timestamp": self.timestamp
         }
-
 
     def get_server_path(self, client_path):
         if client_path in self.paths:
             return self.paths[client_path][0]
         else:
             return False
-
 
     def create_server_path(self, client_path):
         # the client_path do not have to contain "../"
@@ -157,12 +151,12 @@ class User(object):
         # search the first directory father already present
         directory_path, filename = os.path.split(client_path)
         dir_list = directory_path.split("/")
-        
+
         to_be_created = []
         while (len(dir_list) > 0) \
                 and (os.path.join(*dir_list) not in self.paths):
             to_be_created.insert(0, dir_list.pop())
-        
+
         if len(dir_list) == 0:
             father = ""
         else:
@@ -176,13 +170,13 @@ class User(object):
             new_server_path = os.path.join(new_server_path, d)
             if not os.path.exists(new_server_path):
                 os.makedirs(new_server_path)
-            self.push_path(new_client_path,
-                    new_server_path,
-                    update_user_data=False
+            self.push_path(
+                new_client_path,
+                new_server_path,
+                update_user_data=False
             )
 
         return os.path.join(new_server_path, filename)
-
 
     def push_path(self, client_path, server_path, update_user_data=True):
         md5 = to_md5(server_path)
@@ -195,7 +189,6 @@ class User(object):
         # for s, v in shared_folder.items():
         #     if server_path.startswith(s):
         #         update each user
-
 
     def rm_path(self, client_path):
         # remove empty directories
@@ -246,13 +239,12 @@ class Files(Resource):
                 })
 
         snapshot = {
-            "snapshot" : tree,
-            "timestamp" : u.timestamp
+            "snapshot": tree,
+            "timestamp": u.timestamp
         }
 
         return snapshot, HTTP_OK
         # return json.dumps(snapshot), HTTP_OK
-
 
     def _download(self, client_path):
         """ This function returns file content as a string using GET """
@@ -269,13 +261,11 @@ class Files(Resource):
         except IOError:
             abort(HTTP_NOT_FOUND)
 
-
     def get(self, client_path=None):
         if not client_path:
             return self._diffs()
         else:
             return self._download(client_path)
-
 
     def put(self, client_path):
         """ Put
@@ -284,13 +274,12 @@ class Files(Resource):
         server_path = u.get_server_path(client_path)
         if not server_path:
             abort(HTTP_NOT_FOUND)
-        
+
         f = request.files["file_content"]
         f.save(server_path)
 
         u.push_path(client_path, server_path)
         return u.timestamp, HTTP_CREATED
-
 
     def post(self, client_path):
         """ Upload
@@ -298,13 +287,13 @@ class Files(Resource):
         u = User.get_user(auth.username())
         if u.get_server_path(client_path):
             return "A file of the same name already exists in the same path", \
-                    HTTP_CONFLICT
+                HTTP_CONFLICT
 
         server_path = u.create_server_path(client_path)
-       
+
         f = request.files["file_content"]
         f.save(server_path)
-        
+
         u.push_path(client_path, server_path)
         return u.timestamp, HTTP_CREATED
 
@@ -323,14 +312,11 @@ class Actions(Resource):
         u.rm_path(client_path)
         return u.timestamp
 
-
     def _copy(self):
         self._transfer(keep_the_original=True)
 
-
     def _move(self):
         self._transfer(keep_the_original=False)
-
 
     def _transfer(self, keep_the_original=True):
         """ This function moves or copy a file from src to dest"""
@@ -343,7 +329,7 @@ class Actions(Resource):
             abort(HTTP_NOT_FOUND)
 
         server_dest = u.create_server_path(client_dest)
-        
+
         try:
             if keep_the_original:
                 shutil.copy(server_src, server_dest)
@@ -358,7 +344,6 @@ class Actions(Resource):
                 u.push_path(client_dest, server_dest, update_user_data=False)
                 u.rm_path(client_src)
             return u.timestamp
-
 
     commands = {
         "delete": _delete,
@@ -383,7 +368,7 @@ def verify_password(username, password):
         return sha256_crypt.verify(password, u.psw)
 
 
-@app.route("{}create_user".format(_API_PREFIX), methods = ["POST"])
+@app.route("{}create_user".format(_API_PREFIX), methods=["POST"])
 def create_user():
         ''' Expected as POST data:
         { "user" : username, "psw" : password } '''
@@ -392,7 +377,7 @@ def create_user():
             psw = request.form["psw"]
         except KeyError:
             abort(HTTP_BAD_REQUEST)
-        
+
         if user in User.users:
             return "This user already exists", HTTP_CONFLICT
         else:
@@ -404,11 +389,11 @@ def main():
     if not os.path.isdir(USERS_DIRECTORIES):
         os.mkdir(USERS_DIRECTORIES)
     User.user_class_init()
-    app.run(host="0.0.0.0",debug=True)         # TODO: remove debug=True
+    app.run(host="0.0.0.0", debug=True)         # TODO: remove debug=True
 
 
 api.add_resource(Files, "{}files/<path:client_path>".format(_API_PREFIX),
-        "{}files/".format(_API_PREFIX))
+    "{}files/".format(_API_PREFIX))
 api.add_resource(Actions, "{}actions/<string:cmd>".format(_API_PREFIX))
 
 if __name__ == "__main__":
