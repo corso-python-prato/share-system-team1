@@ -35,6 +35,12 @@ class Main(QtGui.QDialog, Ui_Dialog):
         self.ui.label_5.setText("of: " + str(self.max_size/1000000000) + " GB")
         self.executer = executer
         self.load_status(config['snapshot_file_path'])
+
+        self.ui.pushButton_2.clicked.connect(self.add_user) 
+    def add_user(self):
+        user = str(self.ui.lineEdit_6.text())
+        group = str(self.ui.lineEdit_7.text())
+        executer._add_user([user,"group=" + group])
     
     def __del__ (self):
         self.ui = None
