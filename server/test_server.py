@@ -15,12 +15,9 @@ TEST_USER_DATA = "test_user_data.json"
 
 DEMO_USER = "i_am_an_user@rawbox.it"
 DEMO_PSW = "very_secret_password"
-DEMO_HEADERS = {
-    "Authorization": "Basic "
-    + b64encode("{0}:{1}".format(DEMO_USER, DEMO_PSW))
-}
+DEMO_CLIENT = None
+
 DEMO_FILE = "somefile.txt"
-DEMO_PATH = "somepath/somefile.txt"
 DEMO_CONTENT = "Hello my dear,\nit's a beautiful day here in Compiobbi."
 DEMO_DEST_COPY_PATH = "new_cp"
 DEMO_DEST_MOVE_PATH = "new_mv"
@@ -34,15 +31,14 @@ def transfer(path, flag=True):
     else:
         func = "move"
         new_path = "{}/{}".format(DEMO_DEST_MOVE_PATH, path)
-    with server.app.test_client() as tc:
-        rv = tc.post(
-               "{}actions/{}".format(server._API_PREFIX, func),
-                headers = DEMO_HEADERS,
-                data = { "file_src": client_path,
-                         "file_dest" : os.path.join(new_path, DEMO_FILE)
-            }
-            )
-        return rv, client_path, server_path
+
+    data = { 
+        "file_src": client_path,
+        "file_dest": os.path.join(new_path, DEMO_FILE)
+    }
+    rv = DEMO_CLIENT.call("post", "actions/"+func, data)
+
+    return rv, client_path, server_path
 
 
 def set_tmp_params(father_dir):
@@ -61,23 +57,6 @@ def set_tmp_params(father_dir):
     return client_path, server_path
 
 
-def create_demo_user(user=None, psw=None):
-    if not user:
-        random.seed(10)
-        user = "".join(random.sample(string.letters, 5))
-    if not psw:
-        random.seed(10)
-        psw = "".join(random.sample(string.letters, 5))
-
-    with server.app.test_client() as tc:
-        return tc.post("/API/v1/create_user",
-                data = {
-                    "user" : user,
-                    "psw" : psw
-                }
-        )
-
-
 class TestClient(object):
 
     def __init__(self, user, psw):
@@ -90,7 +69,8 @@ class TestClient(object):
         self.tc = server.app.test_client()
         self.VERBS = {
             "post": self.tc.post,
-            "get": self.tc.get
+            "get": self.tc.get,
+            "put": self.tc.put
         }
 
     def call(self, HTTP_verb, url, data=None, auth=True):
@@ -126,7 +106,9 @@ class TestSequenceFunctions(unittest.TestCase):
         server.USERS_DATA = TEST_USER_DATA
 
         # demo user configuration
-        create_demo_user(DEMO_USER, DEMO_PSW)
+        global DEMO_CLIENT
+        DEMO_CLIENT = TestClient(DEMO_USER, DEMO_PSW)
+        DEMO_CLIENT.create_demo_user()
         with open(DEMO_FILE, "w") as f:
             f.write(DEMO_CONTENT)
 
@@ -186,38 +168,33 @@ class TestSequenceFunctions(unittest.TestCase):
 
     def test_create_server_path(self):
         # check if aborts when you pass invalid paths:
-        f = open(DEMO_FILE, "r")
-        with server.app.test_client() as tc:
-            rv = tc.post(
-                "{}files/{}".format(server._API_PREFIX, "../file.txt"),
-                headers = DEMO_HEADERS,
-                data = { "file_content": f }
-            )
-            self.assertEqual(rv.status_code, 400)
-        f.close()
+        invalid_paths = [
+            "../file.txt",
+            "folder/../file.txt"
+        ]
 
-        f = open(DEMO_FILE, "r")
-        with server.app.test_client() as tc:
-            rv = tc.post(
-                "{}files/{}".format(server._API_PREFIX, "folder/../file.txt"),
-                headers = DEMO_HEADERS,
-                data = { "file_content": f }
-            )
+        for p in invalid_paths:
+            f = open(DEMO_FILE, "r")
+            data = { "file_content": f }
+            rv = DEMO_CLIENT.call("post", "files/"+p, data)
+            f.close()
+
             self.assertEqual(rv.status_code, 400)
-        f.close()
+           
+        # TODO: other tests here?
 
 
     def test_files_post(self):
+        demo_path = "somepath/somefile.txt"
+
         f = open(DEMO_FILE, "r")
-        with server.app.test_client() as tc:
-            rv = tc.post(
-                "{}files/{}".format(server._API_PREFIX, DEMO_PATH),
-                headers = DEMO_HEADERS,
-                data = { "file_content": f }
-            )
-            self.assertEqual(rv.status_code, 201)
+        data = { "file_content": f }
+        rv = DEMO_CLIENT.call("post", "files/"+demo_path, data)
         f.close()
-        with open("{}{}/{}".format(TEST_DIRECTORY, DEMO_USER, DEMO_PATH)) as f:
+
+        self.assertEqual(rv.status_code, 201)
+        
+        with open("{}{}/{}".format(TEST_DIRECTORY, DEMO_USER, demo_path)) as f:
             uploaded_content = f.read()
             self.assertEqual(DEMO_CONTENT, uploaded_content)
 
@@ -225,12 +202,8 @@ class TestSequenceFunctions(unittest.TestCase):
     def test_files_get(self):
         client_path, server_path = set_tmp_params("dwn")
 
-        with server.app.test_client() as tc:
-            rv = tc.get(
-                "{}files/{}".format(server._API_PREFIX, client_path),
-                headers = DEMO_HEADERS
-            )
-            self.assertEqual(rv.status_code, 200)
+        rv = DEMO_CLIENT.call("get", "files/"+client_path)
+        self.assertEqual(rv.status_code, 200)
 
         with open(server_path) as f:
             got_content = f.read()
@@ -238,40 +211,35 @@ class TestSequenceFunctions(unittest.TestCase):
 
 
     def test_files_put(self):
+        demo_path = "somepath/somefile.txt"
+
         client_path, server_path = set_tmp_params("pt")
-        if (server_path in server.User.users[DEMO_USER].paths[client_path]):
-            f = open(DEMO_FILE, "r")
-            with server.app.test_client() as tc:
-                rv = tc.put(
-                    "{}files/{}".format(server._API_PREFIX, DEMO_PATH),
-                    headers = DEMO_HEADERS,
-                    data = { "file_content": f }
-                )
-                self.assertEqual(rv.status_code, 201)
-            f.close()
-            with open("{}{}/{}".format(
-                    TEST_DIRECTORY,
-                    DEMO_USER,
-                    DEMO_PATH)) as f:
-                put_content = f.read()
-                self.assertEqual(DEMO_CONTENT, put_content)
+        if not server_path in server.User.users[DEMO_USER].paths[client_path]:
+            return
+
+        f = open(DEMO_FILE, "r")
+        data = { "file_content": f }
+        rv = DEMO_CLIENT.call("put", "files/"+demo_path, data)
+        f.close()
+        self.assertEqual(rv.status_code, 201)
+
+        with open("{}{}/{}".format(TEST_DIRECTORY, DEMO_USER, demo_path)) as f:
+            put_content = f.read()
+            self.assertEqual(DEMO_CONTENT, put_content)
+
 
     def test_actions_delete(self):
         client_path, server_path = set_tmp_params("dlt")
         full_server_path = os.path.join(server_path, DEMO_FILE)
-        with server.app.test_client() as tc:
-            rv = tc.post(
-                "{}actions/delete".format(server._API_PREFIX),
-                headers = DEMO_HEADERS,
-                data = { "path": client_path }
-            )
-            self.assertEqual(rv.status_code, 200)
-            self.assertEqual(os.path.isfile(full_server_path), False)
-            #check if the file is correctly removed from the dictionary
-            self.assertEqual(
-                    server_path in server.User.users[DEMO_USER].paths,
-                    False
-            )
+
+        data = { "path": client_path }
+        rv = DEMO_CLIENT.call("post", "actions/delete", data)
+        
+        self.assertEqual(rv.status_code, 200)
+        self.assertFalse(os.path.isfile(full_server_path))
+        
+        #check if the file is correctly removed from the dictionary
+        self.assertFalse(server_path in server.User.users[DEMO_USER].paths)
 
 
     def test_actions_copy(self):
