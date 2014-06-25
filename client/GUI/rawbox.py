@@ -37,11 +37,16 @@ class Main(QtGui.QDialog, Ui_Dialog):
         self.load_status(config['snapshot_file_path'])
 
         self.ui.pushButton_2.clicked.connect(self.add_user) 
+        self.ui.pushButton_3.clicked.connect(self.create_group)
+
     def add_user(self):
         user = str(self.ui.lineEdit_6.text())
         group = str(self.ui.lineEdit_7.text())
         executer._add_user([user,"group=" + group])
     
+    def create_group(self):
+        group = str(self.ui.lineEdit_8.text())
+        executer._create_group(group)
     def __del__ (self):
         self.ui = None
 
