@@ -1,58 +1,51 @@
 #!/usr/bin/env python
 #-*- coding: utf-8 -*-
 
+from communication_system import CmdMessageClient
+from client_daemon import load_config
+from colorMessage import Message
 import platform
+import asyncore
 import getpass
 import cmd
 import sys
 import re
 import os
 
-from communication_system import CmdMessageClient
-import asyncore
-from client_daemon import load_config
 
-sys.path.insert(0, 'temp_mock/')
-import fakerequests as requests
+def take_input(message, password = False):
+    if not  password:
+        return raw_input(message)
+    else:
+        return getpass.getpass(message)
 
-sys.path.insert(0, 'utility/')
-from colorMessage import Message
-
-
-class RawBoxCmd(cmd.Cmd):
-    """RawBox command line interface"""
-
-    intro = Message().color('INFO', '##### Hello guy!... or maybe girl, welcome to RawBox ######\ntype ? to see help\n\n')
-    doc_header = Message().color('INFO', "command list, type ? <topic> to see more :)")
-    prompt = Message().color('HEADER', '(RawBox) ')
-    ruler = Message().color('INFO', '~')
+class RawBoxExecuter(object):
 
     def __init__(self, comm_sock):
-        cmd.Cmd.__init__(self)
         self.comm_sock = comm_sock
-        
+
     def _create_user(self, username=None):
         """create user if not exists"""
         command_type = 'create_user'
 
         if not username:
-            username = raw_input('insert your user name: ')
+            username = take_input('insert your user name: ')
         else:
             username = " ".join(username)
 
-        password = getpass.getpass('insert your password: ')
-        rpt_password = getpass.getpass('Repeat your password: ')
+        password = take_input('insert your password: ', password = True)
+        rpt_password = take_input('Repeat your password: ', password = True)
         while password != rpt_password:
             Message('WARNING', 'password not matched')
-            password = getpass.getpass('insert your password: ')
-            rpt_password = getpass.getpass('Repeat your password: ')
+            password = take_input('insert your password: ', password = True)
+            rpt_password = take_input('Repeat your password: ', password = True)
 
         email_regex = re.compile('[^@]+@[^@]+\.[^@]+')
-        email = raw_input('insert your user email: ')
+        email = take_input('insert your user email: ')
         
         while not email_regex.match(email):
             Message('WARNING', 'invalid email')
-            email = raw_input('insert your user email: ')
+            email = take_input('insert your user email: ')
 
         param = {
                 'user': username,
@@ -103,6 +96,22 @@ class RawBoxCmd(cmd.Cmd):
         self.comm_sock.send_message(command_type, param)
         self.print_response(self.comm_sock.read_message())
 
+    def print_response(self, response):
+        print 'Response for "{}" command\nresult: {}'.format(response['request'], response['body'])
+
+
+class RawBoxCmd(cmd.Cmd):
+    """RawBox command line interface"""
+
+    intro = Message().color('INFO', '##### Hello guy!... or maybe girl, welcome to RawBox ######\ntype ? to see help\n\n')
+    doc_header = Message().color('INFO', "command list, type ? <topic> to see more :)")
+    prompt = Message().color('HEADER', '(RawBox) ')
+    ruler = Message().color('INFO', '~')
+
+    def __init__(self, executer):
+        cmd.Cmd.__init__(self)
+        self.executer = executer
+        
     def error(self, *args):
         print "hum... unknown command, please type help"
 
@@ -115,8 +124,8 @@ class RawBoxCmd(cmd.Cmd):
             command = line.split()[0]
             arguments = line.split()[1:]
             {
-                'user': self._add_user,
-                'admin': self._add_admin,
+                'user': self.executer._add_user,
+                'admin': self.executer._add_admin,
             }.get(command, self.error)(arguments)
         else:
             Message('INFO', self.do_add.__doc__)
@@ -130,24 +139,21 @@ class RawBoxCmd(cmd.Cmd):
             command = line.split()[0]
             arguments = line.split()[1:]
             {
-                'user': self._create_user,
-                'group': self._create_group,
+                'user': self.executer._create_user,
+                'group': self.executer._create_group,
             }.get(command, self.error)(arguments)
         else:
             Message('INFO', self.do_create.__doc__)
 
     def do_q(self, line=None):
         """ exit from RawBox"""
-        if raw_input('[Exit] are you sure? y/n ') == 'y':
+        if take_input('[Exit] are you sure? y/n ') == 'y':
             return True
 
     def do_quit(self, line=None):
         """ exit from RawBox"""
-        if raw_input('[Exit] are you sure? y/n ') == 'y':
+        if take_input('[Exit] are you sure? y/n ') == 'y':
             return True
-
-    def print_response(self, response):
-        print 'Response for "{}" command\nresult: {}'.format(response['request'], response['body'])
 
 
 def main():
@@ -159,7 +165,7 @@ def main():
     conf = load_config()
     comm_sock = CmdMessageClient(conf['cmd_host'], int(conf['cmd_port']))
     try:
-        RawBoxCmd(comm_sock).cmdloop()
+        RawBoxCmd(RawBoxExecuter(comm_sock)).cmdloop()
     except KeyboardInterrupt:
         print "[exit]"
 

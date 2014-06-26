@@ -1,9 +1,0 @@
-{
-	"server_url" : "http://192.168.48.213:5000/API/v1",
-	"dir_path": "/Users/marc0/progetto/prove_deamon",
-	"snapshot_file_path": "snapshot_file.json",
-	"cmd_host": "localhost",
-	"cmd_port": "6666",
-	"username":"usernameFarlocco",
-	"password": "passwordSegretissima" 
-}

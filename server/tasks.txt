@@ -1,6 +1,9 @@
-· indentazione commenti
+· se la delete viene chiamata su una cartella?
+
+· test delle cose: che schiantino bene.
+
 · change dir generale per test
-· controllo ../../../
+
 
 
 · la create_user deve restituire un timestamp al client?
