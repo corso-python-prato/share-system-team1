@@ -397,10 +397,11 @@ class DirSnapshotManager(object):
             for f in files:
                 full_path = os.path.join(root, f)
                 file_md5 = self.file_snapMd5(full_path)
+                rel_path = os.path.relpath(full_path, self.dir_path) 
                 if file_md5 in dir_snapshot:
-                    dir_snapshot[file_md5].append(full_path)
+                    dir_snapshot[file_md5].append(rel_path)
                 else:
-                    dir_snapshot[file_md5] = [full_path]
+                    dir_snapshot[file_md5] = [rel_path]
         return dir_snapshot
 
     def save_snapshot(self, timestamp):
