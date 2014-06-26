@@ -327,7 +327,7 @@ class DirectoryEventHandler(FileSystemEventHandler):
             :class:`DirMovedEvent` or :class:`FileMovedEvent`
         """
         if event.src_path not in self.path_ignored:
-            self.cmd.move_file(event.src_path)
+            self.cmd.move_file(event.src_path, event.dest_path)
         else:
             print "ingnored move on ", event.src_path
 
