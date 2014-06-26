@@ -14,12 +14,10 @@ class ClientDaemonTest(unittest.TestCase):
         httpretty.enable()
         httpretty.register_uri(
             httpretty.POST,
-            'http://127.0.0.1:5000/API/v1/files/f_for_cdaemon_test.txt',
-            data={"response": "ok"})
+            'http://127.0.0.1:5000/API/v1/files/f_for_cdaemon_test.txt')
         httpretty.register_uri(
             httpretty.PUT,
-            'http://127.0.0.1:5000/API/v1/files/f_for_cdaemon_test.txt',
-            data={"response": "ok"})
+            'http://127.0.0.1:5000/API/v1/files/f_for_cdaemon_test.txt')
         httpretty.register_uri(
             httpretty.GET,
             'http://127.0.0.1:5000/API/v1/files/f_for_cdaemon_test.txt',
@@ -27,15 +25,26 @@ class ClientDaemonTest(unittest.TestCase):
             content_type="text/txt")
         httpretty.register_uri(
             httpretty.POST,
-            'http://127.0.0.1:5000/API/v1/actions/delete',
-            data={"response": "ok"})
+            'http://127.0.0.1:5000/API/v1/actions/delete')
+        httpretty.register_uri(
+            httpretty.POST,
+            'http://127.0.0.1:5000/API/v1/actions/move')
+        httpretty.register_uri(
+            httpretty.POST,
+            'http://127.0.0.1:5000/API/v1/actions/copy')
+        httpretty.register_uri(
+            httpretty.POST,
+            'http://127.0.0.1:5000/API/v1/user/create')
 
-
-        self.dir = "/tmp/home/monthly/daily"
+        self.dir = "/tmp/home/test_rawbox/folder"
+        self.another_dir = "/tmp/home/test_rawbox/folder/other_folder"
         file_name = "f_for_cdaemon_test.txt"
         if not os.path.exists(self.dir):
             os.makedirs(self.dir, 0755)
+        if not os.path.exists(self.another_dir):
+            os.makedirs(self.another_dir, 0775)
         self.file_path = os.path.join(self.dir, file_name)
+        self.another_path = os.path.join(self.another_dir, file_name)
         with open(self.file_path, 'w') as temp_file:
                 temp_file.write('test_file')
         self.username = "usernameFarlocco"
@@ -58,9 +67,9 @@ class ClientDaemonTest(unittest.TestCase):
         host = httpretty.last_request().headers['host']
         method = httpretty.last_request().method
         
-        #check if authorization is equals
+        #check if authorizations are equal
         self.assertEqual(authorization_decoded, mock_auth_user)
-        #check if url and method is equals
+        #check if url and methods are equal
         self.assertEqual(path, '/API/v1/files/f_for_cdaemon_test.txt')
         self.assertEqual(host, '127.0.0.1:5000')
         if put_file:
@@ -81,17 +90,17 @@ class ClientDaemonTest(unittest.TestCase):
         host = httpretty.last_request().headers['host']
         method = httpretty.last_request().method
 
-        #check if authorization is equals
+        #check if authorization are equal
         self.assertEqual(authorization_decoded, mock_auth_user)
-        #check if url and host is equals
+        #check if url and host are equal
         self.assertEqual(path, '/API/v1/files/f_for_cdaemon_test.txt')
         self.assertEqual(host, '127.0.0.1:5000')
-        #check if method equals
+        #check if methods are equal
         self.assertEqual(method, 'GET')
         #check response's body
         self.assertEqual(response[1], u'[{"title": "Test"}]')
 
-    def test_delete(self):
+    def test_delete_file(self):
         mock_auth_user = ":".join([self.username, self.password])
         client_daemon.ServerCommunicator(
                     'http://127.0.0.1:5000/API/v1',
@@ -104,13 +113,79 @@ class ClientDaemonTest(unittest.TestCase):
         host = httpretty.last_request().headers['host']
         method = httpretty.last_request().method
 
-        #check if authorization is equals
+        #check if authorization are equal
         self.assertEqual(authorization_decoded, mock_auth_user)
-        #check if url and host is equals
+        #check if url and host are equal
         self.assertEqual(path, '/API/v1/actions/delete')
         self.assertEqual(host, '127.0.0.1:5000')
-        #check if method equals
+        #check if methods are equal
         self.assertEqual(method, 'POST')
+
+    def test_move_file(self):
+        mock_auth_user = ":".join([self.username, self.password])
+        client_daemon.ServerCommunicator(
+                    'http://127.0.0.1:5000/API/v1',
+                    self.username,
+                    self.password,
+                    self.dir).move_file(self.file_path, self.another_path)
+        encoded = httpretty.last_request().headers['authorization'].split()[1]
+        authorization_decoded = base64.decodestring(encoded)
+        path = httpretty.last_request().path
+        host = httpretty.last_request().headers['host']
+        method = httpretty.last_request().method
+
+        #check if authorization are equal
+        self.assertEqual(authorization_decoded, mock_auth_user)
+        #check if url and host are equal
+        self.assertEqual(path, '/API/v1/actions/move')
+        self.assertEqual(host, '127.0.0.1:5000')
+        #check if methods are equal
+        self.assertEqual(method, 'POST')
+
+    def test_copy_file(self):
+        mock_auth_user = ":".join([self.username, self.password])
+        client_daemon.ServerCommunicator(
+                    'http://127.0.0.1:5000/API/v1',
+                    self.username,
+                    self.password,
+                    self.dir).copy_file(self.file_path, self.another_path)
+        encoded = httpretty.last_request().headers['authorization'].split()[1]
+        authorization_decoded = base64.decodestring(encoded)
+        path = httpretty.last_request().path
+        host = httpretty.last_request().headers['host']
+        method = httpretty.last_request().method
+
+        #check if authorization are equal
+        self.assertEqual(authorization_decoded, mock_auth_user)
+        #check if url and host are equal
+        self.assertEqual(path, '/API/v1/actions/copy')
+        self.assertEqual(host, '127.0.0.1:5000')
+        #check if methods are equal
+        self.assertEqual(method, 'POST')
+
+    def test_create_user(self):
+        test_username = "test_username"
+        test_password = "test_password"
+        mock_auth_user = ":".join([self.username, self.password])
+        client_daemon.ServerCommunicator(
+                    'http://127.0.0.1:5000/API/v1',
+                    self.username,
+                    self.password,
+                    self.dir).create_user(test_username, test_password)
+        encoded = httpretty.last_request().headers['authorization'].split()[1]
+        authorization_decoded = base64.decodestring(encoded)
+        path = httpretty.last_request().path
+        host = httpretty.last_request().headers['host']
+        method = httpretty.last_request().method
+
+        #check if authorization are equal
+        self.assertEqual(authorization_decoded, mock_auth_user)
+        #check if url and host are equal
+        self.assertEqual(path, '/API/v1/user/create')
+        self.assertEqual(host, '127.0.0.1:5000')
+        #check if methods are equal
+        self.assertEqual(method, 'POST')
+
 
     """
     def init_snapshot(self):
