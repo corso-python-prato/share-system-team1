@@ -403,8 +403,14 @@ class DirSnapshotManager(object):
                     dir_snapshot[file_md5] = [full_path]
         return dir_snapshot
 
+    def save_snapshot(self, timestamp):
     def save_snapshot(self, timestamp, snapshot):
         """ save snapshot to file """
+        self.local_full_snapshot = self.instant_snapshot()
+
+        self.last_status['timestamp'] = timestamp
+        self.last_status['snapshot'] = self.local_full_snapshot
+
         with open(self.snapshot_file_path, 'w') as f:
             f.write(json.dumps({"timestamp": timestamp, "snapshot": self.local_full_snapshot}))
 
