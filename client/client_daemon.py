@@ -31,6 +31,9 @@ class ServerCommunicator(object):
         except IOError:
             print "There's no timestamp saved."
 
+    def setExecuter(self, executer):
+        self.executer = executer
+
     def _try_request(self, callback, success = '', error = '',retry_delay = 2, *args, **kwargs):
         """ try a request until it's a success """
         while True:
@@ -53,24 +56,13 @@ class ServerCommunicator(object):
         server_url = "{}/files".format(self.server_url)
         request = {"url": server_url}
         sync = self._try_request(requests.get, "getFile success", "getFile fail", **request)
-        server_snapshot = eval(sync.text)['snapshot']
-        server_timestamp = eval(sync.text)['timestamp']
-        print "SERVER SAY: ", server_snapshot, server_timestamp ,"\n"
-        command_list = snapshot_manager.syncronize_dispatcher(server_timestamp, server_snapshot)
-        snapshot_manager.syncronize_executer(command_list)
-        
-        """with open("timestamp.json", "w") as timestamp_file:
-            timestamp_file.write(sync.text.load()[0])
-        diffs = diff_snapshots(*sync.text.load())
-        for tstamp, obj in diffs.iteritems():
-            req = obj[0]
-            args = obj[1]
-            {
-                'req_get': operation_handler.write_a_file,
-                'req_delete': operation_handler.delete_a_file,
-                'req_move': operation_handler.move_a_file,
-                'req_copy': operation_handler.copy_a_file
-            }.get(req)(args)"""
+        if sync.status_code != 401:
+            server_snapshot = eval(sync.text)['snapshot']
+            server_timestamp = eval(sync.text)['timestamp']
+            print "SERVER SAY: ", server_snapshot, server_timestamp ,"\n"
+            command_list = snapshot_manager.syncronize_dispatcher(server_timestamp, server_snapshot)
+            self.executer.syncronize_executer(command_list)
+            snapshot_manager.save_snapshot(server_timestamp, snapshot_manager.global_md5(server_snapshot))
 
     def get_abspath(self, dst_path):
         """ from relative path return absolute path """
@@ -550,9 +542,31 @@ class DirSnapshotManager(object):
 
         return command_list
 
+
+class CommandExecuter(object):
+    """Execute a list of commands"""
+    def __init__(self,file_system_op, server_com):
+        self.local = file_system_op
+        self.remote = server_com
+        
     def syncronize_executer(self, command_list):
         print "EXECUTER\n"
-        print command_list
+        def error(*args,**kwargs):
+            return False
+
+        for command in command_list:
+            for path in command:
+                command_dest = command[path].split('_')[0]
+                command_type = command[path].split('_')[1]
+                if command_dest == 'remote':
+                    {
+
+                        'delete': self.remote.delete_file,
+                    }.get(command_type,error)(path)
+                else:
+                    {
+                        'download': self.local.write_a_file,
+                    }.get(command_type,error)(path)
 
 
 def main():
@@ -567,6 +581,8 @@ def main():
 
     event_handler = DirectoryEventHandler(server_com, snapshot_manager)
     file_system_op = FileSystemOperator(event_handler, server_com)
+    executer = CommandExecuter(file_system_op, server_com)
+    server_com.setExecuter(executer)
     observer = Observer()
     observer.schedule(event_handler, config['dir_path'], recursive=True)
 
