@@ -1,0 +1,9 @@
+{
+	"server_url" : "http://[server url]:5000/API/v1",
+	"dir_path": "/home/user/RawBox",
+	"snapshot_file_path": "snapshot_file.json",
+	"cmd_host": "localhost",
+	"cmd_port": "6666",
+	"username":"UserName",
+	"password": "password" 
+}
