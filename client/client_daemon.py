@@ -449,6 +449,11 @@ class DirSnapshotManager(object):
                      if path == new_path:
                         return md5
 
+    def check_files_timestamp(self, snapshot, new_path):
+        paths_timestamps = [val for subl in snapshot.values() for val in subl]
+        for path_timestamp in paths_timestamps:
+            if path_timestamp['path'] == new_path:
+                return path_timestamp['timestamp'] < self.last_status['timestamp']
     def syncronize_dispatcher(self, server_timestamp, server_snapshot):
         """ return the list of command to do """
 
