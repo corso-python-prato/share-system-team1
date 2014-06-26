@@ -53,8 +53,10 @@ class ServerCommunicator(object):
         server_url = "{}/files".format(self.server_url)
         request = {"url": server_url}
         sync = self._try_request(requests.get, "getFile success", "getFile fail", **request)
-        server_snapshot = eval(sync.text)
-        command_list = snapshot_manager.syncronize_dispatcher(123123, server_snapshot)
+        server_snapshot = eval(sync.text)['snapshot']
+        server_timestamp = eval(sync.text)['timestamp']
+        print "SERVER SAY: ", server_snapshot, server_timestamp ,"\n"
+        command_list = snapshot_manager.syncronize_dispatcher(server_timestamp, server_snapshot)
         snapshot_manager.syncronize_executer(command_list)
         
         """with open("timestamp.json", "w") as timestamp_file:
