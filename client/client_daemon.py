@@ -67,13 +67,9 @@ class ServerCommunicator(object):
         """ from relative path return absolute path """
         return os.path.join(self.dir_path, dst_path)
 
-    def get_relpath(self, abs_path):
-        """form absolute path return relative path """
-        return abs_path[len(self.dir_path) + 1:]
-
     def get_url_relpath(self, abs_path):
         """ form get_abspath return the relative path for url """
-        return self.get_relpath(abs_path).replace(os.path.sep, '/')
+        return os.path.relpath(abs_path, self.dir_path)
 
     def download_file(self, dst_path):
         """ download a file from server"""
