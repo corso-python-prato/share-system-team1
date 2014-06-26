@@ -464,7 +464,6 @@ class DirSnapshotManager(object):
         return dir_snapshot
 
     def save_snapshot(self, timestamp):
-    def save_snapshot(self, timestamp, snapshot):
         """ save snapshot to file """
         self.local_full_snapshot = self.instant_snapshot()
 
