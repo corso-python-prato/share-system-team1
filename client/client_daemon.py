@@ -537,6 +537,11 @@ class DirSnapshotManager(object):
 
         return command_list
 
+    def syncronize_executer(self, command_list):
+        print "EXECUTER\n"
+        print command_list
+
+
 def main():
     config = load_config()
     snapshot_manager = DirSnapshotManager(config['dir_path'], config['snapshot_file_path'])
