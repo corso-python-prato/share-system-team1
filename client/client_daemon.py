@@ -91,8 +91,11 @@ class ServerCommunicator(object):
         
         r = self._try_request(requests.get, success_log, error_log, **request)
         local_path = self.get_abspath(dst_path)
-        return local_path, r.text
-    
+        
+        if r.status_code == 200:
+            return local_path, r.text
+        elif r.status_code == 401 or r.status_code == 404:
+            return False, False
 
     def upload_file(self, dst_path, put_file = False):
         """ upload a file to server """
@@ -113,11 +116,14 @@ class ServerCommunicator(object):
             "url": server_url,
             "files": {'file_content':file_content}
         }
-
+        
         if put_file:
-            self._try_request(requests.put, success_log, error_log, **request)
+            r = self._try_request(requests.put, success_log, error_log, **request)
         else:
-            self._try_request(requests.post, success_log, error_log, **request)
+            r = self._try_request(requests.post, success_log, error_log, **request)
+
+        if r.status_code == 409:
+            print "already exists"
 
     def delete_file(self, dst_path):
         """ send to server a message of file delete """
@@ -126,11 +132,11 @@ class ServerCommunicator(object):
         success_log = "file deleted! " + dst_path
 
         server_url = "{}/actions/delete".format(self.server_url)
-
         request = {
             "url": server_url,
             "data": self.get_url_relpath(dst_path)
         }
+        print request
 
         self._try_request(requests.post, success_log, error_log, **request)
 
@@ -148,7 +154,7 @@ class ServerCommunicator(object):
             "url": server_url,
             "data": {"src": src_path, "dst": dst_path}
         }
-        self._try_request(requests.post, success_log, error_log, **request)
+        r = self._try_request(requests.post, success_log, error_log, **request)
 
     def copy_file(self, src_path, dst_path):
         """ send to server a message of copy file"""
@@ -162,8 +168,9 @@ class ServerCommunicator(object):
 
         request = {
             "url": server_url,
-            "data": {"src": src_path, "dst": dst_path}
+            "data": {"file_src": src_path, "file_dest": dst_path}
         }
+        print request
         self._try_request(requests.post, success_log, error_log, **request)
 
     def create_user(self, username, password):
@@ -171,7 +178,7 @@ class ServerCommunicator(object):
         error_log = "User creation error"
         success_log = "user created!" 
 
-        server_url = "{}/user/create".format(self.server_url)
+        server_url = "{}/create_user".format(self.server_url)
 
         request = {
             "url": server_url,
@@ -180,8 +187,13 @@ class ServerCommunicator(object):
                     "psw": password
             }
         }
-
-        self._try_request(requests.post, success_log, error_log, **request)
+        response = self._try_request(requests.post, success_log, error_log, **request).status_code
+        if response == 201:
+            print "created!"
+        elif response == 409:
+            print "user already exists"
+        else:
+            print "bad request"
 
 class FileSystemOperator(object):
     
