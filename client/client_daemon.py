@@ -18,6 +18,11 @@ import json
 import os
 
 
+SERVER_URL = "localhost"
+SERVER_PORT = "5000"
+API_PREFIX = "API/v1"
+
+
 class ServerCommunicator(object):
 
     def __init__(self, server_url, username, password, dir_path):
@@ -50,7 +55,7 @@ class ServerCommunicator(object):
     def synchronize(self, operation_handler, snapshot_manager):
         """Synchronize client and server"""
 
-        server_url = "{}/files".format(self.server_url)
+        server_url = "{}/files/".format(self.server_url)
         request = {"url": server_url}
         sync = self._try_request(requests.get, "getFile success", "getFile fail", **request)
         server_snapshot = eval(sync.text)['snapshot']
@@ -293,9 +298,37 @@ class FileSystemOperator(object):
 
 
 def load_config():
-    with open('config.json', 'r') as config_file:
-        config = json.load(config_file)
-    return config
+    try:
+        with open('config.json', 'r') as config_file:
+            config = json.load(config_file)
+        return config
+    except IOError:
+        dir_path = os.path.join(os.path.expanduser("~"), "RawBox")
+        try:
+            os.makedirs(dir_path)
+        except OSError:
+            pass
+            
+        # TODO: ask to cmd_manager to create a new user
+        user = "Alalah@tropos.fo"
+        psw = "pokpsd"
+
+        config = {
+            "server_url" : "http://{}:{}/{}".format(
+                SERVER_URL,
+                SERVER_PORT,
+                API_PREFIX
+            ),
+            "dir_path": dir_path,
+            "snapshot_file_path": None,
+            "cmd_host": "localhost",
+            "cmd_port": "6666",
+            "username": user,
+            "password": psw 
+        }
+        with open('config.json', 'w') as config_file:
+            json.dump(config, config_file)
+        return config
 
 
 class DirectoryEventHandler(FileSystemEventHandler):
