@@ -1,3 +1,4 @@
+from client_daemon import DirSnapshotManager
 from client_daemon import DirectoryEventHandler
 from watchdog.observers.polling import PollingObserver as Observer
 import client_daemon
@@ -277,7 +278,6 @@ class ClientDaemonTest(unittest.TestCase):
         #new_client = str(new_client).replace('\\\\','/')
         #new_server = str(new_server).replace('\\\\','/')
         #equal = str(equal).replace('\\\\','/')
-from client_daemon import DirSnapshotManager
 
 class DirSnapshotManagerTest(unittest.TestCase):
     def setUp(self):
@@ -287,7 +287,7 @@ class DirSnapshotManagerTest(unittest.TestCase):
         self.test_share_dir = os.path.join(self.test_main_path, 'shared_dir')
         os.makedirs(self.test_share_dir)
         self.conf_snap_path = os.path.join(self.test_main_path, 'snapshot_file.json')
-        self.conf_snap_gen = {"timestamp": 123123, "snapshot": "669aa28a0c11a4969de101c7dae9cc52"}
+        self.conf_snap_gen = {"timestamp": 123123, "snapshot": "ab8d6b3c332aa253bb2b471c57b73e27"}
 
         open(self.conf_snap_path, 'w').write(json.dumps(self.conf_snap_gen))
 
@@ -297,10 +297,10 @@ class DirSnapshotManagerTest(unittest.TestCase):
         open(os.path.join(self.test_share_dir, 'sub_dir_2', 'test_file_2.txt'), 'w').write('Integer non tincidunt dolor')
 
         self.true_snapshot= {
-            'fea80f2db003d4ebc4536023814aa885': ['sub_dir_1/test_file_1.txt'],
             '81bcb26fd4acfaa5d0acc7eef1d3013a': ['sub_dir_2/test_file_2.txt'],
+            'fea80f2db003d4ebc4536023814aa885': ['sub_dir_1/test_file_1.txt'],
         }
-        self.md5_snapshot = '669aa28a0c11a4969de101c7dae9cc52'
+        self.md5_snapshot = 'ab8d6b3c332aa253bb2b471c57b73e27'
 
         self.snapshot_manager = DirSnapshotManager(self.test_share_dir, self.conf_snap_path)
 
@@ -332,14 +332,10 @@ class DirSnapshotManagerTest(unittest.TestCase):
         self.assertEqual(self.snapshot_manager.file_snapMd5(filepath), test_md5)
 
     def test_global_md5(self):
-        test_md5 = hashlib.md5(str(self.snapshot_manager.local_full_snapshot)).hexdigest()
-        self.assertEqual(self.snapshot_manager.global_md5(), test_md5)
+        self.assertEqual(self.snapshot_manager.global_md5(), self.md5_snapshot)
 
     def test_instant_snapshot(self):
         instant_snapshot = self.snapshot_manager.instant_snapshot()
-
-        print instant_snapshot
-
         self.assertEqual(instant_snapshot, self.true_snapshot)
 
     def test_save_snapshot(self):
@@ -349,9 +345,10 @@ class DirSnapshotManagerTest(unittest.TestCase):
         self.assertEqual(self.snapshot_manager.last_status['timestamp'], test_timestamp)
         self.assertEqual(self.snapshot_manager.last_status['snapshot'], self.md5_snapshot)
 
+        expected_conf = {'timestamp': test_timestamp, 'snapshot': self.md5_snapshot,}
         new_conf = json.load(open(self.conf_snap_path))
 
-        self. assertEqual({'timestamp': test_timestamp, 'snapshot': self.md5_snapshot,}, new_conf)
+        self.assertEqual(expected_conf, new_conf)
 
 class DirectoryEventHandlerTest(unittest.TestCase):
 
@@ -470,14 +467,14 @@ class DirectoryEventHandlerTest(unittest.TestCase):
 
     def test_on_modified(self):
         open(os.path.join(self.test_file_1), 'w').write('Vivamus eget lobortis massa')
-        time.sleep(0.5)
+        time.sleep(3)
 
         self.observer.stop()
         self.observer.join()
         self.assertEqual(self.server_comm.cmd["move"], False)
         self.assertEqual(self.server_comm.cmd["copy"], False)
         self.assertEqual(self.server_comm.cmd["upload"], {'path': True, 'put': True})
-        self.assertEqual(self.server_comm.cmd["delete"], True)
+        self.assertEqual(self.server_comm.cmd["delete"], False)
 
 if __name__ == '__main__':
     unittest.main()
