@@ -46,15 +46,19 @@ class ServerCommunicator(object):
                 time.sleep(retry_delay)
                 print error
 
-    def synchronize(self, operation_handler):
+    def synchronize(self, operation_handler, snapshot_manager):
         """Synchronize client and server"""
 
         server_url = "{}/files".format(self.server_url)
         request = {"url": server_url}
-        sync = self._try_request(requests.get, "Success", "Fail", **request)
-        with open("timestamp.json", "w") as timestamp_file:
-            timestamp_file.dump(sync.text.load()[0])
-        diffs = diff_snapshots(sync.text)
+        sync = self._try_request(requests.get, "getFile success", "getFile fail", **request)
+        server_snapshot = eval(sync.text)
+        command_list = snapshot_manager.syncronize_dispatcher(123123, server_snapshot)
+        snapshot_manager.syncronize_executer(command_list)
+        
+        """with open("timestamp.json", "w") as timestamp_file:
+            timestamp_file.write(sync.text.load()[0])
+        diffs = diff_snapshots(*sync.text.load())
         for tstamp, obj in diffs.iteritems():
             req = obj[0]
             args = obj[1]
@@ -63,7 +67,7 @@ class ServerCommunicator(object):
                 'req_delete': operation_handler.delete_a_file,
                 'req_move': operation_handler.move_a_file,
                 'req_copy': operation_handler.copy_a_file
-            }.get(req)(args)
+            }.get(req)(args)"""
 
     def get_abspath(self, dst_path):
         """ from relative path return absolute path """
@@ -217,6 +221,7 @@ class FileSystemOperator(object):
             create file
             send unlock to watchdog
         """
+
         self.send_lock(self.server_com.get_abspath(path))
         abs_path, content = self.server_com.download_file(path)
         if abs_path and content:
@@ -558,8 +563,8 @@ def main():
     observer.schedule(event_handler, config['dir_path'], recursive=True)
 
     observer.start()
-    #server_com.create_user("usernameFarlocco", "passwordSegretissima")
-    #file_system_op.write_a_file('pippo/pippo/pluto/bla.txt') #test
+    #server_com.create_user("caccola", "passwordSegretissima")
+    #file_system_op.write_a_file('/home/user/prove/mocciho.txt') #test
     #server_com.upload_file("/home/user/prove/bho/ciao.js")
 
     try:
