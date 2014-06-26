@@ -456,76 +456,86 @@ class DirSnapshotManager(object):
         for path_timestamp in paths_timestamps:
             if path_timestamp['path'] == new_path:
                 return path_timestamp['timestamp'] < self.last_status['timestamp']
+
     def syncronize_dispatcher(self, server_timestamp, server_snapshot):
         """ return the list of command to do """
 
-        local_timestamp = self.last_status['timestamp']
         new_client_paths, new_server_paths, equal_paths =  self.diff_snapshot_paths(self.local_full_snapshot , server_snapshot)
+        command_list = []
         print
         #NO internal conflict
         if self.local_check():  #1)
-            if server_timestamp > local_timestamp: #1) b.
+            if  not self.is_syncro(server_timestamp): #1) b.
                 for new_server_path in new_server_paths: #1) b 1
                     if not self.find_file_md5(server_snapshot, new_server_path) in self.local_full_snapshot: #1) b 1 I
-                        print "download:\t" + new_server_path 
+                        print "download:\t" + new_server_path
+                        command_list.append({new_server_path: 'remote_download'}) 
                     else: #1) b 1 II
                         print "copy or rename:\t" + new_server_path
-                        """ II. se esiste un file con lo stesso md5 e se esiste un altro path corrispondente
-                            allo stesso md5 faccio la copia del file, altrimenti lo rinomino 
-                        """
+                        command_list.append({new_server_path: 'local_copy'})
+                
                 for equal_path in equal_paths: #1) b 2
-                    if self.find_file_md5(self.local_full_snapshot, equal_path) != self.find_file_md5(server_snapshot, equal_path):
+                    if self.find_file_md5(self.local_full_snapshot, equal_path, False) != self.find_file_md5(server_snapshot, equal_path):
                         print "update download:\t" + equal_path
-                        """
-                        scarico la versione del server 
-                        """
+                        command_list.append({equal_path: 'remote_download'}) 
                     else:
                         print "no action:\t" + equal_path
+                
                 for new_client_path in new_client_paths: #1) b 3
                     print "remove local:\t" + new_client_path
-                    """
-                    elimino il file locale
-                    """
+                    command_list.append({new_client_path: 'local_delete'}) 
             else:
                 print "synchronized"
         #internal conflicts
         else: # 2)
-            if local_timestamp == server_timestamp: #2) a
-                print "push all" 
-                """
-                tutte le modifiche in locale vengono riportate sul server
-                """
-            elif server_timestamp > local_timestamp: #2) b
+            if self.is_syncro(server_timestamp): #2) a
+                print "****\tpush all\t****" 
+                for new_server_path in new_server_paths: #2) a 1
+                    print "remove:\t" + new_server_path
+                    command_list.append({new_server_path: 'remote_delete'}) 
+                for equal_path in equal_paths: #2) a 2
+                    if self.find_file_md5(self.local_full_snapshot, equal_path, False) != self.find_file_md5(server_snapshot, equal_path):
+                        print "upload:\t" + equal_path
+                        command_list.append({equal_path: 'remote_update'})
+                    else:
+                        print "no action:\t" + equal_path
+                for new_client_path in new_client_paths: #2) a 3
+                    print "upload:\t" + new_client_path
+                    command_list.append({new_client_path: 'remote_upload'}) 
+            
+            elif not self.is_syncro(server_timestamp): #2) b
                 for new_server_path in new_server_paths: #2) b 1
                     if not self.find_file_md5(server_snapshot, new_server_path) in self.local_full_snapshot: #2) b 1 I
-                        print  "download or remove timestamp check:\t" + new_server_path
-                        """
-                        si scarica il nuovo file o
-                         si cancella il file in remoto a seconda che il timestamp relativo sia
-                         maggiore o minore di quello del client
-                        """
+                        if self.check_files_timestamp(server_snapshot, new_server_path):
+                            print "delete remote:\t" + new_server_path
+                            command_list.append({new_server_path: 'remote_delete'}) 
+                        else:
+                            print "download remote:\t" + new_server_path
+                            command_list.append({new_server_path: 'remote_download'}) 
                     else: #2) b 1 II
                         print  "copy or rename:\t" + new_server_path
-                        """
-                        copia o rinomina 
-                        """
-
+                        command_list.append({new_server_path: 'local_copy'}) #??? 
+               
                 for equal_path in equal_paths: #2) b 2
-                    if "file_timestamp_server" < "file_timestamp_client": #2) b 2 I
-                        print "server push:\t" + equal_path
-                        """
-                        aggiorno il server
-                         """
-                    else:  #2) b 2 II 
-                        print "create.conflicted:\t" + equal_path
-                        """
-                        duplicazione file con estensione 
-                        .conflicted e lo carico su server"""
+                    if self.find_file_md5(self.local_full_snapshot, equal_path, False) != self.find_file_md5(server_snapshot, equal_path):
+                        if self.check_files_timestamp(server_snapshot, equal_path): #2) b 2 I
+                            print "server push:\t" + equal_path
+                            command_list.append({equal_path: 'remote_upload'})
+                        else:  #2) b 2 II 
+                            print "create.conflicted:\t" + equal_path
+                            conflicted_path = "{}/{}.conflicted".format(
+                                "/".join(equal_path.split('/')[:-1]),
+                                "".join(equal_path.split('/')[-1])
+                            )
+                            command_list.append({conflicted_path: 'remote_upload'})
+                            command_list.append({equal_path: 'local_copy_and_rename:' + conflicted_path})
+                    else:
+                        print "no action:\t" + equal_path
                 for new_client_path in new_client_paths: #2) b 3
                     print "remove remote\t" + new_client_path 
-                    """
-                    carico il file su server
-                    """ 
+                    command_list.append({new_client_path:'remote_delete'})
+
+        return command_list
 
 def main():
     config = load_config()
