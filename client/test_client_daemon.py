@@ -11,8 +11,22 @@ class ClientDaemonTest(unittest.TestCase):
 	def setUp(self):
 		httpretty.enable()
 		httpretty.register_uri(httpretty.POST,
-		'http://127.0.0.1:5000/API/v1/files/bla.txt',
-		data = {"response":"ok"})
+			'http://127.0.0.1:5000/API/v1/files/bla.txt',
+			data={"response":"ok"}
+		)
+		httpretty.register_uri(httpretty.GET,
+			'http://127.0.0.1:5000/API/v1/files',
+			body=str({
+		'9406539a103956dc36cb7ad35547198c': [{"path": u'/Users/marc0/progetto/prove_deamon\\bla.txt',"timestamp":123123}],
+		'a8f5f167f44f4964e6c998dee827110c': [{"path": u'vecchio.txt',"timestamp":123122}], 
+		'c21e1af364fa17cc80e0bbec2dd2ce5c': [{"path": u'/Users/marc0/progetto/prove_deamon\\asdas\\asdasd.txt',"timestamp":123123}], 
+		'd41d8cd98f00b204e9800998ecf8427e': [{"path": u'/Users/marc0/progetto/prove_deamon\\dsa.txt',"timestamp":123122},#old timestamp 
+											{"path":  u'/Users/marc0/progetto/prove_deamon\\Nuovo documento di testo (2).txt',"timestamp":123123}, 
+											{"path":  u'server path in piu copiata',"timestamp":123123}],
+		'a8f5f167f44f4964e6c998dee827110b':[{"path":  u'nuova path server con md5 nuovo',"timestamp":123123}],
+		'a8f5f167f44f4964e6c998eee827110b':[{"path":  u'nuova path server con md5 nuovo e timestamp minore',"timestamp":123122}]}),
+			content_type="application/json"
+		)
 
 	def tearDown(self):
 		httpretty.disable()
