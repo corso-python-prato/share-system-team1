@@ -37,7 +37,10 @@ class ServerCommunicator(object):
                 request_result = callback(
                     auth = self.auth,
                     *args, **kwargs)
-                print success
+                if request_result.status_code == 401:
+                    print "user not logged"
+                else:
+                    print success
                 return request_result
             except requests.exceptions.RequestException:
                 time.sleep(retry_delay)
