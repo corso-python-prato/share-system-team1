@@ -193,19 +193,20 @@ class User(object):
     def rm_path(self, client_path):
         # remove empty directories
         directory_path, filename = os.path.split(client_path)
-        dir_list = directory_path.split("/")
+        if directory_path != "":
+            dir_list = directory_path.split("/")
 
-        while len(dir_list) > 0:
-            client_subdir = os.path.join(*dir_list)
-            server_subdir = self.paths[client_subdir][0]
-            try:
-                os.rmdir(server_subdir)
-            except OSError:         # the directory is not empty
-                break
-            else:
-                del self.paths[client_subdir]
-                # TODO: manage shared folder here.
-                dir_list.pop()
+            while len(dir_list) > 0:
+                client_subdir = os.path.join(*dir_list)
+                server_subdir = self.paths[client_subdir][0]
+                try:
+                    os.rmdir(server_subdir)
+                except OSError:         # the directory is not empty
+                    break
+                else:
+                    del self.paths[client_subdir]
+                    # TODO: manage shared folder here.
+                    dir_list.pop()
 
         # remove the argument client_path and save
         del self.paths[client_path]
