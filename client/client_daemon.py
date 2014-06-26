@@ -300,8 +300,10 @@ class DirectoryEventHandler(FileSystemEventHandler):
         ELSE: return False
         """
         file_md5 = self.snap.file_snapMd5(abs_path)
-        if file_md5 in self.snap.snapshot:
-            return self.snap.snapshot[file_md5][0]
+        if not file_md5:
+            return False
+        if file_md5 in self.snap.local_full_snapshot:
+            return self.snap.local_full_snapshot[file_md5][0]
         return False
 
     def on_moved(self, event):
@@ -429,19 +431,23 @@ class DirSnapshotManager(object):
             list of equal path 
         """
         client_paths = [val for subl in snap_client.values() for val in subl]
-        server_paths = [val for subl in snap_server.values() for val in subl]
+        server_paths = [val['path'] for subl in snap_server.values() for val in subl]
         new_server_paths = list(set(server_paths) - set(client_paths))
         new_client_paths = list(set(client_paths) - set(server_paths))
         equal_paths = list(set(client_paths).intersection(set(server_paths)))
         
         return new_client_paths, new_server_paths , equal_paths
         
-    def find_file_md5(self, snapshot, new_path):
+    def find_file_md5(self, snapshot, new_path, is_server = True):
         """ from snapshot and a path find the md5 of file inside snapshot"""
         for md5, paths in snapshot.items():
             for path in paths:
-                if path == new_path:
-                    return md5
+                if is_server:
+                    if path['path'] == new_path:
+                        return md5
+                else:
+                     if path == new_path:
+                        return md5
 
     def syncronize_dispatcher(self, server_timestamp, server_snapshot):
         """ return the list of command to do """
