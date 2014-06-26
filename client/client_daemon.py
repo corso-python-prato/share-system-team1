@@ -446,7 +446,9 @@ class DirSnapshotManager(object):
 
     def global_md5(self):
         """ calculate the global md5 of local_full_snapshot """
-        return hashlib.md5(str(self.local_full_snapshot)).hexdigest()
+        snap_list = list(self.local_full_snapshot)
+        snap_list.sort()
+        return hashlib.md5(str(snap_list)).hexdigest()
 
     def instant_snapshot(self):
         """ create a snapshot of directory """
@@ -468,10 +470,10 @@ class DirSnapshotManager(object):
         self.local_full_snapshot = self.instant_snapshot()
 
         self.last_status['timestamp'] = timestamp
-        self.last_status['snapshot'] = self.local_full_snapshot
+        self.last_status['snapshot'] = self.global_md5()
 
         with open(self.snapshot_file_path, 'w') as f:
-            f.write(json.dumps({"timestamp": timestamp, "snapshot": self.local_full_snapshot}))
+            f.write(json.dumps({"timestamp": timestamp, "snapshot": self.last_status['snapshot']}))
 
     def diff_snapshot_paths(self, snap_client, snap_server):
         """
