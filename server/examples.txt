@@ -12,10 +12,10 @@ curl  localhost:5000/hidden_page -u UserName:password
 curl --data "user=UserName&psw=password" localhost:5000/API/v1/create_user
 
 # example of diff request
-curl localhost:5000/API/v1/Files -u UserName:password
+curl localhost:5000/API/v1/files/ -u UserName:password
 
 
-#### FILES ACTIONS ####
+#### FILES ####
 # GET download
 curl  -X GET localhost:5000/API/v1/files/<path_of_the_file> -u UserName:password
 
@@ -24,6 +24,16 @@ curl -X POST -F file_content=@<file_name> http://localhost:5000/API/v1/files/<pa
 
 # PUT update
 curl -X PUT -F file_content=@<file_name> localhost:5000/API/v1/files/<path_of_the_file> -u UserName:password
+
+#### ACTIONS ####
+# POST delete
+curl -X POST -F path=<file_path>  localhost:5000/API/v1/actions/delete -u UserName:password
+
+# POST copy
+curl -X POST -F file_src=<file_path> -F file_dest=<destination_path> localhost:5000/API/v1/actions/copy -u UserName:password
+
+#POST move
+curl -X POST -F file_src=<file_path> -F file_dest=<destination_path> localhost:5000/API/v1/actions/move -u UserName:password
 
 
 # example of post and put request from daemon

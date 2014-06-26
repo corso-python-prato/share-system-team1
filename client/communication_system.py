@@ -13,7 +13,7 @@ Communication system between command manager and client daemon
 LENGTH_FORMAT = '!i'
 
 
-def _packing_message(command_type, param=None):
+def packing_message(command_type, param=None):
     """
     Create pkt with 4 byte header(which contains data length) and data
     """
@@ -28,14 +28,14 @@ def _packing_message(command_type, param=None):
     return data
 
 
-def _unpacking_message(data, format=LENGTH_FORMAT):
+def unpacking_message(data, format=LENGTH_FORMAT):
     """
     Returns data lenght o data content
     """
     pkts = struct.unpack(format, data)
     data = pkts[0]
     if format != LENGTH_FORMAT:
-        data = json.loads(pkts[1])
+        data = json.loads(data)
     return data
 
 
@@ -46,13 +46,13 @@ class CommunicatorSock(asyncore.dispatcher_with_send):
 
     def handle_read(self):
         header = self.recv(struct.calcsize(LENGTH_FORMAT))
-        data_length = self._unpacking_message(header)
+        data_length = unpacking_message(header)
         data = self.recv(data_length)
-        command = self._unpacking_message(data, '!i{}s'.format(data_length))
+        command = unpacking_message(data, '!{}s'.format(data_length))
         self._executer(command)
 
     def send_message(self, command_type, param=None):
-        data = self._packing_message(command_type, param)
+        data = packing_message(command_type, param)
         self.send(data)
 
 
@@ -101,3 +101,4 @@ class CmdMessageClient(CommunicatorSock):
         data = self.recv(data_length)
         command = unpacking_message(data, '!{}s'.format(data_length))
         return command
+        

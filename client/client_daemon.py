@@ -17,13 +17,14 @@ import time
 import json
 import os
 
+
 class ServerCommunicator(object):
 
     def __init__(self, server_url, username, password, dir_path):
         self.auth = HTTPBasicAuth(username, password)
         self.server_url = server_url
         self.dir_path = dir_path
-        self.timestamp = None   #timestamp for Synchronization
+        self.timestamp = None   # timestamp for Synchronization
         try:
             with open('timestamp.json', 'r') as timestamp_file:
                 self.timestamp = timestamp_file.load()[0]
@@ -35,7 +36,7 @@ class ServerCommunicator(object):
         while True:
             try:
                 request_result = callback(
-                    auth = self.auth,
+                    auth=self.auth,
                     *args, **kwargs)
                 if request_result.status_code == 401:
                     print "user not logged"
@@ -88,7 +89,7 @@ class ServerCommunicator(object):
         success_log = "file downloaded! " + dst_path
 
         server_url = "{}/files/{}".format(
-            self.server_url, 
+            self.server_url,
             self.get_url_relpath(dst_path))
 
         request = {"url": server_url}
@@ -108,17 +109,17 @@ class ServerCommunicator(object):
         try:
             file_content = open(dst_path, 'rb')
         except IOError:
-            return False #Atomic create and delete error!
+            return False  # Atomic create and delete error!
 
         server_url = "{}/files/{}".format(
-            self.server_url, 
+            self.server_url,
             self.get_url_relpath(dst_path))
 
         error_log = "ERROR upload request " + dst_path
         success_log = "file uploaded! " + dst_path
         request = {
             "url": server_url,
-            "files": {'file_content':file_content}
+            "files": {'file_content': file_content}
         }
         
         if put_file:
@@ -180,15 +181,15 @@ class ServerCommunicator(object):
     def create_user(self, username, password):
         
         error_log = "User creation error"
-        success_log = "user created!" 
+        success_log = "user created!"
 
         server_url = "{}/create_user".format(self.server_url)
 
         request = {
             "url": server_url,
-            "data":{
-                    "user": username,
-                    "psw": password
+            "data": {
+                "user": username,
+                "psw": password
             }
         }
         response = self._try_request(requests.post, success_log, error_log, **request).status_code
@@ -199,8 +200,9 @@ class ServerCommunicator(object):
         else:
             print "bad request"
 
+
 class FileSystemOperator(object):
-    
+
     def __init__(self, event_handler, server_com):
         self.event_handler = event_handler
         self.server_com = server_com
@@ -237,8 +239,8 @@ class FileSystemOperator(object):
         self.send_unlock()
 
     def move_a_file(self, origin_path, dst_path):
-        """ 
-        move a file 
+        """
+        move a file
 
             send lock to watchdog for origin and dst path
             create directory chain for dst_path
@@ -248,14 +250,15 @@ class FileSystemOperator(object):
         self.send_lock(self.server_com.get_abspath(origin_path))
         self.send_lock(self.server_com.get_abspath(dst_path))
         try:
-            os.makedirs(os.path.split(dst_path)[0], 0755 )
+            os.makedirs(os.path.split(dst_path)[0], 0755)
         except OSError:
             pass
         shutil.move(origin_path, dst_path)
         self.send_unlock()
 
     def copy_a_file(self, origin_path, dst_path):
-        """ copy a file 
+        """
+        copy a file
 
             send lock to watchdog for origin and dest path
             create directory chain for dst_path
@@ -265,15 +268,16 @@ class FileSystemOperator(object):
         self.send_lock(self.server_com.get_abspath(origin_path))
         self.send_lock(self.server_com.get_abspath(dst_path))
         try:
-            os.makedirs(os.path.split(dst_path)[0], 0755 )
+            os.makedirs(os.path.split(dst_path)[0], 0755)
         except OSError:
             pass
         shutil.copyfile(origin_path, dst_path)
         self.send_unlock()
 
     def delete_a_file(self, path):
-        """ 
-        delete a file 
+        """
+        delete a file
+
             send lock to watchdog
             delete file
             send unlock to watchdog
@@ -284,6 +288,7 @@ class FileSystemOperator(object):
         except IOError:
             pass
         self.send_unlock()
+
 
 def load_config():
     with open('config.json', 'r') as config_file:
@@ -299,8 +304,8 @@ class DirectoryEventHandler(FileSystemEventHandler):
         self.path_ignored = []
         
     def _is_copy(self, abs_path):
-        """ 
-        check if a file_md5 already exists in my local snapshot 
+        """
+        check if a file_md5 already exists in my local snapshot
         IF IS A COPY : return the first path of already exists file
         ELSE: return False
         """
@@ -366,7 +371,7 @@ class DirectoryEventHandler(FileSystemEventHandler):
         
         if event.src_path not in self.path_ignored:
             if not event.is_directory:
-                self.cmd.upload_file(event.src_path, put_file = True)
+                self.cmd.upload_file(event.src_path, put_file=True)
         else:
             print "ingnored modified on ", event.src_path
 
@@ -432,10 +437,11 @@ class DirSnapshotManager(object):
             f.write(json.dumps({"timestamp": timestamp, "snapshot": snapshot}))
 
     def diff_snapshot_paths(self, snap_client, snap_server):
-        """ from 2 snapshot return 3 list of path difference:
+        """
+            from 2 snapshot return 3 list of path difference:
             list of new server path
-            list of new client path 
-            list of equal path 
+            list of new client path
+            list of equal path
         """
         client_paths = [val for subl in snap_client.values() for val in subl]
         server_paths = [val['path'] for subl in snap_server.values() for val in subl]
@@ -443,7 +449,7 @@ class DirSnapshotManager(object):
         new_client_paths = list(set(client_paths) - set(server_paths))
         equal_paths = list(set(client_paths).intersection(set(server_paths)))
         
-        return new_client_paths, new_server_paths , equal_paths
+        return new_client_paths, new_server_paths, equal_paths
         
     def find_file_md5(self, snapshot, new_path, is_server = True):
         """ from snapshot and a path find the md5 of file inside snapshot"""
@@ -552,10 +558,10 @@ def main():
     snapshot_manager = DirSnapshotManager(config['dir_path'], config['snapshot_file_path'])
     
     server_com = ServerCommunicator(
-        server_url = config['server_url'], 
-        username = config['username'],
-        password = config['password'],
-        dir_path = config['dir_path'])
+        server_url=config['server_url'],
+        username=config['username'],
+        password=config['password'],
+        dir_path=config['dir_path'])
 
     event_handler = DirectoryEventHandler(server_com, snapshot_manager)
     file_system_op = FileSystemOperator(event_handler, server_com)
