@@ -53,7 +53,7 @@ class ServerCommunicator(object):
     def synchronize(self, operation_handler, snapshot_manager):
         """Synchronize client and server"""
 
-        server_url = "{}/files".format(self.server_url)
+        server_url = "{}/files/".format(self.server_url)
         request = {"url": server_url}
         sync = self._try_request(requests.get, "getFile success", "getFile fail", **request)
         if sync.status_code != 401:
