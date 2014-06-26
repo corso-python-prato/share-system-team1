@@ -380,11 +380,11 @@ class DirSnapshotManager(object):
         last_global_snapthot = self.last_status['snapshot']
         return local_global_snapshot == last_global_snapthot
 
-    def server_check(self, server_timestamp):
+    def is_syncro(self, server_timestamp):
         """ check if daemon timestamp is synchronized with server timestamp"""
         server_timestamp = float(server_timestamp)
         client_timestamp = float(self.last_status['timestamp'])
-        return server_timestamp > client_timestamp
+        return server_timestamp == client_timestamp
 
     def _load_status(self):
         """ load from file the last snapshot """
