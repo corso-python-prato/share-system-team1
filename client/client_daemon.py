@@ -70,7 +70,9 @@ class ServerCommunicator(object):
 
     def get_relpath(self, abs_path):
         """form absolute path return relative path """
-        return abs_path[len(self.dir_path) + 1:]
+        if abs_path.startswith(self.dir_path):
+            return abs_path[len(self.dir_path) + 1:]
+        return abs_path
 
     def get_url_relpath(self, abs_path):
         """ form get_abspath return the relative path for url """
