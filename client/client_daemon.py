@@ -286,8 +286,8 @@ class DirectoryEventHandler(FileSystemEventHandler):
         ELSE: return False
         """
         file_md5 = self.snap.file_snapMd5(abs_path)
-        if file_md5 in self.snap.snapshot:
-            return self.snap.snapshot[file_md5][0]
+        if file_md5 in self.snap.local_full_snapshot:
+            return self.snap.local_full_snapshot[file_md5][0]
         return False
 
     def on_moved(self, event):
@@ -406,7 +406,7 @@ class DirSnapshotManager(object):
     def save_snapshot(self, timestamp, snapshot):
         """ save snapshot to file """
         with open(self.snapshot_file_path, 'w') as f:
-            f.write(json.dumps({"timestamp": timestamp, "snapshot": snapshot}))
+            f.write(json.dumps({"timestamp": timestamp, "snapshot": self.local_full_snapshot}))
 
     def diff_snapshot_paths(self, snap_client, snap_server):
         """
