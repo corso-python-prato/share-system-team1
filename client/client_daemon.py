@@ -394,6 +394,8 @@ class DirSnapshotManager(object):
     def file_snapMd5(self, file_path):
         """ calculate the md5 of a file """
         file_md5 = hashlib.md5()
+        if os.path.isdir(file_path):
+            return False
         with open(file_path, 'rb') as afile:
             buf = afile.read(2048)
             while len(buf) > 0:
