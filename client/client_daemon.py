@@ -219,13 +219,16 @@ class FileSystemOperator(object):
         """
         self.send_lock(self.server_com.get_abspath(path))
         abs_path, content = self.server_com.download_file(path)
-        try:
-            os.makedirs(os.path.split(abs_path)[0], 0755 )
-        except OSError:
-            pass
-        with open(abs_path, 'w') as f:
-            f.write(content)
-        time.sleep(3)
+        if abs_path and content:
+            try:
+                os.makedirs(os.path.split(abs_path)[0], 0755 )
+            except OSError:
+                pass
+            with open(abs_path, 'w') as f:
+                f.write(content)
+            time.sleep(3)
+        else:
+            print "file not found on server"
         self.send_unlock()
 
     def move_a_file(self, origin_path, dst_path):
