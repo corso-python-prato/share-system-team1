@@ -186,8 +186,6 @@ class ClientDaemonTest(unittest.TestCase):
         #check if methods are equal
         self.assertEqual(method, 'POST')
 
-
-    """
     def init_snapshot(self):
         config = client_daemon.load_config()
         return client_daemon.DirSnapshotManager(config['dir_path'], config['snapshot_file_path'])
@@ -277,7 +275,6 @@ class ClientDaemonTest(unittest.TestCase):
         #self.assertEqual(str(new_client), mock_new_client)
         #self.assertEqual(str(equal), mock_equal)
         #self.assertEqual(str(new_server), mock_new_server)
-    """
 
 if __name__ == '__main__':
     unittest.main()
