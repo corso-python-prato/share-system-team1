@@ -22,12 +22,12 @@ SERVER_URL = "localhost"
 SERVER_PORT = "5000"
 API_PREFIX = "API/v1"
 
-
 def get_relpath(abs_path, dir_path):
-        """form absolute path return relative path """
-        if abs_path.startswith(dir_path):
-            return abs_path[len(dir_path) + 1:]
-        return abs_path
+    """form absolute path return relative path """
+    if abs_path.startswith(dir_path):
+        return abs_path[len(dir_path) + 1:]
+    return abs_path
+
 
 class ServerCommunicator(object):
 
@@ -56,7 +56,7 @@ class ServerCommunicator(object):
                 time.sleep(retry_delay)
                 print error
 
-    def synchronize(self, operation_handler, snapshot_manager):
+    def synchronize(self, operation_handler):
         """Synchronize client and server"""
 
         server_url = "{}/files/".format(self.server_url)
@@ -67,9 +67,9 @@ class ServerCommunicator(object):
             server_snapshot = sync.json()['snapshot']
             server_timestamp =sync.json()['timestamp']
             print "SERVER SAY: ", server_snapshot, server_timestamp ,"\n"
-            command_list = snapshot_manager.syncronize_dispatcher(server_timestamp, server_snapshot)
+            command_list = self.snapshot_manager.syncronize_dispatcher(server_timestamp, server_snapshot)
             self.executer.syncronize_executer(command_list)
-            snapshot_manager.save_snapshot(server_timestamp)
+            self.snapshot_manager.save_snapshot(server_timestamp)
 
     def get_abspath(self, dst_path):
         """ from relative path return absolute path """

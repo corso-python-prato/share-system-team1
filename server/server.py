@@ -101,12 +101,6 @@ class User(object):
             User.users[username] = self
             return
 
-        # else if I'm creating a new user
-        if username in User.users:
-            raise ConflictError(
-                "'{}' is an username already taken".format(username)
-            )
-
         psw_hash = sha256_crypt.encrypt(clear_password)
         full_path = os.path.join(USERS_DIRECTORIES, username)
         try:
@@ -348,7 +342,7 @@ class Actions(Resource):
                 shutil.copy(server_src, server_dest)
             else:
                 shutil.move(server_src, server_dest)
-        except IOError:
+        except shutil.Error:
             return abort(HTTP_CONFLICT)
         else:
             if keep_the_original:

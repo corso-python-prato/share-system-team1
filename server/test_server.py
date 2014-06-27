@@ -13,6 +13,7 @@ TEST_USER_DATA = "test_user_data.json"
 
 DEMO_USER = "i_am_an_user@rawbox.it"
 DEMO_PSW = "very_secret_password"
+DEMO_FAKE_USER = "fake_usr"
 DEMO_CLIENT = None
 
 DEMO_FILE = "somefile.txt"
@@ -22,7 +23,7 @@ DEMO_DEST_MOVE_PATH = "new_mv"
 NO_SERVER_PATH = "marcoRegna"
 
 
-def transfer(path, flag=True):
+def transfer(path, flag=True, test=True):
     client_path, server_path = set_tmp_params(path)
     if flag:
         func = "copy"
@@ -31,11 +32,18 @@ def transfer(path, flag=True):
         func = "move"
         new_path = "{}/{}".format(DEMO_DEST_MOVE_PATH, path)
 
-    data = { 
-        "file_src": client_path,
-        "file_dest": os.path.join(new_path, DEMO_FILE)
-    }
-    rv = DEMO_CLIENT.call("post", "actions/"+func, data)
+    if test:
+        data = { 
+            "file_src": client_path,
+            "file_dest": os.path.join(new_path, DEMO_FILE)
+        }
+        rv = DEMO_CLIENT.call("post", "actions/"+func, data)
+    else:
+        data = { 
+            "file_src": NO_SERVER_PATH,
+            "file_dest": os.path.join(new_path, DEMO_FILE)
+        }
+        rv = DEMO_CLIENT.call("post", "actions/"+func, data)
 
     return rv, client_path, server_path
 
@@ -79,12 +87,24 @@ class TestClient(object):
             headers = self.headers if auth else None
         )
 
-    def create_demo_user(self):
+    def create_demo_user(self, flag=False):
+        usr = "user"
+        psw = "psw"
+        if flag:
+            usr = "fake_usr"
+            psw = "fake_psw"
+
         data = {
-            "user": self.user,
-            "psw": self.psw
+            usr: self.user,
+            psw: self.psw
         }
         return self.call("post", "create_user", data, auth=False)
+    
+    def set_fake_usr(self, flag=False):
+        if flag:
+            self.headers["Authorization"] = "".join(("Basic ", b64encode("{0}:{1}".format(DEMO_FAKE_USER, self.psw))))
+        else:
+            self.headers["Authorization"] = "".join(("Basic ", b64encode("{0}:{1}".format(self.user, self.psw))))
 
 
 class TestSequenceFunctions(unittest.TestCase):
@@ -132,6 +152,10 @@ class TestSequenceFunctions(unittest.TestCase):
         user = "Gianni"
         psw = "IloveJava"
         client = TestClient(user, psw)
+        
+        rv = client.create_demo_user(True)
+        self.assertEqual(rv.status_code, server.HTTP_BAD_REQUEST)
+
         rv = client.create_demo_user()
         self.assertEqual(rv.status_code, server.HTTP_CREATED)
         
@@ -185,21 +209,37 @@ class TestSequenceFunctions(unittest.TestCase):
 
     def test_files_post(self):
         demo_path = "somepath/somefile.txt"
-
+        DEMO_CLIENT.set_fake_usr(True)
         f = open(DEMO_FILE, "r")
         data = { "file_content": f }
         rv = DEMO_CLIENT.call("post", "files/"+demo_path, data)
         f.close()
+        self.assertEqual(rv.status_code, 401)
 
+        DEMO_CLIENT.set_fake_usr(False)
+        f = open(DEMO_FILE, "r")
+        data = { "file_content": f }
+        rv = DEMO_CLIENT.call("post", "files/"+demo_path, data)
+        f.close()
         self.assertEqual(rv.status_code, 201)
         
         with open("{}{}/{}".format(TEST_DIRECTORY, DEMO_USER, demo_path)) as f:
             uploaded_content = f.read()
             self.assertEqual(DEMO_CONTENT, uploaded_content)
 
+        f = open(DEMO_FILE, "r")
+        data = { "file_content": f }
+        rv = DEMO_CLIENT.call("post", "files/"+demo_path, data)
+        f.close()
+        self.assertEqual(rv.status_code, 409)
 
     def test_files_get(self):
         client_path, server_path = set_tmp_params("dwn")
+        DEMO_CLIENT.set_fake_usr(True)
+        rv = DEMO_CLIENT.call("get", "files/"+client_path)
+        self.assertEqual(rv.status_code, 401)
+
+        DEMO_CLIENT.set_fake_usr(False)
         rv = DEMO_CLIENT.call("get", "files/"+client_path)
         self.assertEqual(rv.status_code, 200)
 
@@ -215,7 +255,6 @@ class TestSequenceFunctions(unittest.TestCase):
         self.assertEqual(rv.status_code, 410)
 
 
-
     def test_files_put(self):
         demo_path = "somepath/somefile.txt"
 
@@ -223,6 +262,13 @@ class TestSequenceFunctions(unittest.TestCase):
         if not server_path in server.User.users[DEMO_USER].paths[client_path]:
             return
 
+        f = open(DEMO_FILE, "r")
+        data = { "file_content": f }
+        DEMO_CLIENT.set_fake_usr(True)
+        rv = DEMO_CLIENT.call("put", "files/"+demo_path, data)
+        f.close()
+        self.assertEqual(rv.status_code, 401)
+        DEMO_CLIENT.set_fake_usr(False)
         f = open(DEMO_FILE, "r")
         data = { "file_content": f }
         rv = DEMO_CLIENT.call("put", "files/"+demo_path, data)
@@ -242,6 +288,12 @@ class TestSequenceFunctions(unittest.TestCase):
         full_server_path = os.path.join(server_path, DEMO_FILE)
 
         data = { "path": client_path }
+        DEMO_CLIENT.set_fake_usr(True)
+        rv = DEMO_CLIENT.call("post", "actions/delete", data)
+        
+        self.assertEqual(rv.status_code, 401)
+
+        DEMO_CLIENT.set_fake_usr(False)
         rv = DEMO_CLIENT.call("post", "actions/delete", data)
         
         self.assertEqual(rv.status_code, 200)
@@ -252,6 +304,9 @@ class TestSequenceFunctions(unittest.TestCase):
 
         data = { "path": NO_SERVER_PATH }
         rv = DEMO_CLIENT.call("post","actions/delete", data)
+        self.assertEqual(rv.status_code, 404)
+
+        rv = DEMO_CLIENT.call("post","actions/destroy", data)
         self.assertEqual(rv.status_code, 404)
 
 
@@ -280,6 +335,14 @@ class TestSequenceFunctions(unittest.TestCase):
 
 
     def test_actions_copy(self):
+        DEMO_CLIENT.set_fake_usr(True)
+        data = { 
+        "file_src": "src",
+        "file_dest": "dest"
+        }
+        rv = DEMO_CLIENT.call("post", "actions/copy", data)
+        self.assertEqual(rv.status_code, 401)
+        DEMO_CLIENT.set_fake_usr(False)
         rv, client_path, server_path = transfer("cp", True)
         self.assertEqual(rv.status_code, 201)
 
@@ -298,8 +361,24 @@ class TestSequenceFunctions(unittest.TestCase):
                 True
         )
 
+        
+        client_path, server_path = set_tmp_params("prova")
+        data = { 
+        "file_src": client_path,
+        "file_dest": client_path
+        }
+        rv = DEMO_CLIENT.call("post", "actions/copy", data)
+        self.assertEqual(rv.status_code, 409)
 
     def test_actions_move(self):
+        DEMO_CLIENT.set_fake_usr(True)
+        data = { 
+        "file_src": "src",
+        "file_dest": "dest"
+        }
+        rv = DEMO_CLIENT.call("post", "actions/move", data)
+        self.assertEqual(rv.status_code, 401)
+        DEMO_CLIENT.set_fake_usr(False)
         rv, client_path, server_path = transfer("mv", False)
         self.assertEqual(rv.status_code, 201)
 
@@ -318,6 +397,8 @@ class TestSequenceFunctions(unittest.TestCase):
                 "{}/mv/{}".format(DEMO_DEST_MOVE_PATH, DEMO_FILE) in u.paths,
                 True
         )
+        rv, client_path, server_path = transfer("mv", False, False)
+        self.assertEqual(rv.status_code, 404)
 
 
     def test_files_differences(self):
