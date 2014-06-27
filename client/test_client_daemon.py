@@ -481,8 +481,9 @@ class DirectoryEventHandlerTest(unittest.TestCase):
         self.assertEqual(self.server_comm.cmd["delete"], True)
 
     def test_on_modified(self):
+        time.sleep(0.5)
         open(os.path.join(self.test_file_1), 'w').write('Vivamus eget lobortis massa')
-        time.sleep(3)
+        time.sleep(0.5)
 
         self.observer.stop()
         self.observer.join()
