@@ -627,7 +627,7 @@ class CommandExecuter(object):
                 command_dest = command.split('_')[0]
                 command_type = command.split('_')[1]
                 if command_dest == 'remote':
-                    {-
+                    {
 
                         'delete': self.remote.delete_file,
                     }.get(command_type,error)(*(command_row[command]))
@@ -660,7 +660,7 @@ def main():
     observer.start()
     try:
         while True:
-            server_com.synchronize(file_system_op, snapshot_manager)
+            server_com.synchronize(file_system_op)
             time.sleep(5)
     except KeyboardInterrupt:
         observer.stop()
