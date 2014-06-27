@@ -56,6 +56,7 @@ class ServerCommunicator(object):
         server_url = "{}/files/".format(self.server_url)
         request = {"url": server_url}
         sync = self._try_request(requests.get, "getFile success", "getFile fail", **request)
+        
         if sync.status_code != 401:
             server_snapshot = sync.json()['snapshot']
             server_timestamp =sync.json()['timestamp']
@@ -287,10 +288,13 @@ class FileSystemOperator(object):
             send unlock to watchdog
         """
         self.send_lock(self.server_com.get_abspath(path))
-        try:
-            shutil.rmtree(path)
-        except IOError:
-            pass
+        if os.path.isdir(path):
+            try:
+                shutil.rmtree(path)
+            except IOError:
+                pass
+        else:
+            os.remove(path)
         self.send_unlock()
 
 
