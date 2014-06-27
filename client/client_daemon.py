@@ -313,7 +313,7 @@ def load_config():
     try:
         with open('config.json', 'r') as config_file:
             config = json.load(config_file)
-        return config
+        return config, False
     except IOError:
         dir_path = os.path.join(os.path.expanduser("~"), "RawBox")
         try:
@@ -332,15 +332,17 @@ def load_config():
                 API_PREFIX
             ),
             "dir_path": dir_path,
-            "snapshot_file_path": None,
+            "snapshot_file_path": 'snapshot_file.json',
             "cmd_host": "localhost",
             "cmd_port": "6666",
             "username": user,
-            "password": psw 
+            "password": psw
         }
+        with open('snapshot_file.json', 'w') as snapshot_file:
+            json.dump({"timestamp": 0, "snapshot": ""}, snapshot_file)
         with open('config.json', 'w') as config_file:
             json.dump(config, config_file)
-        return config
+        return config, True
 
 
 class DirectoryEventHandler(FileSystemEventHandler):
@@ -640,9 +642,9 @@ class CommandExecuter(object):
 
 
 def main():
-    config = load_config()
+    config , is_new = load_config()
     snapshot_manager = DirSnapshotManager(config['dir_path'], config['snapshot_file_path'])
-    
+
     server_com = ServerCommunicator(
         server_url=config['server_url'],
         username=config['username'],
@@ -656,7 +658,8 @@ def main():
     server_com.setExecuter(executer)
     observer = Observer()
     observer.schedule(event_handler, config['dir_path'], recursive=True)
-
+    if is_new:
+        server_com.create_user(config['username'], config['password'])
     observer.start()
     try:
         while True:
