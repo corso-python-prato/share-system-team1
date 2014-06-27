@@ -13,6 +13,7 @@ TEST_USER_DATA = "test_user_data.json"
 
 DEMO_USER = "i_am_an_user@rawbox.it"
 DEMO_PSW = "very_secret_password"
+DEMO_FAKE_USER = "fake_usr"
 DEMO_CLIENT = None
 
 DEMO_FILE = "somefile.txt"
@@ -85,6 +86,12 @@ class TestClient(object):
             "psw": self.psw
         }
         return self.call("post", "create_user", data, auth=False)
+    
+    def set_fake_usr(self, flag=False):
+        if flag:
+            self.headers["Authorization"] = "".join(("Basic ", b64encode("{0}:{1}".format(DEMO_FAKE_USER, self.psw))))
+        else:
+            self.headers["Authorization"] = "".join(("Basic ", b64encode("{0}:{1}".format(self.user, self.psw))))
 
 
 class TestSequenceFunctions(unittest.TestCase):
@@ -145,6 +152,8 @@ class TestSequenceFunctions(unittest.TestCase):
         self.assertEqual(rv.status_code, server.HTTP_CONFLICT)
 
 
+
+
     def test_to_md5(self):
         # check if two files with the same content have the same md5
         second_file = "second_file.txt"
@@ -185,12 +194,18 @@ class TestSequenceFunctions(unittest.TestCase):
 
     def test_files_post(self):
         demo_path = "somepath/somefile.txt"
-
+        DEMO_CLIENT.set_fake_usr(True)
         f = open(DEMO_FILE, "r")
         data = { "file_content": f }
         rv = DEMO_CLIENT.call("post", "files/"+demo_path, data)
         f.close()
+        self.assertEqual(rv.status_code, 401)
 
+        DEMO_CLIENT.set_fake_usr(False)
+        f = open(DEMO_FILE, "r")
+        data = { "file_content": f }
+        rv = DEMO_CLIENT.call("post", "files/"+demo_path, data)
+        f.close()
         self.assertEqual(rv.status_code, 201)
         
         with open("{}{}/{}".format(TEST_DIRECTORY, DEMO_USER, demo_path)) as f:
@@ -200,6 +215,11 @@ class TestSequenceFunctions(unittest.TestCase):
 
     def test_files_get(self):
         client_path, server_path = set_tmp_params("dwn")
+        DEMO_CLIENT.set_fake_usr(True)
+        rv = DEMO_CLIENT.call("get", "files/"+client_path)
+        self.assertEqual(rv.status_code, 401)
+
+        DEMO_CLIENT.set_fake_usr(False)
         rv = DEMO_CLIENT.call("get", "files/"+client_path)
         self.assertEqual(rv.status_code, 200)
 
@@ -225,6 +245,13 @@ class TestSequenceFunctions(unittest.TestCase):
 
         f = open(DEMO_FILE, "r")
         data = { "file_content": f }
+        DEMO_CLIENT.set_fake_usr(True)
+        rv = DEMO_CLIENT.call("put", "files/"+demo_path, data)
+        f.close()
+        self.assertEqual(rv.status_code, 401)
+        DEMO_CLIENT.set_fake_usr(False)
+        f = open(DEMO_FILE, "r")
+        data = { "file_content": f }
         rv = DEMO_CLIENT.call("put", "files/"+demo_path, data)
         f.close()
         self.assertEqual(rv.status_code, 201)
@@ -242,6 +269,12 @@ class TestSequenceFunctions(unittest.TestCase):
         full_server_path = os.path.join(server_path, DEMO_FILE)
 
         data = { "path": client_path }
+        DEMO_CLIENT.set_fake_usr(True)
+        rv = DEMO_CLIENT.call("post", "actions/delete", data)
+        
+        self.assertEqual(rv.status_code, 401)
+
+        DEMO_CLIENT.set_fake_usr(False)
         rv = DEMO_CLIENT.call("post", "actions/delete", data)
         
         self.assertEqual(rv.status_code, 200)
@@ -280,6 +313,15 @@ class TestSequenceFunctions(unittest.TestCase):
 
 
     def test_actions_copy(self):
+        DEMO_CLIENT.set_fake_usr(True)
+        DEMO_CLIENT.set_fake_usr(True)
+        data = { 
+        "file_src": "src",
+        "file_dest": "dest"
+        }
+        rv = DEMO_CLIENT.call("post", "actions/copy", data)
+        self.assertEqual(rv.status_code, 401)
+        DEMO_CLIENT.set_fake_usr(False)
         rv, client_path, server_path = transfer("cp", True)
         self.assertEqual(rv.status_code, 201)
 
@@ -300,6 +342,14 @@ class TestSequenceFunctions(unittest.TestCase):
 
 
     def test_actions_move(self):
+        DEMO_CLIENT.set_fake_usr(True)
+        data = { 
+        "file_src": "src",
+        "file_dest": "dest"
+        }
+        rv = DEMO_CLIENT.call("post", "actions/move", data)
+        self.assertEqual(rv.status_code, 401)
+        DEMO_CLIENT.set_fake_usr(False)
         rv, client_path, server_path = transfer("mv", False)
         self.assertEqual(rv.status_code, 201)
 
