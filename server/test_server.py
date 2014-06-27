@@ -19,6 +19,7 @@ DEMO_FILE = "somefile.txt"
 DEMO_CONTENT = "Hello my dear,\nit's a beautiful day here in Compiobbi."
 DEMO_DEST_COPY_PATH = "new_cp"
 DEMO_DEST_MOVE_PATH = "new_mv"
+NO_SERVER_PATH = "marcoRegna"
 
 
 def transfer(path, flag=True):
@@ -199,13 +200,20 @@ class TestSequenceFunctions(unittest.TestCase):
 
     def test_files_get(self):
         client_path, server_path = set_tmp_params("dwn")
-
         rv = DEMO_CLIENT.call("get", "files/"+client_path)
         self.assertEqual(rv.status_code, 200)
 
         with open(server_path) as f:
             got_content = f.read()
             self.assertEqual(DEMO_CONTENT, got_content)
+
+        rv = DEMO_CLIENT.call("get","files/"+NO_SERVER_PATH)
+        self.assertEqual(rv.status_code, 404)
+
+        os.remove(server_path)
+        rv = DEMO_CLIENT.call("get","files/"+client_path)
+        self.assertEqual(rv.status_code, 410)
+
 
 
     def test_files_put(self):
@@ -225,6 +233,9 @@ class TestSequenceFunctions(unittest.TestCase):
             put_content = f.read()
             self.assertEqual(DEMO_CONTENT, put_content)
 
+        rv = DEMO_CLIENT.call("put","files/"+NO_SERVER_PATH)
+        self.assertEqual(rv.status_code, 404)
+
 
     def test_actions_delete(self):
         client_path, server_path = set_tmp_params("dlt")
@@ -238,6 +249,10 @@ class TestSequenceFunctions(unittest.TestCase):
         
         #check if the file is correctly removed from the dictionary
         self.assertFalse(server_path in server.User.users[DEMO_USER].paths)
+
+        data = { "path": NO_SERVER_PATH }
+        rv = DEMO_CLIENT.call("post","actions/delete", data)
+        self.assertEqual(rv.status_code, 404)
 
 
     def test_last_file_delete_in_root(self):

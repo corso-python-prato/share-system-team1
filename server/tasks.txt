@@ -1,8 +1,5 @@
 · 'nose' and 'coverage' have to be added in requirements?
 
-
-· se la delete viene chiamata su una cartella?
-
 · test delle cose: che schiantino bene.
 
 · change dir generale per test
