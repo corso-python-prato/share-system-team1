@@ -3,14 +3,10 @@
 
 import server
 import os
-import string
 import json
-import random
 import unittest
 import shutil
 from base64 import b64encode
-import time
-import multiprocessing
 
 TEST_DIRECTORY = "test_users_dirs/"
 TEST_USER_DATA = "test_user_data.json"
