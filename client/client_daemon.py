@@ -596,7 +596,7 @@ def main():
     try:
         while True:
             server_com.synchronize(file_system_op, snapshot_manager)
-            time.sleep(1)
+            time.sleep(5)
     except KeyboardInterrupt:
         observer.stop()
     observer.join()
