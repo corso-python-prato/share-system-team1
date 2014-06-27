@@ -276,10 +276,13 @@ class FileSystemOperator(object):
             send unlock to watchdog
         """
         self.send_lock(self.server_com.get_abspath(path))
-        try:
-            shutil.rmtree(path)
-        except IOError:
-            pass
+        if os.path.isdir(path):
+            try:
+                shutil.rmtree(path)
+            except IOError:
+                pass
+        else:
+            os.remove(path)
         self.send_unlock()
 
 

@@ -40,7 +40,7 @@ class ClientDaemonTest(unittest.TestCase):
             'http://127.0.0.1:5000/API/v1/actions/copy')
         httpretty.register_uri(
             httpretty.POST,
-            'http://127.0.0.1:5000/API/v1/user/create')
+            'http://127.0.0.1:5000/API/v1/create_user')
         httpretty.register_uri(httpretty.GET,
             'http://127.0.0.1:5000/API/v1/files',
             body=str({
@@ -200,7 +200,7 @@ class ClientDaemonTest(unittest.TestCase):
         #check if authorization are equal
         self.assertEqual(authorization_decoded, mock_auth_user)
         #check if url and host are equal
-        self.assertEqual(path, '/API/v1/user/create')
+        self.assertEqual(path, '/API/v1/create_user')
         self.assertEqual(host, '127.0.0.1:5000')
         #check if methods are equal
         self.assertEqual(method, 'POST')
@@ -325,6 +325,17 @@ class FileSystemOperatorTest(unittest.TestCase):
         self.file_system_op.move_a_file(source_path, dest_path)
         written_file = open(dest_path, 'rb').read()
         self.assertEqual('this is a test', written_file)
+
+    def test_copy_a_file(self):
+        f_name = 'file_to_copy.txt'
+        file_to_copy = open('{}/{}'.format(self.client_path, f_name), 'w')
+        file_to_copy.write('this is a test')
+        source_path = file_to_copy.name
+        dest_path = '{}/copy_dir/{}'.format(self.client_path, f_name)
+        file_to_copy.close()
+        self.file_system_op.copy_a_file(source_path, dest_path)
+        copied_file = open(dest_path, 'rb').read()
+        self.assertEqual('this is a test', copied_file)
 
 
 class DirSnapshotManagerTest(unittest.TestCase):
@@ -515,8 +526,9 @@ class DirectoryEventHandlerTest(unittest.TestCase):
         self.assertEqual(self.server_comm.cmd["delete"], True)
 
     def test_on_modified(self):
+        time.sleep(0.5)
         open(os.path.join(self.test_file_1), 'w').write('Vivamus eget lobortis massa')
-        time.sleep(3)
+        time.sleep(0.5)
 
         self.observer.stop()
         self.observer.join()
