@@ -22,7 +22,7 @@ DEMO_DEST_MOVE_PATH = "new_mv"
 NO_SERVER_PATH = "marcoRegna"
 
 
-def transfer(path, flag=True):
+def transfer(path, flag=True, test=True):
     client_path, server_path = set_tmp_params(path)
     if flag:
         func = "copy"
@@ -31,11 +31,18 @@ def transfer(path, flag=True):
         func = "move"
         new_path = "{}/{}".format(DEMO_DEST_MOVE_PATH, path)
 
-    data = { 
-        "file_src": client_path,
-        "file_dest": os.path.join(new_path, DEMO_FILE)
-    }
-    rv = DEMO_CLIENT.call("post", "actions/"+func, data)
+    if test:
+        data = { 
+            "file_src": client_path,
+            "file_dest": os.path.join(new_path, DEMO_FILE)
+        }
+        rv = DEMO_CLIENT.call("post", "actions/"+func, data)
+    else:
+        data = { 
+            "file_src": NO_SERVER_PATH,
+            "file_dest": os.path.join(new_path, DEMO_FILE)
+        }
+        rv = DEMO_CLIENT.call("post", "actions/"+func, data)
 
     return rv, client_path, server_path
 
@@ -215,7 +222,6 @@ class TestSequenceFunctions(unittest.TestCase):
         self.assertEqual(rv.status_code, 410)
 
 
-
     def test_files_put(self):
         demo_path = "somepath/somefile.txt"
 
@@ -252,6 +258,9 @@ class TestSequenceFunctions(unittest.TestCase):
 
         data = { "path": NO_SERVER_PATH }
         rv = DEMO_CLIENT.call("post","actions/delete", data)
+        self.assertEqual(rv.status_code, 404)
+
+        rv = DEMO_CLIENT.call("post","actions/destroy", data)
         self.assertEqual(rv.status_code, 404)
 
 
@@ -298,7 +307,6 @@ class TestSequenceFunctions(unittest.TestCase):
                 True
         )
 
-
     def test_actions_move(self):
         rv, client_path, server_path = transfer("mv", False)
         self.assertEqual(rv.status_code, 201)
@@ -318,6 +326,8 @@ class TestSequenceFunctions(unittest.TestCase):
                 "{}/mv/{}".format(DEMO_DEST_MOVE_PATH, DEMO_FILE) in u.paths,
                 True
         )
+        rv, client_path, server_path = transfer("mv", False, False)
+        self.assertEqual(rv.status_code, 404)
 
 
     def test_files_differences(self):
