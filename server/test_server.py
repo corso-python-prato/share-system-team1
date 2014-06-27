@@ -336,7 +336,6 @@ class TestSequenceFunctions(unittest.TestCase):
 
     def test_actions_copy(self):
         DEMO_CLIENT.set_fake_usr(True)
-        DEMO_CLIENT.set_fake_usr(True)
         data = { 
         "file_src": "src",
         "file_dest": "dest"
@@ -361,6 +360,15 @@ class TestSequenceFunctions(unittest.TestCase):
                 "{}/cp/{}".format(DEMO_DEST_COPY_PATH, DEMO_FILE) in u.paths,
                 True
         )
+
+        
+        client_path, server_path = set_tmp_params("prova")
+        data = { 
+        "file_src": client_path,
+        "file_dest": client_path
+        }
+        rv = DEMO_CLIENT.call("post", "actions/copy", data)
+        self.assertEqual(rv.status_code, 409)
 
     def test_actions_move(self):
         DEMO_CLIENT.set_fake_usr(True)

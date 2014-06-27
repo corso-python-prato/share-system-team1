@@ -342,7 +342,7 @@ class Actions(Resource):
                 shutil.copy(server_src, server_dest)
             else:
                 shutil.move(server_src, server_dest)
-        except IOError:
+        except shutil.Error:
             return abort(HTTP_CONFLICT)
         else:
             if keep_the_original:
