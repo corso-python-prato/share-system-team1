@@ -106,9 +106,7 @@ class User(object):
         try:
             os.mkdir(full_path)
         except OSError:
-            raise ConflictError(
-                "Conflict while creating the directory for a new user"
-            )
+            abort(HTTP_CONFLICT)
 
         # OBJECT ATTRIBUTES
         self.psw = psw_hash
