@@ -25,10 +25,11 @@ API_PREFIX = "API/v1"
 
 class ServerCommunicator(object):
 
-    def __init__(self, server_url, username, password, dir_path):
+    def __init__(self, server_url, username, password, dir_path, snapshot_manager):
         self.auth = HTTPBasicAuth(username, password)
         self.server_url = server_url
         self.dir_path = dir_path
+        self.snapshot_manager = snapshot_manager
 
     def setExecuter(self, executer):
         self.executer = executer
@@ -57,12 +58,18 @@ class ServerCommunicator(object):
         sync = self._try_request(requests.get, "getFile success", "getFile fail", **request)
         
         if sync.status_code != 401:
-            server_snapshot = eval(sync.text)['snapshot']
-            server_timestamp = eval(sync.text)['timestamp']
+            server_snapshot = sync.json()['snapshot']
+            server_timestamp =sync.json()['timestamp']
             print "SERVER SAY: ", server_snapshot, server_timestamp ,"\n"
             command_list = snapshot_manager.syncronize_dispatcher(server_timestamp, server_snapshot)
             self.executer.syncronize_executer(command_list)
-            snapshot_manager.save_snapshot(server_timestamp, snapshot_manager.global_md5(server_snapshot))
+            snapshot_manager.save_snapshot(server_timestamp)
+
+    def get_relpath(self, abs_path):
+        """form absolute path return relative path """
+        if abs_path.startswith(self.dir_path):
+            return abs_path[len(self.dir_path) + 1:]
+        return abs_path
 
     def get_abspath(self, dst_path):
         """ from relative path return absolute path """
@@ -70,7 +77,7 @@ class ServerCommunicator(object):
 
     def get_url_relpath(self, abs_path):
         """ form get_abspath return the relative path for url """
-        return os.path.relpath(abs_path, self.dir_path)
+        return self.get_relpath(abs_path).replace(os.path.sep, '/')
 
     def download_file(self, dst_path):
         """ download a file from server"""
@@ -118,6 +125,7 @@ class ServerCommunicator(object):
             r = self._try_request(requests.post, success_log, error_log, **request)
         if r.status_code == 409:
             print "already exists"
+        self.snapshot_manager.save_snapshot(r.text)
 
     def delete_file(self, dst_path):
         """ send to server a message of file delete """
@@ -133,6 +141,7 @@ class ServerCommunicator(object):
         r = self._try_request(requests.post, success_log, error_log, **request)
         if r.status_code == 404:
             print "file not found on server"
+        self.snapshot_manager.save_snapshot(r.text)
 
     def move_file(self, src_path, dst_path):
         """ send to server a message of file moved """
@@ -152,6 +161,7 @@ class ServerCommunicator(object):
         r = self._try_request(requests.post, success_log, error_log, **request)
         if r.status_code == 404:
             print "file not found on server"
+        self.snapshot_manager.save_snapshot(r.text)
 
     def copy_file(self, src_path, dst_path):
         """ send to server a message of copy file"""
@@ -170,6 +180,7 @@ class ServerCommunicator(object):
         r = self._try_request(requests.post, success_log, error_log, **request)
         if r.status_code == 404:
             print "file not found on server"
+        self.snapshot_manager.save_snapshot(r.text)
 
     def create_user(self, username, password):
         
@@ -185,6 +196,7 @@ class ServerCommunicator(object):
                 "psw": password
             }
         }
+
         response = self._try_request(requests.post, success_log, error_log, **request).status_code
         if response == 201:
             print "created!"
@@ -349,7 +361,8 @@ class DirectoryEventHandler(FileSystemEventHandler):
             :class:`DirMovedEvent` or :class:`FileMovedEvent`
         """
         if event.src_path not in self.path_ignored:
-            self.cmd.move_file(event.src_path, event.dest_path)
+            if not event.is_directory:
+                self.cmd.move_file(event.src_path, event.dest_path)
         else:
             print "ingnored move on ", event.src_path
 
@@ -380,7 +393,8 @@ class DirectoryEventHandler(FileSystemEventHandler):
             :class:`DirDeletedEvent` or :class:`FileDeletedEvent`
         """
         if event.src_path not in self.path_ignored:
-            self.cmd.delete_file(event.src_path)
+            if not event.is_directory:
+                self.cmd.delete_file(event.src_path)
         else:
             print "ingnored deletion on ", event.src_path
 
@@ -464,7 +478,6 @@ class DirSnapshotManager(object):
     def save_snapshot(self, timestamp):
         """ save snapshot to file """
         self.local_full_snapshot = self.instant_snapshot()
-
         self.last_status['timestamp'] = timestamp
         self.last_status['snapshot'] = self.global_md5()
 
@@ -505,7 +518,6 @@ class DirSnapshotManager(object):
 
     def syncronize_dispatcher(self, server_timestamp, server_snapshot):
         """ return the list of command to do """
-
         new_client_paths, new_server_paths, equal_paths =  self.diff_snapshot_paths(self.local_full_snapshot , server_snapshot)
         command_list = []
         #NO internal conflict
@@ -617,7 +629,8 @@ def main():
         server_url=config['server_url'],
         username=config['username'],
         password=config['password'],
-        dir_path=config['dir_path'])
+        dir_path=config['dir_path'],
+        snapshot_manager = snapshot_manager)
 
     event_handler = DirectoryEventHandler(server_com, snapshot_manager)
     file_system_op = FileSystemOperator(event_handler, server_com)
@@ -627,7 +640,6 @@ def main():
     observer.schedule(event_handler, config['dir_path'], recursive=True)
 
     observer.start()
-
     try:
         while True:
             server_com.synchronize(file_system_op, snapshot_manager)
