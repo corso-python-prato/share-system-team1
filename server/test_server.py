@@ -9,6 +9,8 @@ import random
 import unittest
 import shutil
 from base64 import b64encode
+import time
+import multiprocessing
 
 TEST_DIRECTORY = "test_users_dirs/"
 TEST_USER_DATA = "test_user_data.json"
@@ -144,6 +146,15 @@ class TestSequenceFunctions(unittest.TestCase):
         # error
         rv = client.create_demo_user()
         self.assertEqual(rv.status_code, server.HTTP_CONFLICT)
+
+        # check if "marcoRegna" is broken
+        user = "marcoRegna"
+        psw = "passwordSegretissima"
+        client = TestClient(user, psw)
+        rv = client.create_demo_user()
+        self.assertEqual(rv.status_code, server.HTTP_CREATED)
+        marcos_directory = os.path.join(server.USERS_DIRECTORIES, user)
+        self.assertTrue(os.path.isdir(marcos_directory))
 
 
     def test_to_md5(self):
@@ -356,6 +367,56 @@ class TestSequenceFunctions(unittest.TestCase):
 
         for s in snapshot3["snapshot"].values():
             self.assertEqual(len(s), 1)
+
+
+    def test_user_class_init(self):
+        # create a temporary directory and work on it
+        working_directory = os.getcwd()
+
+        test_dir = "tmptmp"
+        try:
+            os.mkdir(test_dir)
+        except OSError:
+            shutil.rmtree(test_dir)
+            os.mkdir(test_dir)
+
+        os.chdir(test_dir)
+
+        # check 1: if the folder is empty, nothing is modified
+        previous_users = server.User.users
+        server.User.user_class_init()
+        self.assertEqual(server.User.users, previous_users)
+        
+        # chek 2: if there is a json, upload the users from it
+        username = "UserName"
+        tmp_dict = {
+            "users": {
+                username: {
+                    "paths": {
+                        "": [
+                            "user_dirs/{}".format(username),
+                            False,
+                            1403512334.247553
+                        ],
+                        "hello.txt": [
+                            "user_dirs/{}/hello.txt".format(username),
+                            "6186badadb5fbb0416cd29a04e2d92d7",
+                            1403606130.356392
+                        ]
+                    },
+                    "psw": "encrypted password",
+                    "timestamp": 1403606130.356392
+                },
+            }
+        }
+        with open(server.USERS_DATA, "w") as f:
+            json.dump(tmp_dict, f)
+        server.User.user_class_init()
+        self.assertIn(username, server.User.users)
+
+        # restore the previous situation
+        os.chdir(working_directory)
+        shutil.rmtree(test_dir)
 
 
 if __name__ == '__main__':
