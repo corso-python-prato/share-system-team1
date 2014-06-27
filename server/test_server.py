@@ -3,9 +3,7 @@
 
 import server
 import os
-import string
 import json
-import random
 import unittest
 import shutil
 from base64 import b64encode
@@ -283,7 +281,7 @@ class TestSequenceFunctions(unittest.TestCase):
 
     def test_actions_copy(self):
         rv, client_path, server_path = transfer("cp", True)
-        self.assertEqual(rv.status_code, 200)
+        self.assertEqual(rv.status_code, 201)
 
         full_dest_path = os.path.join(TEST_DIRECTORY,
                 DEMO_USER,
@@ -303,7 +301,7 @@ class TestSequenceFunctions(unittest.TestCase):
 
     def test_actions_move(self):
         rv, client_path, server_path = transfer("mv", False)
-        self.assertEqual(rv.status_code, 200)
+        self.assertEqual(rv.status_code, 201)
 
         full_dest_path = os.path.join(
                 TEST_DIRECTORY,
@@ -371,6 +369,62 @@ class TestSequenceFunctions(unittest.TestCase):
 
         for s in snapshot3["snapshot"].values():
             self.assertEqual(len(s), 1)
+
+
+    def test_user_class_init(self):
+        # create a temporary directory and work on it
+        working_directory = os.getcwd()
+
+        test_dir = "tmptmp"
+        try:
+            os.mkdir(test_dir)
+        except OSError:
+            shutil.rmtree(test_dir)
+            os.mkdir(test_dir)
+
+        os.chdir(test_dir)
+
+        # check 1: if the folder is empty, nothing is modified
+        previous_users = server.User.users
+        server.User.user_class_init()
+        self.assertEqual(server.User.users, previous_users)
+        
+        # check 2: if there is a json, upload the users from it
+        username = "UserName"
+        tmp_dict = {
+            "users": {
+                username: {
+                    "paths": {
+                        "": [
+                            "user_dirs/{}".format(username),
+                            False,
+                            1403512334.247553
+                        ],
+                        "hello.txt": [
+                            "user_dirs/{}/hello.txt".format(username),
+                            "6186badadb5fbb0416cd29a04e2d92d7",
+                            1403606130.356392
+                        ]
+                    },
+                    "psw": "encrypted password",
+                    "timestamp": 1403606130.356392
+                },
+            }
+        }
+        with open(server.USERS_DATA, "w") as f:
+            json.dump(tmp_dict, f)
+        server.User.user_class_init()
+        self.assertIn(username, server.User.users)
+
+        # check 3: if the json is invalid, remove it
+        with open(server.USERS_DATA, "w") as f:
+            f.write("{'users': poksd [sd ]sd []}")
+        server.User.user_class_init()
+        self.assertFalse(os.path.exists(server.USERS_DATA))
+
+        # restore the previous situation
+        os.chdir(working_directory)
+        shutil.rmtree(test_dir)
 
 
 if __name__ == '__main__':
