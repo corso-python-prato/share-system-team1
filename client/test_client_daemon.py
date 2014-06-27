@@ -337,6 +337,22 @@ class FileSystemOperatorTest(unittest.TestCase):
         copied_file = open(dest_path, 'rb').read()
         self.assertEqual('this is a test', copied_file)
 
+    def test_delete_a_file(self):
+        del_dir = 'to_delete'
+        path_to_del = '{}/to_delete'.format(self.client_path)
+        if not os.path.exists(path_to_del):
+            os.makedirs('{}/{}'.format(self.client_path, del_dir))
+        f_name = 'file_to_delete.txt'
+        file_to_delete = open('{}/{}/{}'.format(self.client_path, del_dir, f_name), 'w')
+        file_to_delete.write('delete me')
+        file_to_delete.close()
+        self.assertTrue(os.path.exists(file_to_delete.name))
+        self.file_system_op.delete_a_file(file_to_delete.name)
+        self.assertFalse(os.path.exists(file_to_delete.name))
+        self.file_system_op.delete_a_file(path_to_del)
+        self.assertFalse(os.path.exists(path_to_del))
+
+
 
 class DirSnapshotManagerTest(unittest.TestCase):
     def setUp(self):
