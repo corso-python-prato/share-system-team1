@@ -24,12 +24,6 @@ class ServerCommunicator(object):
         self.auth = HTTPBasicAuth(username, password)
         self.server_url = server_url
         self.dir_path = dir_path
-        self.timestamp = None   # timestamp for Synchronization
-        try:
-            with open('timestamp.json', 'r') as timestamp_file:
-                self.timestamp = timestamp_file.load()[0]
-        except IOError:
-            print "There's no timestamp saved."
 
     def setExecuter(self, executer):
         self.executer = executer
@@ -137,7 +131,6 @@ class ServerCommunicator(object):
             "url": server_url,
             "data": self.get_url_relpath(dst_path)
         }
-        print request
 
         self._try_request(requests.post, success_log, error_log, **request)
 
@@ -171,7 +164,6 @@ class ServerCommunicator(object):
             "url": server_url,
             "data": {"file_src": src_path, "file_dest": dst_path}
         }
-        print request
         self._try_request(requests.post, success_log, error_log, **request)
 
     def create_user(self, username, password):
@@ -469,7 +461,6 @@ class DirSnapshotManager(object):
 
         new_client_paths, new_server_paths, equal_paths =  self.diff_snapshot_paths(self.local_full_snapshot , server_snapshot)
         command_list = []
-        print
         #NO internal conflict
         if self.local_check():  #1)
             if  not self.is_syncro(server_timestamp): #1) b.
@@ -589,9 +580,6 @@ def main():
     observer.schedule(event_handler, config['dir_path'], recursive=True)
 
     observer.start()
-    #server_com.create_user("caccola", "passwordSegretissima")
-    #file_system_op.write_a_file('/home/user/prove/mocciho.txt') #test
-    #server_com.upload_file("/home/user/prove/bho/ciao.js")
 
     try:
         while True:
