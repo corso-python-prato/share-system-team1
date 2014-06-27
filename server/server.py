@@ -20,6 +20,7 @@ HTTP_CREATED = 201
 HTTP_NOT_FOUND = 404
 HTTP_BAD_REQUEST = 400
 HTTP_OK = 200
+HTTP_GONE = 410
 
 app = Flask(__name__)
 api = Api(app)
@@ -263,7 +264,7 @@ class Files(Resource):
             f.close()
             return content
         except IOError:
-            abort(HTTP_NOT_FOUND)
+            abort(HTTP_GONE)
 
     def get(self, client_path=None):
         if not client_path:
