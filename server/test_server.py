@@ -387,7 +387,7 @@ class TestSequenceFunctions(unittest.TestCase):
         server.User.user_class_init()
         self.assertEqual(server.User.users, previous_users)
         
-        # chek 2: if there is a json, upload the users from it
+        # check 2: if there is a json, upload the users from it
         username = "UserName"
         tmp_dict = {
             "users": {
@@ -413,6 +413,12 @@ class TestSequenceFunctions(unittest.TestCase):
             json.dump(tmp_dict, f)
         server.User.user_class_init()
         self.assertIn(username, server.User.users)
+
+        # check 3: if the json is invalid, remove it
+        with open(server.USERS_DATA, "w") as f:
+            f.write("{'users': poksd [sd ]sd []}")
+        server.User.user_class_init()
+        self.assertFalse(os.path.exists(server.USERS_DATA))
 
         # restore the previous situation
         os.chdir(working_directory)
