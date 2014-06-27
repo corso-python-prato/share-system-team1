@@ -129,10 +129,11 @@ class ServerCommunicator(object):
         server_url = "{}/actions/delete".format(self.server_url)
         request = {
             "url": server_url,
-            "data": self.get_url_relpath(dst_path)
+            "data": {"path": self.get_url_relpath(dst_path)}
         }
-
-        self._try_request(requests.post, success_log, error_log, **request)
+        r = self._try_request(requests.post, success_log, error_log, **request)
+        if r.status_code == 404:
+            print "file not found on server"
 
     def move_file(self, src_path, dst_path):
         """ send to server a message of file moved """
@@ -146,9 +147,12 @@ class ServerCommunicator(object):
 
         request = {
             "url": server_url,
-            "data": {"src": src_path, "dst": dst_path}
+            "data": {"file_src": src_path, "file_dest": dst_path}
         }
+        
         r = self._try_request(requests.post, success_log, error_log, **request)
+        if r.status_code == 404:
+            print "file not found on server"
 
     def copy_file(self, src_path, dst_path):
         """ send to server a message of copy file"""
@@ -164,7 +168,10 @@ class ServerCommunicator(object):
             "url": server_url,
             "data": {"file_src": src_path, "file_dest": dst_path}
         }
-        self._try_request(requests.post, success_log, error_log, **request)
+        
+        r = self._try_request(requests.post, success_log, error_log, **request)
+        if r.status_code == 404:
+            print "file not found on server"
 
     def create_user(self, username, password):
         
