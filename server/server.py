@@ -20,6 +20,7 @@ HTTP_CREATED = 201
 HTTP_NOT_FOUND = 404
 HTTP_BAD_REQUEST = 400
 HTTP_OK = 200
+HTTP_GONE = 410
 
 app = Flask(__name__)
 api = Api(app)
@@ -263,7 +264,7 @@ class Files(Resource):
             f.close()
             return content
         except IOError:
-            abort(HTTP_NOT_FOUND)
+            abort(HTTP_GONE)
 
     def get(self, client_path=None):
         if not client_path:
@@ -322,10 +323,10 @@ class Actions(Resource):
         return u.timestamp
 
     def _copy(self):
-        self._transfer(keep_the_original=True)
+        return self._transfer(keep_the_original=True)
 
     def _move(self):
-        self._transfer(keep_the_original=False)
+        return self._transfer(keep_the_original=False)
 
     def _transfer(self, keep_the_original=True):
         """ Moves or copy a file from src to dest
@@ -355,7 +356,7 @@ class Actions(Resource):
             else:
                 u.push_path(client_dest, server_dest, update_user_data=False)
                 u.rm_path(client_src)
-            return u.timestamp
+            return u.timestamp, HTTP_CREATED
 
     commands = {
         "delete": _delete,
