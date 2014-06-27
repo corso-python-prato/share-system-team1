@@ -356,7 +356,7 @@ class DirectoryEventHandlerTest(unittest.TestCase):
             def __init__(self, var):
                 self.cmd = var
 
-            def move_file(self, src_path):
+            def move_file(self, src_path, dst_path):
                 self.cmd['move'] = True
 
             def copy_file(self, copy, src_path):
