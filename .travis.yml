@@ -8,10 +8,7 @@ install:
   - pip install coveralls
 
 script:
-  - cd client
-  - nosetests --with-coverage
-  - cd ../server
-  - nosetests --with-coverage
+  - nosetests server client --with-coverage
 
 notifications:
     email: false
