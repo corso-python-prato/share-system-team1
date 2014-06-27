@@ -125,7 +125,8 @@ class ServerCommunicator(object):
             r = self._try_request(requests.post, success_log, error_log, **request)
         if r.status_code == 409:
             print "already exists"
-        self.snapshot_manager.save_snapshot(r.text)
+        elif r.status_code == 201:
+            self.snapshot_manager.save_snapshot(r.text)
 
     def delete_file(self, dst_path):
         """ send to server a message of file delete """
@@ -141,7 +142,8 @@ class ServerCommunicator(object):
         r = self._try_request(requests.post, success_log, error_log, **request)
         if r.status_code == 404:
             print "file not found on server"
-        self.snapshot_manager.save_snapshot(r.text)
+        elif r.status_code == 201:
+            self.snapshot_manager.save_snapshot(r.text)
 
     def move_file(self, src_path, dst_path):
         """ send to server a message of file moved """
@@ -161,7 +163,8 @@ class ServerCommunicator(object):
         r = self._try_request(requests.post, success_log, error_log, **request)
         if r.status_code == 404:
             print "file not found on server"
-        self.snapshot_manager.save_snapshot(r.text)
+        elif r.status_code == 201:
+            self.snapshot_manager.save_snapshot(r.text)
 
     def copy_file(self, src_path, dst_path):
         """ send to server a message of copy file"""
@@ -180,7 +183,8 @@ class ServerCommunicator(object):
         r = self._try_request(requests.post, success_log, error_log, **request)
         if r.status_code == 404:
             print "file not found on server"
-        self.snapshot_manager.save_snapshot(r.text)
+        elif r.status_code == 201:
+            self.snapshot_manager.save_snapshot(r.text)
 
     def create_user(self, username, password):
         
