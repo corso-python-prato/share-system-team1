@@ -195,6 +195,7 @@ class ServerCommunicator(object):
                 "psw": password
             }
         }
+
         response = self._try_request(requests.post, success_log, error_log, **request).status_code
         if response == 201:
             print "created!"
@@ -473,7 +474,6 @@ class DirSnapshotManager(object):
     def save_snapshot(self, timestamp):
         """ save snapshot to file """
         self.local_full_snapshot = self.instant_snapshot()
-
         self.last_status['timestamp'] = timestamp
         self.last_status['snapshot'] = self.global_md5()
 
@@ -514,7 +514,6 @@ class DirSnapshotManager(object):
 
     def syncronize_dispatcher(self, server_timestamp, server_snapshot):
         """ return the list of command to do """
-
         new_client_paths, new_server_paths, equal_paths =  self.diff_snapshot_paths(self.local_full_snapshot , server_snapshot)
         command_list = []
         #NO internal conflict
@@ -637,7 +636,6 @@ def main():
     observer.schedule(event_handler, config['dir_path'], recursive=True)
 
     observer.start()
-
     try:
         while True:
             server_com.synchronize(file_system_op, snapshot_manager)
