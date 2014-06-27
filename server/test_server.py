@@ -169,8 +169,6 @@ class TestSequenceFunctions(unittest.TestCase):
         self.assertEqual(rv.status_code, server.HTTP_CONFLICT)
 
 
-
-
     def test_to_md5(self):
         # check if two files with the same content have the same md5
         second_file = "second_file.txt"
