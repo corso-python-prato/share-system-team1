@@ -23,6 +23,12 @@ SERVER_PORT = "5000"
 API_PREFIX = "API/v1"
 
 
+def get_relpath(abs_path, dir_path):
+        """form absolute path return relative path """
+        if abs_path.startswith(dir_path):
+            return abs_path[len(dir_path) + 1:]
+        return abs_path
+
 class ServerCommunicator(object):
 
     def __init__(self, server_url, username, password, dir_path, snapshot_manager):
@@ -65,19 +71,13 @@ class ServerCommunicator(object):
             self.executer.syncronize_executer(command_list)
             snapshot_manager.save_snapshot(server_timestamp)
 
-    def get_relpath(self, abs_path):
-        """form absolute path return relative path """
-        if abs_path.startswith(self.dir_path):
-            return abs_path[len(self.dir_path) + 1:]
-        return abs_path
-
     def get_abspath(self, dst_path):
         """ from relative path return absolute path """
         return os.path.join(self.dir_path, dst_path)
 
     def get_url_relpath(self, abs_path):
         """ form get_abspath return the relative path for url """
-        return self.get_relpath(abs_path).replace(os.path.sep, '/')
+        return get_relpath(abs_path, self.dir_path).replace(os.path.sep, '/')
 
     def download_file(self, dst_path):
         """ download a file from server"""
@@ -472,7 +472,7 @@ class DirSnapshotManager(object):
             for f in files:
                 full_path = os.path.join(root, f)
                 file_md5 = self.file_snapMd5(full_path)
-                rel_path = f
+                rel_path = get_relpath(full_path, self.dir_path)
                 if file_md5 in dir_snapshot:
                     dir_snapshot[file_md5].append(rel_path)
                 else:
