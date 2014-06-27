@@ -420,6 +420,7 @@ class DirSnapshotManager(object):
             for f in files:
                 full_path = os.path.join(root, f)
                 file_md5 = self.file_snapMd5(full_path)
+                full_path = f
                 if file_md5 in dir_snapshot:
                     dir_snapshot[file_md5].append(full_path)
                 else:
