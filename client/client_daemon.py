@@ -58,11 +58,13 @@ class ServerCommunicator(object):
         server_url = "{}/files/".format(self.server_url)
         request = {"url": server_url}
         sync = self._try_request(requests.get, "getFile success", "getFile fail", **request)
+        print "SYNC TEXT: ", eval(sync.text)
         server_snapshot = eval(sync.text)['snapshot']
         server_timestamp = eval(sync.text)['timestamp']
         print "SERVER SAY: ", server_snapshot, server_timestamp ,"\n"
         command_list = snapshot_manager.syncronize_dispatcher(server_timestamp, server_snapshot)
         snapshot_manager.syncronize_executer(command_list)
+        snapshot_manager.save_snapshot(server_timestamp, snapshot_manager.global_md5(server_snapshot))
         
         """with open("timestamp.json", "w") as timestamp_file:
             timestamp_file.write(sync.text.load()[0])
@@ -144,7 +146,6 @@ class ServerCommunicator(object):
             "url": server_url,
             "data": self.get_url_relpath(dst_path)
         }
-        print request
 
         self._try_request(requests.post, success_log, error_log, **request)
 
@@ -178,7 +179,6 @@ class ServerCommunicator(object):
             "url": server_url,
             "data": {"file_src": src_path, "file_dest": dst_path}
         }
-        print request
         self._try_request(requests.post, success_log, error_log, **request)
 
     def create_user(self, username, password):
