@@ -408,8 +408,10 @@ class DirSnapshotManager(object):
                 buf = afile.read(2048)
         return file_md5.hexdigest()
 
-    def global_md5(self):
+    def global_md5(self, server_snapshot = False):
         """ calculate the global md5 of local_full_snapshot """
+        if server_snapshot:
+            return hashlib.md5(str(server_snapshot)).hexdigest()
         return hashlib.md5(str(self.local_full_snapshot)).hexdigest()
 
     def instant_snapshot(self):
