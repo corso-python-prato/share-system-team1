@@ -219,6 +219,11 @@ class TestSequenceFunctions(unittest.TestCase):
             uploaded_content = f.read()
             self.assertEqual(DEMO_CONTENT, uploaded_content)
 
+        f = open(DEMO_FILE, "r")
+        data = { "file_content": f }
+        rv = DEMO_CLIENT.call("post", "files/"+demo_path, data)
+        f.close()
+        self.assertEqual(rv.status_code, 409)
 
     def test_files_get(self):
         client_path, server_path = set_tmp_params("dwn")
