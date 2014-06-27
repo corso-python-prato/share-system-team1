@@ -9,9 +9,9 @@ install:
 
 script:
   - cd client
-  - nosetests .
+  - nosetests --with-coverage
   - cd ../server
-  - nosetests .
+  - nosetests --with-coverage
 
 notifications:
     email: false
