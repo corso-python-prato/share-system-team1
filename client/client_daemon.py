@@ -467,7 +467,7 @@ class DirSnapshotManager(object):
                 for new_server_path in new_server_paths: #1) b 1
                     if not self.find_file_md5(server_snapshot, new_server_path) in self.local_full_snapshot: #1) b 1 I
                         print "download:\t" + new_server_path
-                        command_list.append({new_server_path: 'remote_download'}) 
+                        command_list.append({new_server_path: 'local_download'}) 
                     else: #1) b 1 II
                         print "copy or rename:\t" + new_server_path
                         command_list.append({new_server_path: 'local_copy'})
@@ -475,7 +475,7 @@ class DirSnapshotManager(object):
                 for equal_path in equal_paths: #1) b 2
                     if self.find_file_md5(self.local_full_snapshot, equal_path, False) != self.find_file_md5(server_snapshot, equal_path):
                         print "update download:\t" + equal_path
-                        command_list.append({equal_path: 'remote_download'}) 
+                        command_list.append({equal_path: 'local_download'}) 
                     else:
                         print "no action:\t" + equal_path
                 
@@ -493,7 +493,7 @@ class DirSnapshotManager(object):
                     command_list.append({new_server_path: 'remote_delete'}) 
                 for equal_path in equal_paths: #2) a 2
                     if self.find_file_md5(self.local_full_snapshot, equal_path, False) != self.find_file_md5(server_snapshot, equal_path):
-                        print "upload:\t" + equal_path
+                        print "update:\t" + equal_path
                         command_list.append({equal_path: 'remote_update'})
                     else:
                         print "no action:\t" + equal_path
@@ -508,8 +508,8 @@ class DirSnapshotManager(object):
                             print "delete remote:\t" + new_server_path
                             command_list.append({new_server_path: 'remote_delete'}) 
                         else:
-                            print "download remote:\t" + new_server_path
-                            command_list.append({new_server_path: 'remote_download'}) 
+                            print "download local:\t" + new_server_path
+                            command_list.append({new_server_path: 'local_download'}) 
                     else: #2) b 1 II
                         print  "copy or rename:\t" + new_server_path
                         command_list.append({new_server_path: 'local_copy'}) #??? 
