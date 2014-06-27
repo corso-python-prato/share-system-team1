@@ -18,6 +18,11 @@ import json
 import os
 
 
+SERVER_URL = "localhost"
+SERVER_PORT = "5000"
+API_PREFIX = "API/v1"
+
+
 class ServerCommunicator(object):
 
     def __init__(self, server_url, username, password, dir_path):
@@ -62,15 +67,9 @@ class ServerCommunicator(object):
         """ from relative path return absolute path """
         return os.path.join(self.dir_path, dst_path)
 
-    def get_relpath(self, abs_path):
-        """form absolute path return relative path """
-        if abs_path.startswith(self.dir_path):
-            return abs_path[len(self.dir_path) + 1:]
-        return abs_path
-
     def get_url_relpath(self, abs_path):
         """ form get_abspath return the relative path for url """
-        return self.get_relpath(abs_path).replace(os.path.sep, '/')
+        return os.path.relpath(abs_path, self.dir_path)
 
     def download_file(self, dst_path):
         """ download a file from server"""
@@ -285,9 +284,37 @@ class FileSystemOperator(object):
 
 
 def load_config():
-    with open('config.json', 'r') as config_file:
-        config = json.load(config_file)
-    return config
+    try:
+        with open('config.json', 'r') as config_file:
+            config = json.load(config_file)
+        return config
+    except IOError:
+        dir_path = os.path.join(os.path.expanduser("~"), "RawBox")
+        try:
+            os.makedirs(dir_path)
+        except OSError:
+            pass
+            
+        # TODO: ask to cmd_manager to create a new user
+        user = "Alalah@tropos.fo"
+        psw = "pokpsd"
+
+        config = {
+            "server_url" : "http://{}:{}/{}".format(
+                SERVER_URL,
+                SERVER_PORT,
+                API_PREFIX
+            ),
+            "dir_path": dir_path,
+            "snapshot_file_path": None,
+            "cmd_host": "localhost",
+            "cmd_port": "6666",
+            "username": user,
+            "password": psw 
+        }
+        with open('config.json', 'w') as config_file:
+            json.dump(config, config_file)
+        return config
 
 
 class DirectoryEventHandler(FileSystemEventHandler):
@@ -410,8 +437,11 @@ class DirSnapshotManager(object):
     def global_md5(self, server_snapshot = False):
         """ calculate the global md5 of local_full_snapshot """
         if server_snapshot:
-            return hashlib.md5(str(server_snapshot)).hexdigest()
-        return hashlib.md5(str(self.local_full_snapshot)).hexdigest()
+            snap_list = list(server_snapshot)
+        else:
+            snap_list = list(self.local_full_snapshot)
+        snap_list.sort()
+        return hashlib.md5(str(snap_list)).hexdigest()
 
     def instant_snapshot(self):
         """ create a snapshot of directory """
@@ -421,17 +451,22 @@ class DirSnapshotManager(object):
             for f in files:
                 full_path = os.path.join(root, f)
                 file_md5 = self.file_snapMd5(full_path)
-                full_path = f
+                rel_path = f
                 if file_md5 in dir_snapshot:
-                    dir_snapshot[file_md5].append(full_path)
+                    dir_snapshot[file_md5].append(rel_path)
                 else:
-                    dir_snapshot[file_md5] = [full_path]
+                    dir_snapshot[file_md5] = [rel_path]
         return dir_snapshot
 
-    def save_snapshot(self, timestamp, snapshot):
+    def save_snapshot(self, timestamp):
         """ save snapshot to file """
+        self.local_full_snapshot = self.instant_snapshot()
+
+        self.last_status['timestamp'] = timestamp
+        self.last_status['snapshot'] = self.global_md5()
+
         with open(self.snapshot_file_path, 'w') as f:
-            f.write(json.dumps({"timestamp": timestamp, "snapshot": snapshot}))
+            f.write(json.dumps({"timestamp": timestamp, "snapshot": self.last_status['snapshot']}))
 
     def diff_snapshot_paths(self, snap_client, snap_server):
         """
