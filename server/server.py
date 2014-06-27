@@ -323,10 +323,10 @@ class Actions(Resource):
         return u.timestamp
 
     def _copy(self):
-        self._transfer(keep_the_original=True)
+        return self._transfer(keep_the_original=True)
 
     def _move(self):
-        self._transfer(keep_the_original=False)
+        return self._transfer(keep_the_original=False)
 
     def _transfer(self, keep_the_original=True):
         """ Moves or copy a file from src to dest
@@ -356,7 +356,7 @@ class Actions(Resource):
             else:
                 u.push_path(client_dest, server_dest, update_user_data=False)
                 u.rm_path(client_src)
-            return u.timestamp
+            return u.timestamp, HTTP_CREATED
 
     commands = {
         "delete": _delete,
