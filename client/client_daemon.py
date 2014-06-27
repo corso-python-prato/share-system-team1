@@ -346,7 +346,8 @@ class DirectoryEventHandler(FileSystemEventHandler):
             :class:`DirMovedEvent` or :class:`FileMovedEvent`
         """
         if event.src_path not in self.path_ignored:
-            self.cmd.move_file(event.src_path, event.dest_path)
+            if not event.is_directory:
+                self.cmd.move_file(event.src_path, event.dest_path)
         else:
             print "ingnored move on ", event.src_path
 
@@ -377,7 +378,8 @@ class DirectoryEventHandler(FileSystemEventHandler):
             :class:`DirDeletedEvent` or :class:`FileDeletedEvent`
         """
         if event.src_path not in self.path_ignored:
-            self.cmd.delete_file(event.src_path)
+            if not event.is_directory:
+                self.cmd.delete_file(event.src_path)
         else:
             print "ingnored deletion on ", event.src_path
 
