@@ -1,3 +1,6 @@
+· 'nose' and 'coverage' have to be added in requirements?
+
+
 · se la delete viene chiamata su una cartella?
 
 · test delle cose: che schiantino bene.
@@ -30,3 +33,9 @@ estensioni consigliate da Gianni:
     git gutter
 
 · problemi con path difficili per ascii: convertire in unicode!
+
+· http://flask.pocoo.org/docs/deploying/
+
+
+CLIENT
+· ripulire requirements di client
