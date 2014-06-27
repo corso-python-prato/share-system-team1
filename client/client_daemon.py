@@ -62,7 +62,7 @@ class ServerCommunicator(object):
             print "SERVER SAY: ", server_snapshot, server_timestamp ,"\n"
             command_list = snapshot_manager.syncronize_dispatcher(server_timestamp, server_snapshot)
             self.executer.syncronize_executer(command_list)
-            snapshot_manager.save_snapshot(server_timestamp, snapshot_manager.global_md5(server_snapshot))
+            snapshot_manager.save_snapshot(server_timestamp)
 
     def get_relpath(self, abs_path):
         """form absolute path return relative path """
