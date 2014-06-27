@@ -87,10 +87,16 @@ class TestClient(object):
             headers = self.headers if auth else None
         )
 
-    def create_demo_user(self):
+    def create_demo_user(self, flag=False):
+        usr = "user"
+        psw = "psw"
+        if flag:
+            usr = "fake_usr"
+            psw = "fake_psw"
+
         data = {
-            "user": self.user,
-            "psw": self.psw
+            usr: self.user,
+            psw: self.psw
         }
         return self.call("post", "create_user", data, auth=False)
     
@@ -146,6 +152,10 @@ class TestSequenceFunctions(unittest.TestCase):
         user = "Gianni"
         psw = "IloveJava"
         client = TestClient(user, psw)
+        
+        rv = client.create_demo_user(True)
+        self.assertEqual(rv.status_code, server.HTTP_BAD_REQUEST)
+
         rv = client.create_demo_user()
         self.assertEqual(rv.status_code, server.HTTP_CREATED)
         
