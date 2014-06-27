@@ -64,13 +64,19 @@ class ServerCommunicator(object):
             self.executer.syncronize_executer(command_list)
             snapshot_manager.save_snapshot(server_timestamp, snapshot_manager.global_md5(server_snapshot))
 
+    def get_relpath(self, abs_path):
+        """form absolute path return relative path """
+        if abs_path.startswith(self.dir_path):
+            return abs_path[len(self.dir_path) + 1:]
+        return abs_path
+
     def get_abspath(self, dst_path):
         """ from relative path return absolute path """
         return os.path.join(self.dir_path, dst_path)
 
     def get_url_relpath(self, abs_path):
         """ form get_abspath return the relative path for url """
-        return os.path.relpath(abs_path, self.dir_path)
+        return self.get_relpath(abs_path).replace(os.path.sep, '/')
 
     def download_file(self, dst_path):
         """ download a file from server"""
