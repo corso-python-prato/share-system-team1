@@ -147,15 +147,6 @@ class TestSequenceFunctions(unittest.TestCase):
         rv = client.create_demo_user()
         self.assertEqual(rv.status_code, server.HTTP_CONFLICT)
 
-        # check if "marcoRegna" is broken
-        user = "marcoRegna"
-        psw = "passwordSegretissima"
-        client = TestClient(user, psw)
-        rv = client.create_demo_user()
-        self.assertEqual(rv.status_code, server.HTTP_CREATED)
-        marcos_directory = os.path.join(server.USERS_DIRECTORIES, user)
-        self.assertTrue(os.path.isdir(marcos_directory))
-
 
     def test_to_md5(self):
         # check if two files with the same content have the same md5
