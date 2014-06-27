@@ -25,10 +25,11 @@ API_PREFIX = "API/v1"
 
 class ServerCommunicator(object):
 
-    def __init__(self, server_url, username, password, dir_path):
+    def __init__(self, server_url, username, password, dir_path, snapshot_manager):
         self.auth = HTTPBasicAuth(username, password)
         self.server_url = server_url
         self.dir_path = dir_path
+        self.snapshot_manager = snapshot_manager
 
     def setExecuter(self, executer):
         self.executer = executer
@@ -117,6 +118,7 @@ class ServerCommunicator(object):
             r = self._try_request(requests.post, success_log, error_log, **request)
         if r.status_code == 409:
             print "already exists"
+        self.snapshot_manager.save_snapshot(r.text)
 
     def delete_file(self, dst_path):
         """ send to server a message of file delete """
@@ -132,6 +134,7 @@ class ServerCommunicator(object):
         r = self._try_request(requests.post, success_log, error_log, **request)
         if r.status_code == 404:
             print "file not found on server"
+        self.snapshot_manager.save_snapshot(r.text)
 
     def move_file(self, src_path, dst_path):
         """ send to server a message of file moved """
@@ -151,6 +154,7 @@ class ServerCommunicator(object):
         r = self._try_request(requests.post, success_log, error_log, **request)
         if r.status_code == 404:
             print "file not found on server"
+        self.snapshot_manager.save_snapshot(r.text)
 
     def copy_file(self, src_path, dst_path):
         """ send to server a message of copy file"""
@@ -166,10 +170,10 @@ class ServerCommunicator(object):
             "url": server_url,
             "data": {"file_src": src_path, "file_dest": dst_path}
         }
-        
         r = self._try_request(requests.post, success_log, error_log, **request)
         if r.status_code == 404:
             print "file not found on server"
+        self.snapshot_manager.save_snapshot(r.text)
 
     def create_user(self, username, password):
         
@@ -616,7 +620,8 @@ def main():
         server_url=config['server_url'],
         username=config['username'],
         password=config['password'],
-        dir_path=config['dir_path'])
+        dir_path=config['dir_path'],
+        snapshot_manager = snapshot_manager)
 
     event_handler = DirectoryEventHandler(server_com, snapshot_manager)
     file_system_op = FileSystemOperator(event_handler, server_com)
