@@ -116,7 +116,6 @@ class ServerCommunicator(object):
             r = self._try_request(requests.put, success_log, error_log, **request)
         else:
             r = self._try_request(requests.post, success_log, error_log, **request)
-
         if r.status_code == 409:
             print "already exists"
 
