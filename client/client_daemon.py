@@ -240,7 +240,7 @@ class FileSystemOperator(object):
                 os.makedirs(os.path.split(abs_path)[0], 0755 )
             except OSError:
                 pass
-            with open(abs_path, 'w') as f:
+            with open(abs_path, 'wb') as f:
                 f.write(content)
             time.sleep(3)
         else:
