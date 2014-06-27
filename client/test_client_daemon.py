@@ -16,7 +16,7 @@ class ClientDaemonTest(unittest.TestCase):
 			data={"response":"ok"}
 		)
 		httpretty.register_uri(httpretty.GET,
-			'http://127.0.0.1:5000/API/v1/files',
+			'http://127.0.0.1:5000/API/v1/files/',
 			body=str({
 		'9406539a103956dc36cb7ad35547198c': [{"path": u'/Users/marc0/progetto/prove_deamon\\bla.txt',"timestamp":123123}],
 		'a8f5f167f44f4964e6c998dee827110c': [{"path": u'vecchio.txt',"timestamp":123122}], 
