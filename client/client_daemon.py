@@ -263,6 +263,7 @@ class FileSystemOperator(object):
         except OSError:
             pass
         shutil.move(origin_path, dst_path)
+        time.sleep(3)
         self.send_unlock()
 
     def copy_a_file(self, origin_path, dst_path):
@@ -276,11 +277,14 @@ class FileSystemOperator(object):
         """
         self.send_lock(self.server_com.get_abspath(origin_path))
         self.send_lock(self.server_com.get_abspath(dst_path))
+        origin_path = self.server_com.get_abspath(origin_path)
+        dst_path = self.server_com.get_abspath(dst_path)
         try:
             os.makedirs(os.path.split(dst_path)[0], 0755)
         except OSError:
             pass
         shutil.copyfile(origin_path, dst_path)
+        time.sleep(3)
         self.send_unlock()
 
     def delete_a_file(self, path):
@@ -291,7 +295,9 @@ class FileSystemOperator(object):
             delete file
             send unlock to watchdog
         """
+
         self.send_lock(self.server_com.get_abspath(path))
+        path = self.server_com.get_abspath(path)
         if os.path.isdir(path):
             try:
                 shutil.rmtree(path)
@@ -299,6 +305,7 @@ class FileSystemOperator(object):
                 pass
         else:
             os.remove(path)
+        time.sleep(3)
         self.send_unlock()
 
 
@@ -620,7 +627,7 @@ class CommandExecuter(object):
                 command_dest = command.split('_')[0]
                 command_type = command.split('_')[1]
                 if command_dest == 'remote':
-                    {
+                    {-
 
                         'delete': self.remote.delete_file,
                     }.get(command_type,error)(*(command_row[command]))
