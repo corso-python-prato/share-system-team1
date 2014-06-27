@@ -242,6 +242,30 @@ class TestSequenceFunctions(unittest.TestCase):
         self.assertFalse(server_path in server.User.users[DEMO_USER].paths)
 
 
+    def test_last_file_delete_in_root(self):
+        # create a demo user
+        user = "emilio"
+        client = TestClient(user, "passw")
+        client.create_demo_user()
+
+        # upload a file
+        path = "filename.txt"
+        f = open(DEMO_FILE, "r")
+        data = { "file_content": f }
+        rv = client.call("post", "files/"+path, data)
+        f.close()
+        self.assertEqual(rv.status_code, 201)
+
+        # delete the file
+        data = { "path": path }
+        rv = client.call("post", "actions/delete", data)
+        self.assertEqual(rv.status_code, 200)
+
+        user_root = os.path.join(server.USERS_DIRECTORIES, user)
+        self.assertTrue(os.path.isdir(user_root))
+
+
+
     def test_actions_copy(self):
         rv, client_path, server_path = transfer("cp", True)
         self.assertEqual(rv.status_code, 200)
