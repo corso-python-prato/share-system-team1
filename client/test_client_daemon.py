@@ -1,6 +1,7 @@
 from client_daemon import DirSnapshotManager
 from client_daemon import DirectoryEventHandler
 from client_daemon import ServerCommunicator
+from client_daemon import FileSystemOperator
 from watchdog.observers.polling import PollingObserver as Observer
 import httpretty
 import unittest
@@ -12,6 +13,34 @@ import json
 import sys
 import os
 import time
+
+class TestEnvironment(object):
+
+    def create(self):
+        self.test_main_path = os.path.join(os.path.expanduser('~'), 'test_path')
+        os.makedirs(self.test_main_path)
+        self.test_share_dir = os.path.join(self.test_main_path, 'shared_dir')
+        os.makedirs(self.test_share_dir)
+
+        self.test_folder_1 = os.path.join(self.test_share_dir, 'sub_dir_1')
+        self.test_folder_2 = os.path.join(self.test_share_dir, 'sub_dir_2')
+        os.makedirs(self.test_folder_1)
+        os.makedirs(self.test_folder_2)
+        self.test_file_1 = os.path.join(self.test_share_dir, 'sub_dir_1', 'test_file_1.txt')
+        self.test_file_2 = os.path.join(self.test_share_dir, 'sub_dir_2', 'test_file_2.txt')
+        open(self.test_file_1, 'w').write('Lorem ipsum dolor sit amet')
+        open(self.test_file_2, 'w').write('Integer non tincidunt dolor')
+
+        self.conf_snap_path = os.path.join(self.test_main_path, 'snapshot_file.json')
+        self.conf_snap_gen = {"timestamp": 123123, "snapshot": "ab8d6b3c332aa253bb2b471c57b73e27"}
+
+        open(self.conf_snap_path, 'w').write(json.dumps(self.conf_snap_gen))
+
+        return self.test_main_path, self.test_share_dir, self.test_folder_1, self.test_folder_2, self.test_file_1, self.test_file_2, self.conf_snap_path, self.conf_snap_gen
+
+
+    def remove(self):
+        shutil.rmtree(self.test_main_path)
 
 
 class ServerCommunicatorTest(unittest.TestCase):
@@ -26,6 +55,9 @@ class ServerCommunicatorTest(unittest.TestCase):
 
             def syncronize_executer(self, command_list):
                 self.command_list = command_list
+
+            def save_snapshot(self, timestamp):
+                self.timestamp = timestamp
 
 
         httpretty.enable()
@@ -92,7 +124,8 @@ class ServerCommunicatorTest(unittest.TestCase):
         httpretty.disable()
         httpretty.reset()
     
-    def test_upload(self, put_file=True):
+    def test_upload(self):
+        put_file=True
         mock_auth_user = ":".join([self.username, self.password])
         self.server_comm.upload_file(self.file_path, put_file)
         encoded = httpretty.last_request().headers['authorization'].split()[1]
@@ -100,16 +133,29 @@ class ServerCommunicatorTest(unittest.TestCase):
         path = httpretty.last_request().path
         host = httpretty.last_request().headers['host']
         method = httpretty.last_request().method
-        
+
         #check if authorizations are equal
         self.assertEqual(authorization_decoded, mock_auth_user)
         #check if url and methods are equal
         self.assertEqual(path, '/API/v1/files/f_for_cdaemon_test.txt')
         self.assertEqual(host, '127.0.0.1:5000')
-        if put_file:
-            self.assertEqual(method, 'PUT')
-        else:
-            self.assertEqual(method, 'POST')
+        self.assertEqual(method, 'PUT')
+
+        put_file = False
+        mock_auth_user = ":".join([self.username, self.password])
+        self.server_comm.upload_file(self.file_path, put_file)
+        encoded = httpretty.last_request().headers['authorization'].split()[1]
+        authorization_decoded = base64.decodestring(encoded)
+        path = httpretty.last_request().path
+        host = httpretty.last_request().headers['host']
+        method = httpretty.last_request().method
+
+        #check if authorizations are equal
+        self.assertEqual(authorization_decoded, mock_auth_user)
+        #check if url and methods are equal
+        self.assertEqual(path, '/API/v1/files/f_for_cdaemon_test.txt')
+        self.assertEqual(host, '127.0.0.1:5000')
+        self.assertEqual(method, 'POST')
 
     def test_download(self):
         mock_auth_user = ":".join([self.username, self.password])
@@ -207,39 +253,55 @@ class ServerCommunicatorTest(unittest.TestCase):
                     'timestamp': 123123,
                     'snapshot': u'1234uh34h5bhj124b',
                 }
+                status_code = 'boh'
                 def json(self):
                     return self.text
             return obj()
+        class Executer(object):
+            def __init__(self):
+                self.status=False
 
+            def syncronize_executer(self, command_list):
+                self.status=True
+
+        executer = Executer()
+        self.server_comm.executer = executer
         self.server_comm._try_request = my_try_request
         self.server_comm.synchronize("mock")
+        self.assertEqual(executer.status, True)
 
 
 class FileSystemOperatorTest(unittest.TestCase):
 
     def setUp(self):
+        #Generate test folder tree and configuration file
+        self.environment = TestEnvironment()
+        self.test_main_path, self.shared_dir, self.test_folder_1, self.test_folder_2, self.test_file_1, self.test_file_2, self.conf_snap_path, self.conf_snap_gen = self.environment.create()
+
         self.client_path = '/tmp/user_dir'
-        self.filename = 'test_file.txt'
+        self.filename = 'test_file_1.txt'
         if not os.path.exists(self.client_path):
             os.makedirs(self.client_path)
         httpretty.enable()
         httpretty.register_uri(httpretty.GET, 'http://localhost/api/v1/files/{}'.format(self.filename),
             body='this is a test',
             content_type='text/plain')
-        self.snapshot_manager = client_daemon.DirSnapshotManager(self.client_path, 
-            snapshot_file_path='snapshot_file.json')
-        self.server_com = client_daemon.ServerCommunicator(
+        self.snapshot_manager = DirSnapshotManager(self.client_path,
+            snapshot_file_path= self.conf_snap_path)
+        self.server_com = ServerCommunicator(
             server_url='http://localhost/api/v1',
             username='usernameFarlocco',
             password='passwordSegretissima',
-            dir_path=self.client_path)
-        self.event_handler = client_daemon.DirectoryEventHandler(self.server_com, 
+            dir_path=self.client_path,
+            snapshot_manager= self.snapshot_manager)
+        self.event_handler = DirectoryEventHandler(self.server_com,
             self.snapshot_manager)
-        self.file_system_op = client_daemon.FileSystemOperator(self.event_handler, 
+        self.file_system_op = FileSystemOperator(self.event_handler,
             self.server_com)
 
     def tearDown(self):
         httpretty.disable()
+        self.environment.remove()
 
     def test_write_a_file(self):
         self.file_system_op.write_a_file('{}/{}'.format(self.client_path, self.filename))
@@ -287,19 +349,8 @@ class FileSystemOperatorTest(unittest.TestCase):
 class DirSnapshotManagerTest(unittest.TestCase):
     def setUp(self):
         #Generate test folder tree and configuration file
-        self.test_main_path = os.path.join(os.path.expanduser('~'), 'test_path')
-        os.makedirs(self.test_main_path)
-        self.test_share_dir = os.path.join(self.test_main_path, 'shared_dir')
-        os.makedirs(self.test_share_dir)
-        self.conf_snap_path = os.path.join(self.test_main_path, 'snapshot_file.json')
-        self.conf_snap_gen = {"timestamp": 123123, "snapshot": "ab8d6b3c332aa253bb2b471c57b73e27"}
-
-        open(self.conf_snap_path, 'w').write(json.dumps(self.conf_snap_gen))
-
-        os.makedirs(os.path.join(self.test_share_dir, 'sub_dir_1'))
-        os.makedirs(os.path.join(self.test_share_dir, 'sub_dir_2'))
-        open(os.path.join(self.test_share_dir, 'sub_dir_1', 'test_file_1.txt'), 'w').write('Lorem ipsum dolor sit amet')
-        open(os.path.join(self.test_share_dir, 'sub_dir_2', 'test_file_2.txt'), 'w').write('Integer non tincidunt dolor')
+        self.environment = TestEnvironment()
+        self.test_main_path, self.test_share_dir, self.test_folder_1, self.test_folder_2, self.test_file_1, self.test_file_2, self.conf_snap_path, self.conf_snap_gen = self.environment.create()
 
         self.true_snapshot= {
             '81bcb26fd4acfaa5d0acc7eef1d3013a': ['sub_dir_2/test_file_2.txt'],
@@ -310,7 +361,7 @@ class DirSnapshotManagerTest(unittest.TestCase):
         self.snapshot_manager = DirSnapshotManager(self.test_share_dir, self.conf_snap_path)
 
     def tearDown(self):
-        shutil.rmtree(self.test_main_path)
+        self.environment.remove()
 
     def test_diff_snapshot_paths(self):
         #server snapshot unsinket with local path:
@@ -328,59 +379,59 @@ class DirSnapshotManagerTest(unittest.TestCase):
         self.assertEqual(['sub_dir_2/test_file_3.txt'], new_server)
         self.assertEqual(['sub_dir_1/test_file_1.txt'], equal)
 
-    def test_syncronize_dispatcher(self):
-        #server snapshot sinked with local path
-        sinked_server_snap = {
-            '81bcb26fd4acfaa5d0acc7eef1d3013a': [{'path': u'sub_dir_2/test_file_2.txt', 'timestamp': 123123}],
-            'fea80f2db003d4ebc4536023814aa885': [{'path': u'sub_dir_1/test_file_1.txt', 'timestamp': 123123}],
-        }
-        #server snapshot unsinket with local path:
-        #   sub_dir_1/test_file_1.txt modified
-        #   sub_dir_2/test_file_1.txt added
-        unsinked_server_snap = {
-            '81bcb26fd4acfaa5d0acc7eef1d3013a': [{'path': u'sub_dir_2/test_file_2.txt', 'timestamp': 123123}],
-            'fea80f2db004d4ebc4536023814aa885': [{'path': u'sub_dir_1/test_file_1.txt', 'timestamp': 123124}],
-            '456jk3b334bb33463463fbhj4b3534t3': [{'path': u'sub_dir_2/test_file_3.txt', 'timestamp': 123125}],
-        }
+    # def test_syncronize_dispatcher(self):
+    #     #server snapshot sinked with local path
+    #     sinked_server_snap = {
+    #         '81bcb26fd4acfaa5d0acc7eef1d3013a': [{'path': u'sub_dir_2/test_file_2.txt', 'timestamp': 123123}],
+    #         'fea80f2db003d4ebc4536023814aa885': [{'path': u'sub_dir_1/test_file_1.txt', 'timestamp': 123123}],
+    #     }
+    #     #server snapshot unsinket with local path:
+    #     #   sub_dir_1/test_file_1.txt modified
+    #     #   sub_dir_2/test_file_1.txt added
+    #     unsinked_server_snap = {
+    #         '81bcb26fd4acfaa5d0acc7eef1d3013a': [{'path': u'sub_dir_2/test_file_2.txt', 'timestamp': 123123}],
+    #         'fea80f2db004d4ebc4536023814aa885': [{'path': u'sub_dir_1/test_file_1.txt', 'timestamp': 123124}],
+    #         '456jk3b334bb33463463fbhj4b3534t3': [{'path': u'sub_dir_2/test_file_3.txt', 'timestamp': 123125}],
+    #     }
 
-        sinked_timestamp = 123123
-        unsinked_timestamp = 123125
+    #     sinked_timestamp = 123123
+    #     unsinked_timestamp = 123125
 
-        #Case: no deamon internal conflicts == timestamp
-        expected_result = []
-        result = self.snapshot_manager.syncronize_dispatcher(
-            server_timestamp = sinked_timestamp,
-            server_snapshot = sinked_server_snap)
-        self.assertEqual(result, expected_result)
+    #     #Case: no deamon internal conflicts == timestamp
+    #     expected_result = []
+    #     result = self.snapshot_manager.syncronize_dispatcher(
+    #         server_timestamp = sinked_timestamp,
+    #         server_snapshot = sinked_server_snap)
+    #     self.assertEqual(result, expected_result)
 
-        #Case: no deamon internal conflicts != timestamp
-        expected_result = [
-            {'sub_dir_2/test_file_3.txt': 'remote_download'},
-            {'sub_dir_1/test_file_1.txt': 'remote_download'},
-        ]
-        result = self.snapshot_manager.syncronize_dispatcher(
-            server_timestamp = unsinked_timestamp,
-            server_snapshot = unsinked_server_snap)
-        self.assertEqual(result, expected_result)
+    #     #Case: no deamon internal conflicts != timestamp
+    #     expected_result = [
+    #         {'sub_dir_2/test_file_3.txt': 'remote_download'},
+    #         {'sub_dir_1/test_file_1.txt': 'remote_download'},
+    #     ]
+    #     result = self.snapshot_manager.syncronize_dispatcher(
+    #         server_timestamp = unsinked_timestamp,
+    #         server_snapshot = unsinked_server_snap)
+    #     self.assertEqual(result, expected_result)
 
-        #Case: deamon internal conflicts == timestamp
-        self.snapshot_manager.last_status['snapshot'] = "21451512512512512"
-        expected_result = []
-        result = self.snapshot_manager.syncronize_dispatcher(
-            server_timestamp = sinked_timestamp,
-            server_snapshot = sinked_server_snap)
-        self.assertEqual(result, expected_result)
+    #     #Case: deamon internal conflicts == timestamp
+    #     self.snapshot_manager.last_status['snapshot'] = "21451512512512512"
+    #     expected_result = []
+    #     result = self.snapshot_manager.syncronize_dispatcher(
+    #         server_timestamp = sinked_timestamp,
+    #         server_snapshot = sinked_server_snap)
+    #     self.assertEqual(result, expected_result)
 
-        #Case: no deamon internal conflicts != timestamp
-        expected_result = [
-            {'sub_dir_2/test_file_3.txt': 'remote_download'},
-            {'sub_dir_1/test_file_1.txt.conflicted': 'remote_upload'},
-            {'sub_dir_1/test_file_1.txt': 'local_copy_and_rename:sub_dir_1/test_file_1.txt.conflicted'},
-        ]
-        result = self.snapshot_manager.syncronize_dispatcher(
-            server_timestamp = unsinked_timestamp,
-            server_snapshot = unsinked_server_snap)
-        self.assertEqual(result, expected_result)
+    #     #Case: no deamon internal conflicts != timestamp
+    #     expected_result = [
+    #         {'sub_dir_2/test_file_3.txt': 'remote_download'},
+    #         {'sub_dir_1/test_file_1.txt.conflicted': 'remote_upload'},
+    #         {'sub_dir_1/test_file_1.txt': 'local_copy_and_rename:sub_dir_1/test_file_1.txt.conflicted'},
+    #     ]
+    #     result = self.snapshot_manager.syncronize_dispatcher(
+    #         server_timestamp = unsinked_timestamp,
+    #         server_snapshot = unsinked_server_snap)
+    #     self.assertEqual(result, expected_result)
 
     def test_local_check(self):
         self.assertEqual(self.snapshot_manager.local_check(), True)
@@ -449,19 +500,8 @@ class DirectoryEventHandlerTest(unittest.TestCase):
 
 
         #Generate test folder tree
-        self.test_main_path = os.path.join(os.path.expanduser('~'), 'test_path')
-        os.makedirs(self.test_main_path)
-        self.test_share_dir = os.path.join(self.test_main_path, 'shared_dir')
-        os.makedirs(self.test_share_dir)
-
-        self.test_folder_1 = os.path.join(self.test_share_dir, 'sub_dir_1')
-        self.test_folder_2 = os.path.join(self.test_share_dir, 'sub_dir_2')
-        os.makedirs(self.test_folder_1)
-        os.makedirs(self.test_folder_2)
-        self.test_file_1 = os.path.join(self.test_share_dir, 'sub_dir_1', 'test_file_1.txt')
-        self.test_file_2 = os.path.join(self.test_share_dir, 'sub_dir_2', 'test_file_2.txt')
-        open(self.test_file_1, 'w').write('Lorem ipsum dolor sit amet')
-        open(self.test_file_2, 'w').write('Integer non tincidunt dolor')
+        self.environment = TestEnvironment()
+        self.test_main_path, self.test_share_dir, self.test_folder_1, self.test_folder_2, self.test_file_1, self.test_file_2, self.conf_snap_path, self.conf_snap_gen = self.environment.create()
 
         srvcomm_return_var = {'move': False, 'copy': False, 'upload': False, 'delete': False}
 
@@ -476,7 +516,7 @@ class DirectoryEventHandlerTest(unittest.TestCase):
     def tearDown(self):
         self.observer.stop()
         self.observer.join()
-        shutil.rmtree(self.test_main_path)
+        self.environment.remove()
 
     def test__is_copy(self):
         response = self.event_handler._is_copy('path')
