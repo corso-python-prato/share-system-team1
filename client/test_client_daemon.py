@@ -42,9 +42,8 @@ class ClientDaemonTest(unittest.TestCase):
             httpretty.POST,
             'http://127.0.0.1:5000/API/v1/create_user',
             status=201)
-        httpretty.register_uri(
-            httpretty.GET,
-            'http://127.0.0.1:5000/API/v1/files/',
+        httpretty.register_uri(httpretty.GET,
+            'http://127.0.0.1:5000/API/v1/files',
             body=str({
                 '9406539a103956dc36cb7ad35547198c': [{"path": u'/Users/marc0/progetto/prove_deamon\\bla.txt',"timestamp":123123}],
                 'a8f5f167f44f4964e6c998dee827110c': [{"path": u'vecchio.txt',"timestamp":123122}], 
@@ -289,10 +288,85 @@ class ClientDaemonTest(unittest.TestCase):
                                                         u'/Users/marc0/progetto/prove_deamon\\asdas\\sdadsda.txt', 
                                                         u'path_farlocca']}
         new_client, new_server, equal = snapshot_manager.diff_snapshot_paths(snap_client, snap_server)
+
         
-        #new_client = str(new_client).replace('\\\\','/')
-        #new_server = str(new_server).replace('\\\\','/')
-        #equal = str(equal).replace('\\\\','/')
+         #new_client = str(new_client).replace('\\\\','/')
+         #new_server = str(new_server).replace('\\\\','/')
+         #equal = str(equal).replace('\\\\','/')
+
+         #self.assertEqual(str(new_client), mock_new_client)
+         #self.assertEqual(str(equal), mock_equal)
+         #self.assertEqual(str(new_server), mock_new_server)
+
+class FileSystemOperatorTest(unittest.TestCase):
+
+    def setUp(self):
+        self.client_path = '/tmp/user_dir'
+        self.filename = 'test_file.txt'
+        if not os.path.exists(self.client_path):
+            os.makedirs(self.client_path)
+        httpretty.enable()
+        httpretty.register_uri(httpretty.GET, 'http://localhost/api/v1/files/{}'.format(self.filename),
+            body='this is a test',
+            content_type='text/plain')
+        self.snapshot_manager = client_daemon.DirSnapshotManager(self.client_path, 
+            snapshot_file_path='snapshot_file.json')
+        self.server_com = client_daemon.ServerCommunicator(
+            server_url='http://localhost/api/v1',
+            username='usernameFarlocco',
+            password='passwordSegretissima',
+            dir_path=self.client_path)
+        self.event_handler = client_daemon.DirectoryEventHandler(self.server_com, 
+            self.snapshot_manager)
+        self.file_system_op = client_daemon.FileSystemOperator(self.event_handler, 
+            self.server_com)
+
+    def tearDown(self):
+        httpretty.disable()
+
+    def test_write_a_file(self):
+        self.file_system_op.write_a_file('{}/{}'.format(self.client_path, self.filename))
+        written_file = open('{}/{}'.format(self.client_path,self.filename), 'rb').read()
+        self.assertEqual('this is a test', written_file)
+
+    def test_move_a_file(self):
+        f_name = 'file_to_move.txt'
+        file_to_move = open('{}/{}'.format(self.client_path, f_name), 'w')
+        file_to_move.write('this is a test')
+        source_path = file_to_move.name
+        dest_path = '{}/dir1/{}'.format(self.client_path, f_name)
+        file_to_move.close()
+        self.file_system_op.move_a_file(source_path, dest_path)
+        written_file = open(dest_path, 'rb').read()
+        self.assertEqual('this is a test', written_file)
+
+    def test_copy_a_file(self):
+        f_name = 'file_to_copy.txt'
+        file_to_copy = open('{}/{}'.format(self.client_path, f_name), 'w')
+        file_to_copy.write('this is a test')
+        source_path = file_to_copy.name
+        dest_path = '{}/copy_dir/{}'.format(self.client_path, f_name)
+        file_to_copy.close()
+        self.file_system_op.copy_a_file(source_path, dest_path)
+        copied_file = open(dest_path, 'rb').read()
+        self.assertEqual('this is a test', copied_file)
+
+    def test_delete_a_file(self):
+        del_dir = 'to_delete'
+        path_to_del = '{}/to_delete'.format(self.client_path)
+        if not os.path.exists(path_to_del):
+            os.makedirs('{}/{}'.format(self.client_path, del_dir))
+        f_name = 'file_to_delete.txt'
+        file_to_delete = open('{}/{}/{}'.format(self.client_path, del_dir, f_name), 'w')
+        file_to_delete.write('delete me')
+        file_to_delete.close()
+        self.assertTrue(os.path.exists(file_to_delete.name))
+        self.file_system_op.delete_a_file(file_to_delete.name)
+        self.assertFalse(os.path.exists(file_to_delete.name))
+        self.file_system_op.delete_a_file(path_to_del)
+        self.assertFalse(os.path.exists(path_to_del))
+
+
 
 class DirSnapshotManagerTest(unittest.TestCase):
     def setUp(self):
@@ -364,6 +438,7 @@ class DirSnapshotManagerTest(unittest.TestCase):
         new_conf = json.load(open(self.conf_snap_path))
 
         self.assertEqual(expected_conf, new_conf)
+
 
 class DirectoryEventHandlerTest(unittest.TestCase):
 
@@ -491,6 +566,7 @@ class DirectoryEventHandlerTest(unittest.TestCase):
         self.assertEqual(self.server_comm.cmd["copy"], False)
         self.assertEqual(self.server_comm.cmd["upload"], {'path': True, 'put': True})
         self.assertEqual(self.server_comm.cmd["delete"], False)
+
 
 if __name__ == '__main__':
     unittest.main()
