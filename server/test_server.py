@@ -281,7 +281,7 @@ class TestSequenceFunctions(unittest.TestCase):
 
     def test_actions_copy(self):
         rv, client_path, server_path = transfer("cp", True)
-        self.assertEqual(rv.status_code, 200)
+        self.assertEqual(rv.status_code, 201)
 
         full_dest_path = os.path.join(TEST_DIRECTORY,
                 DEMO_USER,
@@ -301,7 +301,7 @@ class TestSequenceFunctions(unittest.TestCase):
 
     def test_actions_move(self):
         rv, client_path, server_path = transfer("mv", False)
-        self.assertEqual(rv.status_code, 200)
+        self.assertEqual(rv.status_code, 201)
 
         full_dest_path = os.path.join(
                 TEST_DIRECTORY,
