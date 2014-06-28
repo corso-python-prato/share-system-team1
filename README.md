@@ -2,6 +2,7 @@ RawBox
 ==================
 
 [![Build Status](https://api.travis-ci.org/corso-python-prato/share-system-team1.svg)](https://travis-ci.org/corso-python-prato/share-system-team1)
+[![Coverage Status](https://img.shields.io/coveralls/corso-python-prato/share-system-team1.svg)](https://coveralls.io/r/corso-python-prato/share-system-team1)
 
 install dependencies typing
 
