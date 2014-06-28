@@ -101,10 +101,13 @@ class TestClient(object):
         return self.call("post", "create_user", data, auth=False)
     
     def set_fake_usr(self, flag=False):
-        if flag:
-            self.headers["Authorization"] = "".join(("Basic ", b64encode("{0}:{1}".format(DEMO_FAKE_USER, self.psw))))
-        else:
-            self.headers["Authorization"] = "".join(("Basic ", b64encode("{0}:{1}".format(self.user, self.psw))))
+        self.headers["Authorization"] = "".join((
+            "Basic ",
+            b64encode("{0}:{1}".format(
+                DEMO_FAKE_USER if flag else self.user,
+                self.psw
+            ))
+        ))
 
 
 class TestSequenceFunctions(unittest.TestCase):
@@ -340,7 +343,6 @@ class TestSequenceFunctions(unittest.TestCase):
         self.assertTrue(os.path.isdir(user_root))
 
 
-
     def test_actions_copy(self):
         DEMO_CLIENT.set_fake_usr(True)
         data = { 
@@ -376,6 +378,7 @@ class TestSequenceFunctions(unittest.TestCase):
         }
         rv = DEMO_CLIENT.call("post", "actions/copy", data)
         self.assertEqual(rv.status_code, 409)
+
 
     def test_actions_move(self):
         DEMO_CLIENT.set_fake_usr(True)
