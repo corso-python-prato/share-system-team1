@@ -71,7 +71,7 @@ class ServerCommunicator(object):
             print "SERVER SAY: ", server_snapshot, server_timestamp ,"\n"
             command_list = self.snapshot_manager.syncronize_dispatcher(server_timestamp, server_snapshot)
             self.executer.syncronize_executer(command_list)
-            self.snapshot_manager.save_snapshot(server_timestamp)
+            self.snapshot_manager.save_timestamp(server_timestamp)
 
     def get_abspath(self, dst_path):
         """ from relative path return absolute path """
@@ -485,12 +485,23 @@ class DirSnapshotManager(object):
 
     def save_snapshot(self, timestamp):
         """ save snapshot to file """
-        self.local_full_snapshot = self.instant_snapshot()
         self.last_status['timestamp'] = timestamp
         self.last_status['snapshot'] = self.global_md5()
 
         with open(self.snapshot_file_path, 'w') as f:
             f.write(json.dumps({"timestamp": timestamp, "snapshot": self.last_status['snapshot']}))
+
+    def save_timestamp(self, timestamp):
+        """
+            save timestamp to file only if getfile
+            timestamp is < than the last timestamp saved
+        """
+        with open(self.snapshot_file_path, 'r') as f:
+            last_snap = json.load(f)
+        if float(last_snap['timestamp']) < float(timestamp):
+            last_snap['timestamp'] = timestamp
+            with open(self.snapshot_file_path, 'w') as f:
+                f.write(json.dumps(last_snap,f))
 
     def diff_snapshot_paths(self, snap_client, snap_server):
         """
