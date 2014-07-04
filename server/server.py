@@ -11,12 +11,14 @@ import json
 import os
 import shutil
 import hashlib
+import re
 
 from server_errors import *
 
 
 HTTP_CONFLICT = 409
 HTTP_CREATED = 201
+HTTP_FORBIDDEN = 403
 HTTP_NOT_FOUND = 404
 HTTP_BAD_REQUEST = 400
 HTTP_OK = 200
@@ -44,6 +46,21 @@ def to_md5(path, block_size=2**20):
             m.update(chunk)
 
     return m.hexdigest()
+
+
+def can_write(username, server_path):
+    '''
+    This sharing system is in read-only mode.
+    Check if an user is the owner of a file (or father directory).
+    (the server_path begins with his name)
+    '''
+    # import pdb
+    # pdb.set_trace()
+    if re.match("^{}{}(\/.)?".format(USERS_DIRECTORIES, username),
+            server_path):
+        return True
+    else:
+        return False
 
 
 class User(object):
@@ -98,6 +115,7 @@ class User(object):
     def __init__(self, username, clear_password, from_dict=None):
         # if restoring the server
         if from_dict:
+            self.username = username
             self.psw = from_dict["psw"]
             self.paths = from_dict["paths"]
             self.timestamp = from_dict["timestamp"]
@@ -112,6 +130,7 @@ class User(object):
             abort(HTTP_CONFLICT)
 
         # OBJECT ATTRIBUTES
+        self.username = username
         self.psw = psw_hash
 
         # path of each file and each directory of the user:
@@ -158,9 +177,13 @@ class User(object):
         else:
             father = os.path.join(*dir_list)
 
-        # create all the new subdirs and add them to paths
+        # check if the user can write in that server directory
         new_client_path = father
         new_server_path = self.paths[new_client_path][0]
+        if not can_write(self.username, new_server_path):
+            return False
+
+        # create all the new subdirs and add them to paths
         for d in to_be_created:
             new_client_path = os.path.join(new_client_path, d)
             new_server_path = os.path.join(new_server_path, d)
@@ -312,6 +335,8 @@ class Files(Resource):
         server_path = u.get_server_path(client_path)
         if not server_path:
             abort(HTTP_NOT_FOUND)
+        if not can_write(auth.username(), server_path):
+            abort(HTTP_FORBIDDEN)
 
         f = request.files["file_content"]
         f.save(server_path)
@@ -330,6 +355,10 @@ class Files(Resource):
                 HTTP_CONFLICT
 
         server_path = u.create_server_path(client_path)
+
+        if not server_path:
+            # the server_path belongs to another user
+            abort(HTTP_FORBIDDEN)
 
         f = request.files["file_content"]
         f.save(server_path)
@@ -373,6 +402,9 @@ class Actions(Resource):
             abort(HTTP_NOT_FOUND)
 
         server_dest = u.create_server_path(client_dest)
+        if not server_dest:
+            # the server_path belongs to another user
+            abort(HTTP_FORBIDDEN)
 
         try:
             if keep_the_original:
@@ -421,7 +453,6 @@ class Shares(Resource):
         else:
             return HTTP_OK          # TODO: timestamp is needed here?
 
-
     def delete(self, client_path, user=None):
         if user:
             pass
@@ -429,6 +460,7 @@ class Shares(Resource):
         else:
             pass
             # elimina lo share completamente
+
 
 @auth.verify_password
 def verify_password(username, password):
