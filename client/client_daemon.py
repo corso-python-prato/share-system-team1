@@ -67,7 +67,7 @@ class ServerCommunicator(object):
         
         if sync.status_code != 401:
             server_snapshot = sync.json()['snapshot']
-            server_timestamp =sync.json()['timestamp']
+            server_timestamp = sync.json()['timestamp']
             print "SERVER SAY: ", server_snapshot, server_timestamp ,"\n"
             command_list = self.snapshot_manager.syncronize_dispatcher(server_timestamp, server_snapshot)
             self.executer.syncronize_executer(command_list)
@@ -324,8 +324,8 @@ def load_config():
             pass
             
         # TODO: ask to cmd_manager to create a new user
-        user = "Alalah@tropos.fo"
-        psw = "pokpsd"
+        user = "username"
+        psw = "password"
 
         config = {
             "server_url" : "http://{}:{}/{}".format(
