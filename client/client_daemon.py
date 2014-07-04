@@ -247,7 +247,7 @@ class FileSystemOperator(object):
         abs_path, content = self.server_com.download_file(path)
         if abs_path and content:
             try:
-                os.makedirs(os.path.split(abs_path)[0], 0755 )
+                os.makedirs(os.path.split(abs_path)[0], 0755)
             except OSError:
                 pass
             with open(abs_path, 'wb') as f:
