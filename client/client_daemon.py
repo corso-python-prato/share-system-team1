@@ -389,11 +389,12 @@ class DirectoryEventHandler(FileSystemEventHandler):
         """
        
         if event.src_path not in self.path_ignored:
-            copy = self._is_copy(event.src_path)
-            if copy:
-                self.cmd.copy_file(copy, event.src_path)
-            else:
-                self.cmd.upload_file(event.src_path)
+            if not event.is_directory:
+                copy = self._is_copy(event.src_path)
+                if copy:
+                    self.cmd.copy_file(copy, event.src_path)
+                else:
+                    self.cmd.upload_file(event.src_path)
         else:
             print "ingnored create on ", event.src_path
 
