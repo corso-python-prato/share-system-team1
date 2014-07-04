@@ -98,7 +98,7 @@ class ServerCommunicator(object):
         
         if r.status_code == 200:
             return local_path, r.text
-        elif r.status_code == 401 or r.status_code == 404:
+        else:
             return False, False
 
     def upload_file(self, dst_path, put_file = False):
