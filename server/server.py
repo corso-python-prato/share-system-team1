@@ -4,7 +4,9 @@
 from flask import Flask, request
 from flask.ext.httpauth import HTTPBasicAuth
 from flask.ext.restful import reqparse, abort, Api, Resource
+from flask.ext.mail import Mail, Message
 from passlib.hash import sha256_crypt
+import ConfigParser
 import time
 import datetime
 import json
@@ -22,7 +24,16 @@ HTTP_BAD_REQUEST = 400
 HTTP_OK = 200
 HTTP_GONE = 410
 
+config = ConfigParser.ConfigParser()
+config.read('email_settings.ini')
+MAIL_SERVER = config.get('email', 'smtp_address')
+MAIL_PORT = config.getint('email', 'smtp_port')
+MAIL_USERNAME = config.get('email', 'smtp_username')
+MAIL_PASSWORD = config.get('email', 'smtp_password')
+
 app = Flask(__name__)
+app.config.from_object(__name__)
+mail = Mail(app)
 api = Api(app)
 auth = HTTPBasicAuth()
 _API_PREFIX = "/API/v1/"
@@ -30,6 +41,18 @@ USERS_DIRECTORIES = "user_dirs/"
 USERS_DATA = "user_data.json"
 parser = reqparse.RequestParser()
 parser.add_argument("task", type=str)
+
+@app.route('/minfo')
+def send_mail(receiver, obj, content):
+    """ Send an email to the 'receiver', with the
+    specified object ('obj') and the specified 'content' """
+    msg = Message(
+        obj,
+        sender="RawBoxTeam",
+        recipients=[receiver])
+    msg.body = content
+    with app.app_context():
+        mail.send(msg)
 
 
 def to_md5(path, block_size=2**20):
