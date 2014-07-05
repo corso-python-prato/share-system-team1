@@ -546,8 +546,8 @@ class DirectoryEventHandlerTest(unittest.TestCase):
         self.server_comm.cmd["move"] = False
 
         #Case: move file event in ignored directory
-        self.event_handler.path_ignored.append(self.test_src)
-        self.event_handler.path_ignored.append(self.test_dst)
+        self.event_handler.paths_ignored.append(self.test_src)
+        self.event_handler.paths_ignored.append(self.test_dst)
         self.event_handler.on_moved(move_file_event)
         self.assertFalse(self.server_comm.cmd["move"])
 
@@ -590,7 +590,7 @@ class DirectoryEventHandlerTest(unittest.TestCase):
         self.server_comm.cmd["copy"] = False
 
         #Case: create file in ignored directory
-        self.event_handler.path_ignored.append(self.test_src)
+        self.event_handler.paths_ignored.append(self.test_src)
         self.event_handler.on_created(create_file_event)
         self.assertFalse(self.server_comm.cmd["upload"])
 
@@ -610,7 +610,7 @@ class DirectoryEventHandlerTest(unittest.TestCase):
         self.assertFalse(self.server_comm.cmd["delete"])
 
         #Case: delete file in ignored directory
-        self.event_handler.path_ignored.append(self.test_src)
+        self.event_handler.paths_ignored.append(self.test_src)
         self.event_handler.on_created(delete_file_event)
         self.assertFalse(self.server_comm.cmd["delete"])
 
@@ -632,7 +632,7 @@ class DirectoryEventHandlerTest(unittest.TestCase):
         self.assertFalse(self.server_comm.cmd["upload"])
 
         #Case: modify file in ignored directory
-        self.event_handler.path_ignored.append(self.test_src)
+        self.event_handler.paths_ignored.append(self.test_src)
         self.event_handler.on_modified(modify_file_event)
         self.assertFalse(self.server_comm.cmd["upload"])
 
