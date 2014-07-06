@@ -550,6 +550,8 @@ class DirectoryEventHandlerTest(unittest.TestCase):
         self.event_handler.paths_ignored.append(self.test_dst)
         self.event_handler.on_moved(move_file_event)
         self.assertFalse(self.server_comm.cmd["move"])
+        self.assertFalse(self.test_src in self.event_handler.paths_ignored)
+        self.assertFalse(self.test_dst in self.event_handler.paths_ignored)
 
         #Case: directory move event
         self.event_handler.on_moved(move_dir_event)
@@ -593,6 +595,7 @@ class DirectoryEventHandlerTest(unittest.TestCase):
         self.event_handler.paths_ignored.append(self.test_src)
         self.event_handler.on_created(create_file_event)
         self.assertFalse(self.server_comm.cmd["upload"])
+        self.assertFalse(self.test_src in self.event_handler.paths_ignored)
 
     def test_on_deleted(self):
         delete_file_event = FileDeletedEvent(self.test_src)
@@ -613,6 +616,7 @@ class DirectoryEventHandlerTest(unittest.TestCase):
         self.event_handler.paths_ignored.append(self.test_src)
         self.event_handler.on_created(delete_file_event)
         self.assertFalse(self.server_comm.cmd["delete"])
+        self.assertFalse(self.test_src in self.event_handler.paths_ignored)
 
     def test_on_modified(self):
         modify_file_event = FileModifiedEvent(self.test_src)
@@ -635,6 +639,7 @@ class DirectoryEventHandlerTest(unittest.TestCase):
         self.event_handler.paths_ignored.append(self.test_src)
         self.event_handler.on_modified(modify_file_event)
         self.assertFalse(self.server_comm.cmd["upload"])
+        self.assertFalse(self.test_src in self.event_handler.paths_ignored)
 
 
 if __name__ == '__main__':
