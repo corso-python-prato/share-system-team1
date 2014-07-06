@@ -597,6 +597,18 @@ class DirectoryEventHandlerTest(unittest.TestCase):
         self.assertFalse(self.server_comm.cmd["upload"])
         self.assertFalse(self.test_src in self.event_handler.paths_ignored)
 
+        #reset initial condition
+        self.server_comm.cmd["upload"] = False
+
+        #Case: copy file and ignore the path
+        self.snapshot_manager.local_full_snapshot = {'MD5': ['path']}
+        self.event_handler.paths_ignored.append(self.test_src)
+        self.event_handler.paths_ignored.append(self.test_dst)
+        self.event_handler.on_created(copy_file_event)
+        self.assertFalse(self.server_comm.cmd["upload"])
+        self.assertFalse(self.test_src in self.event_handler.paths_ignored)
+        self.assertFalse(self.test_dst in self.event_handler.paths_ignored)
+
     def test_on_deleted(self):
         delete_file_event = FileDeletedEvent(self.test_src)
         delete_dir_event = DirDeletedEvent(self.test_dir_src)
