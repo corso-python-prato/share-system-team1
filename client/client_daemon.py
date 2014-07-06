@@ -264,12 +264,11 @@ class FileSystemOperator(object):
         """
         copy a file
 
-            send a path to ignore to watchdog for origin and dest path
+            send a path to ignore to watchdog for dest path (because copy is a creation event)
             create directory chain for dst_path
             copy the file from origin_path to dst_path
             when watchdog see the first event on this path ignore it
         """
-        self.add_event_to_ignore(self.server_com.get_abspath(origin_path))
         self.add_event_to_ignore(self.server_com.get_abspath(dst_path))
         origin_path = self.server_com.get_abspath(origin_path)
         dst_path = self.server_com.get_abspath(dst_path)
