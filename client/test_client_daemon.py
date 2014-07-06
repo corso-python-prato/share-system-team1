@@ -314,9 +314,12 @@ class FileSystemOperatorTest(unittest.TestCase):
         self.environment.remove()
 
     def test_write_a_file(self):
-        self.file_system_op.write_a_file('{}/{}'.format(self.client_path, self.filename))
+        source_path = '{}/{}'.format(self.client_path, self.filename)
+        self.file_system_op.write_a_file(source_path)
         written_file = open('{}/{}'.format(self.client_path,self.filename), 'rb').read()
         self.assertEqual('this is a test', written_file)
+        #check if source isadded by write_a_file
+        self.assertEqual([source_path], self.event_handler.paths_ignored)
 
     def test_move_a_file(self):
         f_name = 'file_to_move.txt'
@@ -328,6 +331,8 @@ class FileSystemOperatorTest(unittest.TestCase):
         self.file_system_op.move_a_file(source_path, dest_path)
         written_file = open(dest_path, 'rb').read()
         self.assertEqual('this is a test', written_file)
+        #check if source and dest path are added by move_a_file
+        self.assertEqual([source_path, dest_path], self.event_handler.paths_ignored)
 
     def test_copy_a_file(self):
         f_name = 'file_to_copy.txt'
@@ -339,21 +344,27 @@ class FileSystemOperatorTest(unittest.TestCase):
         self.file_system_op.copy_a_file(source_path, dest_path)
         copied_file = open(dest_path, 'rb').read()
         self.assertEqual('this is a test', copied_file)
+        #check if only dest_path is added by copy_a_file
+        self.assertEqual([dest_path], self.event_handler.paths_ignored)
 
     def test_delete_a_file(self):
         del_dir = 'to_delete'
-        path_to_del = '{}/to_delete'.format(self.client_path)
-        if not os.path.exists(path_to_del):
+        source_path = '{}/to_delete'.format(self.client_path)
+        if not os.path.exists(source_path):
             os.makedirs('{}/{}'.format(self.client_path, del_dir))
         f_name = 'file_to_delete.txt'
         file_to_delete = open('{}/{}/{}'.format(self.client_path, del_dir, f_name), 'w')
         file_to_delete.write('delete me')
         file_to_delete.close()
+
         self.assertTrue(os.path.exists(file_to_delete.name))
         self.file_system_op.delete_a_file(file_to_delete.name)
         self.assertFalse(os.path.exists(file_to_delete.name))
-        self.file_system_op.delete_a_file(path_to_del)
-        self.assertFalse(os.path.exists(path_to_del))
+
+        self.file_system_op.delete_a_file(source_path)
+        self.assertFalse(os.path.exists(source_path))
+        #check if only source_path is added by delete_a_file in the 2 tested case
+        self.assertEqual([file_to_delete.name, source_path], self.event_handler.paths_ignored)
 
 
 class DirSnapshotManagerTest(unittest.TestCase):
