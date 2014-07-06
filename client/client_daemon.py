@@ -216,24 +216,21 @@ class FileSystemOperator(object):
         self.event_handler = event_handler
         self.server_com = server_com
 
-    def send_lock(self, path):
-        self.event_handler.path_ignored.append(path)
-
-    def send_unlock(self):
-        self.event_handler.path_ignored = []
+    def add_event_to_ignore(self, path):
+        self.event_handler.paths_ignored.append(path)
 
     def write_a_file(self, path):
         """
         write a file (download if exist or not [get and put])
 
-            send lock to watchdog
+            send a path to ignore to watchdog
             download the file from server
             create directory chain
             create file
-            send unlock to watchdog
+            when watchdog see the first event on this path ignore it
         """
 
-        self.send_lock(self.server_com.get_abspath(path))
+        self.add_event_to_ignore(self.server_com.get_abspath(path))
         abs_path, content = self.server_com.download_file(path)
         if abs_path and content:
             try:
@@ -245,38 +242,34 @@ class FileSystemOperator(object):
             time.sleep(3)
         else:
             print "file not found on server"
-        self.send_unlock()
 
     def move_a_file(self, origin_path, dst_path):
         """
         move a file
 
-            send lock to watchdog for origin and dst path
+            send a path to ignore to watchdog for origin and dst path
             create directory chain for dst_path
             move the file from origin_path to dst_path
-            send unlock to watchdog
+            when watchdog see the first event on this path ignore it
         """
-        self.send_lock(self.server_com.get_abspath(origin_path))
-        self.send_lock(self.server_com.get_abspath(dst_path))
+        self.add_event_to_ignore(self.server_com.get_abspath(origin_path))
+        self.add_event_to_ignore(self.server_com.get_abspath(dst_path))
         try:
             os.makedirs(os.path.split(dst_path)[0], 0755)
         except OSError:
             pass
         shutil.move(origin_path, dst_path)
-        time.sleep(3)
-        self.send_unlock()
 
     def copy_a_file(self, origin_path, dst_path):
         """
         copy a file
 
-            send lock to watchdog for origin and dest path
+            send a path to ignore to watchdog for dest path (because copy is a creation event)
             create directory chain for dst_path
             copy the file from origin_path to dst_path
-            send unlock to watchdog
+            when watchdog see the first event on this path ignore it
         """
-        self.send_lock(self.server_com.get_abspath(origin_path))
-        self.send_lock(self.server_com.get_abspath(dst_path))
+        self.add_event_to_ignore(self.server_com.get_abspath(dst_path))
         origin_path = self.server_com.get_abspath(origin_path)
         dst_path = self.server_com.get_abspath(dst_path)
         try:
@@ -284,19 +277,17 @@ class FileSystemOperator(object):
         except OSError:
             pass
         shutil.copyfile(origin_path, dst_path)
-        time.sleep(3)
-        self.send_unlock()
 
     def delete_a_file(self, path):
         """
         delete a file
 
-            send lock to watchdog
+            send a path to ignore to watchdog
             delete file
-            send unlock to watchdog
+            when watchdog see the first event on this path ignore it
         """
 
-        self.send_lock(self.server_com.get_abspath(path))
+        self.add_event_to_ignore(self.server_com.get_abspath(path))
         path = self.server_com.get_abspath(path)
         if os.path.isdir(path):
             try:
@@ -305,8 +296,6 @@ class FileSystemOperator(object):
                 pass
         else:
             os.remove(path)
-        time.sleep(3)
-        self.send_unlock()
 
 
 def load_config():
@@ -350,8 +339,8 @@ class DirectoryEventHandler(FileSystemEventHandler):
     def __init__(self, cmd, snap):
         self.cmd = cmd
         self.snap = snap
-        self.path_ignored = []
-        
+        self.paths_ignored = []
+
     def _is_copy(self, abs_path):
         """
         check if a file_md5 already exists in my local snapshot
@@ -373,11 +362,13 @@ class DirectoryEventHandler(FileSystemEventHandler):
         :type event:
             :class:`DirMovedEvent` or :class:`FileMovedEvent`
         """
-        if event.src_path not in self.path_ignored:
+        if event.src_path not in self.paths_ignored:
             if not event.is_directory:
                 self.cmd.move_file(event.src_path, event.dest_path)
         else:
             print "ingnored move on ", event.src_path
+            self.paths_ignored.remove(event.src_path)
+            self.paths_ignored.remove(event.dest_path)
 
     def on_created(self, event):
         """Called when a file or directory is created.
@@ -387,8 +378,7 @@ class DirectoryEventHandler(FileSystemEventHandler):
         :type event:
             :class:`DirCreatedEvent` or :class:`FileCreatedEvent`
         """
-       
-        if event.src_path not in self.path_ignored:
+        if event.src_path not in self.paths_ignored:
             if not event.is_directory:
                 copy = self._is_copy(event.src_path)
                 if copy:
@@ -397,6 +387,7 @@ class DirectoryEventHandler(FileSystemEventHandler):
                     self.cmd.upload_file(event.src_path)
         else:
             print "ingnored create on ", event.src_path
+            self.paths_ignored.remove(event.src_path)
 
     def on_deleted(self, event):
         """Called when a file or directory is deleted.
@@ -406,11 +397,12 @@ class DirectoryEventHandler(FileSystemEventHandler):
         :type event:
             :class:`DirDeletedEvent` or :class:`FileDeletedEvent`
         """
-        if event.src_path not in self.path_ignored:
+        if event.src_path not in self.paths_ignored:
             if not event.is_directory:
                 self.cmd.delete_file(event.src_path)
         else:
             print "ingnored deletion on ", event.src_path
+            self.paths_ignored.remove(event.src_path)
 
     def on_modified(self, event):
         """Called when a file or directory is modified.
@@ -420,12 +412,12 @@ class DirectoryEventHandler(FileSystemEventHandler):
         :type event:
             :class:`DirModifiedEvent` or :class:`FileModifiedEvent`
         """
-        
-        if event.src_path not in self.path_ignored:
+        if event.src_path not in self.paths_ignored:
             if not event.is_directory:
                 self.cmd.upload_file(event.src_path, put_file=True)
         else:
             print "ingnored modified on ", event.src_path
+            self.paths_ignored.remove(event.src_path)
 
 
 class DirSnapshotManager(object):
