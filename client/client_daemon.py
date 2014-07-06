@@ -369,6 +369,7 @@ class DirectoryEventHandler(FileSystemEventHandler):
         else:
             print "ingnored move on ", event.src_path
             self.paths_ignored.remove(event.src_path)
+            self.paths_ignored.remove(event.dest_path)
 
     def on_created(self, event):
         """Called when a file or directory is created.
