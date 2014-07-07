@@ -314,9 +314,12 @@ class FileSystemOperatorTest(unittest.TestCase):
         self.environment.remove()
 
     def test_write_a_file(self):
-        self.file_system_op.write_a_file('{}/{}'.format(self.client_path, self.filename))
+        source_path = '{}/{}'.format(self.client_path, self.filename)
+        self.file_system_op.write_a_file(source_path)
         written_file = open('{}/{}'.format(self.client_path,self.filename), 'rb').read()
         self.assertEqual('this is a test', written_file)
+        #check if source isadded by write_a_file
+        self.assertEqual([source_path], self.event_handler.paths_ignored)
 
     def test_move_a_file(self):
         f_name = 'file_to_move.txt'
@@ -328,6 +331,8 @@ class FileSystemOperatorTest(unittest.TestCase):
         self.file_system_op.move_a_file(source_path, dest_path)
         written_file = open(dest_path, 'rb').read()
         self.assertEqual('this is a test', written_file)
+        #check if source and dest path are added by move_a_file
+        self.assertEqual([source_path, dest_path], self.event_handler.paths_ignored)
 
     def test_copy_a_file(self):
         f_name = 'file_to_copy.txt'
@@ -339,21 +344,27 @@ class FileSystemOperatorTest(unittest.TestCase):
         self.file_system_op.copy_a_file(source_path, dest_path)
         copied_file = open(dest_path, 'rb').read()
         self.assertEqual('this is a test', copied_file)
+        #check if only dest_path is added by copy_a_file
+        self.assertEqual([dest_path], self.event_handler.paths_ignored)
 
     def test_delete_a_file(self):
         del_dir = 'to_delete'
-        path_to_del = '{}/to_delete'.format(self.client_path)
-        if not os.path.exists(path_to_del):
+        source_path = '{}/to_delete'.format(self.client_path)
+        if not os.path.exists(source_path):
             os.makedirs('{}/{}'.format(self.client_path, del_dir))
         f_name = 'file_to_delete.txt'
         file_to_delete = open('{}/{}/{}'.format(self.client_path, del_dir, f_name), 'w')
         file_to_delete.write('delete me')
         file_to_delete.close()
+
         self.assertTrue(os.path.exists(file_to_delete.name))
         self.file_system_op.delete_a_file(file_to_delete.name)
         self.assertFalse(os.path.exists(file_to_delete.name))
-        self.file_system_op.delete_a_file(path_to_del)
-        self.assertFalse(os.path.exists(path_to_del))
+
+        self.file_system_op.delete_a_file(source_path)
+        self.assertFalse(os.path.exists(source_path))
+        #check if only source_path is added by delete_a_file in the 2 tested case
+        self.assertEqual([file_to_delete.name, source_path], self.event_handler.paths_ignored)
 
 
 class DirSnapshotManagerTest(unittest.TestCase):
@@ -546,10 +557,12 @@ class DirectoryEventHandlerTest(unittest.TestCase):
         self.server_comm.cmd["move"] = False
 
         #Case: move file event in ignored directory
-        self.event_handler.path_ignored.append(self.test_src)
-        self.event_handler.path_ignored.append(self.test_dst)
+        self.event_handler.paths_ignored.append(self.test_src)
+        self.event_handler.paths_ignored.append(self.test_dst)
         self.event_handler.on_moved(move_file_event)
         self.assertFalse(self.server_comm.cmd["move"])
+        self.assertFalse(self.test_src in self.event_handler.paths_ignored)
+        self.assertFalse(self.test_dst in self.event_handler.paths_ignored)
 
         #Case: directory move event
         self.event_handler.on_moved(move_dir_event)
@@ -590,9 +603,21 @@ class DirectoryEventHandlerTest(unittest.TestCase):
         self.server_comm.cmd["copy"] = False
 
         #Case: create file in ignored directory
-        self.event_handler.path_ignored.append(self.test_src)
+        self.event_handler.paths_ignored.append(self.test_src)
         self.event_handler.on_created(create_file_event)
         self.assertFalse(self.server_comm.cmd["upload"])
+        self.assertFalse(self.test_src in self.event_handler.paths_ignored)
+
+        #reset initial condition
+        self.server_comm.cmd["upload"] = False
+
+        #Case: copy file and ignore the path
+        self.snapshot_manager.local_full_snapshot = {'MD5': ['path']}
+        self.event_handler.paths_ignored.append(self.test_src)
+        self.event_handler.on_created(copy_file_event)
+        self.assertFalse(self.server_comm.cmd["upload"])
+        self.assertFalse(self.test_src in self.event_handler.paths_ignored)
+        self.assertFalse(self.test_dst in self.event_handler.paths_ignored)
 
     def test_on_deleted(self):
         delete_file_event = FileDeletedEvent(self.test_src)
@@ -610,9 +635,10 @@ class DirectoryEventHandlerTest(unittest.TestCase):
         self.assertFalse(self.server_comm.cmd["delete"])
 
         #Case: delete file in ignored directory
-        self.event_handler.path_ignored.append(self.test_src)
+        self.event_handler.paths_ignored.append(self.test_src)
         self.event_handler.on_created(delete_file_event)
         self.assertFalse(self.server_comm.cmd["delete"])
+        self.assertFalse(self.test_src in self.event_handler.paths_ignored)
 
     def test_on_modified(self):
         modify_file_event = FileModifiedEvent(self.test_src)
@@ -632,9 +658,10 @@ class DirectoryEventHandlerTest(unittest.TestCase):
         self.assertFalse(self.server_comm.cmd["upload"])
 
         #Case: modify file in ignored directory
-        self.event_handler.path_ignored.append(self.test_src)
+        self.event_handler.paths_ignored.append(self.test_src)
         self.event_handler.on_modified(modify_file_event)
         self.assertFalse(self.server_comm.cmd["upload"])
+        self.assertFalse(self.test_src in self.event_handler.paths_ignored)
 
 
 if __name__ == '__main__':
