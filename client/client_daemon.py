@@ -676,7 +676,6 @@ def main():
         while True:
             asyncore.poll(timeout=5.0)
             if (time.time() - last_synk_time) >= 5.0:
-                print (time.time() - last_synk_time)
                 last_synk_time = time.time()
                 server_com.synchronize(file_system_op)
     except KeyboardInterrupt:
