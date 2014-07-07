@@ -12,17 +12,13 @@ from watchdog.events import DirDeletedEvent
 from watchdog.events import DirModifiedEvent
 from watchdog.events import DirCreatedEvent
 from watchdog.events import DirMovedEvent
-
 import httpretty
 import unittest
-import requests
 import hashlib
 import base64
 import shutil
 import json
-import sys
 import os
-
 
 class TestEnvironment(object):
 
