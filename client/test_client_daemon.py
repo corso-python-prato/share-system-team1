@@ -83,7 +83,7 @@ class ServerCommunicatorTest(unittest.TestCase):
             'http://127.0.0.1:5000/API/v1/actions/copy')
         httpretty.register_uri(
             httpretty.POST,
-            'http://127.0.0.1:5000/API/v1/create_user',
+            'http://127.0.0.1:5000/API/v1/user/create',
             status=201)
         httpretty.register_uri(httpretty.GET,
             'http://127.0.0.1:5000/API/v1/files',
@@ -231,7 +231,7 @@ class ServerCommunicatorTest(unittest.TestCase):
         test_username = "test_username"
         test_password = "test_password"
         mock_auth_user = ":".join([self.username, self.password])
-        self.server_comm.create_user(test_username, test_password)
+        self.server_comm.create_user({"user":test_username, "psw":test_password})
         encoded = httpretty.last_request().headers['authorization'].split()[1]
         authorization_decoded = base64.decodestring(encoded)
         path = httpretty.last_request().path
@@ -241,10 +241,26 @@ class ServerCommunicatorTest(unittest.TestCase):
         #check if authorization are equal
         self.assertEqual(authorization_decoded, mock_auth_user)
         #check if url and host are equal
-        self.assertEqual(path, '/API/v1/create_user')
+        self.assertEqual(path, '/API/v1/user/create')
         self.assertEqual(host, '127.0.0.1:5000')
         #check if methods are equal
         self.assertEqual(method, 'POST')
+
+    def test_get_user(self):
+        httpretty.register_uri(httpretty.GET, 'http://127.0.0.1:5000/API/v1/user', 
+            responses=[ 
+                httpretty.Response(body='{"user":"usernameFarlocco","psw":"passwordSegretissima"}', status=200),
+                httpretty.Response(body='{"user":"usernameFarlocco","psw":"passwordSegretissima"}', status=404),
+                httpretty.Response(body='{"user":"usernameFarlocco","psw":"passwordSegretissima"}', status=400)
+            ])
+        msg1 = self.server_comm.get_user({"user":self.username, "psw":self.password})
+        self.assertEqual(msg1["result"], 200)
+        msg2 = self.server_comm.get_user({"user":self.username, "psw":self.password})
+        self.assertEqual(msg2["result"], 404)
+        msg3 = self.server_comm.get_user({"user":self.username, "psw":self.password})
+        self.assertEqual(msg3["result"], 400)
+       
+
     
     def test_syncronize(self):
         def my_try_request(*args, **kwargs):
