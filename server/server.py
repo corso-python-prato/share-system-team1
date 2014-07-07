@@ -54,8 +54,6 @@ def can_write(username, server_path):
     Check if an user is the owner of a file (or father directory).
     (the server_path begins with his name)
     '''
-    # import pdb
-    # pdb.set_trace()
     if re.match("^{}{}(\/.)?".format(USERS_DIRECTORIES, username),
             server_path):
         return True
@@ -236,12 +234,15 @@ class User(object):
         '''
         now = time.time()
         self.timestamp = now
+
         # remove empty directories
         directory_path, filename = os.path.split(client_path)
         if directory_path != "":
             dir_list = directory_path.split("/")
 
-            while len(dir_list) > 0:
+            while (len(dir_list) > 0) \
+                    and not (len(dir_list) == 2 and dir_list[0] == "shares"):
+                # stop if dir_list == [] or dir_list == ["shares", "some_user"]
                 client_subdir = os.path.join(*dir_list)
                 server_subdir = self.paths[client_subdir][0]
                 try:
@@ -488,6 +489,7 @@ class Shares(Resource):
 
         ben_path = owner.get_shared_path(server_path)
         ben.rm_path(ben_path)
+        
         if os.path.isdir(server_path):
             # remove every path from beneficiary's paths
             for path, value in owner.paths.items():
@@ -509,15 +511,16 @@ class Shares(Resource):
             User.save_users()
             return HTTP_OK
 
-    def delete(self, client_path, user=None):
+    def delete(self, client_path, beneficiary=None):
         owner = User.get_user(auth.username())
-        server_path = self.get_server_path(client_path)
+        server_path = owner.get_server_path(client_path)
         if not server_path:
-            abort(HTTP_BAD_REQUEST)
+            return "The specified file or directory is not present", \
+                    HTTP_BAD_REQUEST
 
-        if user:
+        if beneficiary:
             return self._remove_beneficiary(owner, server_path, client_path,
-                    user)
+                    beneficiary)
         else:
             return self._remove_share(owner, server_path, client_path)
 

@@ -18,7 +18,7 @@ DEMO_PSW = "very_secret_password"
 DEMO_FAKE_USER = "fake_usr"
 DEMO_CLIENT = None
 
-SHARES_CLIENTS = []
+SHARE_CLIENTS = []
 
 DEMO_FILE = "somefile.txt"
 DEMO_CONTENT = "Hello my dear,\nit's a beautiful day here in Compiobbi."
@@ -81,7 +81,8 @@ class TestClient(object):
         self.VERBS = {
             "post": self.tc.post,
             "get": self.tc.get,
-            "put": self.tc.put
+            "put": self.tc.put,
+            "delete": self.tc.delete
         }
 
     def call(self, HTTP_verb, url, data=None, auth=True):
@@ -141,12 +142,16 @@ class TestSequenceFunctions(unittest.TestCase):
         # create some clients for share tests
         for i in range(5):
             random.seed(i)
-            user = "".join(random.sample(string.letters, 7))
+            user = "".join(random.sample(string.letters, 7)
+                    + ["@"]
+                    + random.sample(string.letters, 3)
+                    + [".com"]
+            )
             random.seed(i+40)
             psw = "".join(random.sample(string.letters, 10))
             u = TestClient(user, psw)
             u.create_demo_user()
-            SHARES_CLIENTS.append(u)
+            SHARE_CLIENTS.append(u)
 
 
     @classmethod
@@ -424,53 +429,6 @@ class TestSequenceFunctions(unittest.TestCase):
         rv, client_path, server_path = transfer("mv", False, False)
         self.assertEqual(rv.status_code, 404)
 
-    def test_add_share(self):
-        DEMO_CLIENT.set_fake_usr(True)
-        rv = DEMO_CLIENT.call("post", "shares/dir/usr")
-        self.assertEqual(rv.status_code, 401)
-
-        DEMO_CLIENT.set_fake_usr(False)
-
-        f = open(DEMO_FILE, "r")
-        data = { "file_content": f }
-        rv = DEMO_CLIENT.call("post", "files/"+DEMO_FILE, data)
-        f.close()
-        self.assertEqual(rv.status_code, 201)
-
-        rv = DEMO_CLIENT.call("post", "shares/{}/{}".format(DEMO_FILE, SHARES_CLIENTS[1].user))
-        self.assertEqual(rv.status_code, 200)
-
-        f = open(DEMO_FILE, "r")
-        data = { "file_content": f }
-        rv = DEMO_CLIENT.call("post", "files/path_to_share/"+DEMO_FILE, data)
-        f.close()
-        self.assertEqual(rv.status_code, 201)
-
-        rv = DEMO_CLIENT.call("post", "shares/path_to_share/{}".format(SHARES_CLIENTS[2].user))
-        self.assertEqual(rv.status_code, 200)
-
-    def test_can_write(self):
-        DEMO_CLIENT.set_fake_usr(True)
-        rv = DEMO_CLIENT.call("post", "shares/dir/usr")
-        self.assertEqual(rv.status_code, 401)
-
-        DEMO_CLIENT.set_fake_usr(False)
-
-        f = open(DEMO_FILE, "r")
-        data = { "file_content": f }
-        rv = DEMO_CLIENT.call("post", "files/try_to_modify/"+DEMO_FILE, data)
-        f.close()
-        self.assertEqual(rv.status_code, 201)
-
-        rv = DEMO_CLIENT.call("post", "shares/try_to_modify/{}".format(SHARES_CLIENTS[3].user))
-        self.assertEqual(rv.status_code, 200)
-
-        f = open(DEMO_FILE, "r")
-        data = { "file_content": f }
-        rv = SHARES_CLIENTS[3].call("post", "shares/{}/try_to_modify/".format(DEMO_CLIENT.user)+DEMO_FILE, data)
-        f.close()
-        self.assertEqual(rv.status_code, 400)
-
 
     def test_files_differences(self):
         client = TestClient(
@@ -577,6 +535,128 @@ class TestSequenceFunctions(unittest.TestCase):
         # restore the previous situation
         os.chdir(working_directory)
         shutil.rmtree(test_dir)
+
+
+    # SHARE TESTS
+    def test_add_share(self):
+        DEMO_CLIENT.set_fake_usr(True)
+        rv = DEMO_CLIENT.call("post", "shares/dir/usr")
+        self.assertEqual(rv.status_code, 401)
+
+        DEMO_CLIENT.set_fake_usr(False)
+
+        f = open(DEMO_FILE, "r")
+        data = { "file_content": f }
+        rv = DEMO_CLIENT.call("post", "files/"+DEMO_FILE, data)
+        f.close()
+        self.assertEqual(rv.status_code, 201)
+
+        rv = DEMO_CLIENT.call("post", "shares/{}/{}".format(
+            DEMO_FILE, SHARE_CLIENTS[1].user)
+        )
+        self.assertEqual(rv.status_code, 200)
+
+        f = open(DEMO_FILE, "r")
+        data = { "file_content": f }
+        rv = DEMO_CLIENT.call("post", "files/path_to_share/"+DEMO_FILE, data)
+        f.close()
+        self.assertEqual(rv.status_code, 201)
+
+        rv = DEMO_CLIENT.call("post", "shares/path_to_share/{}".format(
+            SHARE_CLIENTS[2].user)
+        )
+        self.assertEqual(rv.status_code, 200)
+
+
+    def test_can_write(self):
+        DEMO_CLIENT.set_fake_usr(True)
+        rv = DEMO_CLIENT.call("post", "shares/dir/usr")
+        self.assertEqual(rv.status_code, 401)
+
+        DEMO_CLIENT.set_fake_usr(False)
+
+        f = open(DEMO_FILE, "r")
+        data = { "file_content": f }
+        rv = DEMO_CLIENT.call("post", "files/try_to_modify/" + DEMO_FILE, data)
+        f.close()
+        self.assertEqual(rv.status_code, 201)
+
+        rv = DEMO_CLIENT.call("post", "shares/try_to_modify/{}".format(
+            SHARE_CLIENTS[3].user)
+        )
+        self.assertEqual(rv.status_code, 200)
+
+        f = open(DEMO_FILE, "r")
+        data = { "file_content": f }
+        rv = SHARE_CLIENTS[3].call(
+            "post",
+            "shares/{}/try_to_modify/{}".format(
+                DEMO_CLIENT.user, DEMO_FILE
+            ), data
+        )
+        f.close()
+        self.assertEqual(rv.status_code, 400)
+
+
+    def test_remove_beneficiary(self):
+        owner = SHARE_CLIENTS[0].user
+        user1 = SHARE_CLIENTS[1].user
+        user2 = SHARE_CLIENTS[2].user
+
+        # test if aborts when the file is not on the server
+        received = SHARE_CLIENTS[0].call(
+            "delete",
+            "/".join(["shares", "somefile.txt", "beneficiary@oijoid.it"])
+        )
+        self.assertEqual(received.status_code, 400)
+        self.assertEqual(received.data,
+            '"The specified file or directory is not present"'
+        )
+
+        # test if aborts when the resource is not shared with the beneficiary
+        with open(DEMO_FILE, "r") as f:
+            data = { "file_content": f }
+            rv = SHARE_CLIENTS[0].call("post", "files/"+DEMO_FILE, data)
+
+        received = SHARE_CLIENTS[0].call(
+            "delete",
+            "/".join(["shares", DEMO_FILE, user1])
+        )
+        self.assertEqual(received.status_code, 400)
+
+        # share a file with a couple of users
+        for usern in [user1, user2]:
+            received = SHARE_CLIENTS[0].call(
+                "post",
+                "/".join(["shares", DEMO_FILE, usern])
+            )
+            self.assertEqual(received.status_code, 200)
+
+        # remove the first user
+        received = SHARE_CLIENTS[0].call(
+            "delete",
+            "/".join(["shares", DEMO_FILE, user1])
+        )
+        self.assertEqual(received.status_code, 200)
+
+        server_path = os.path.join(
+            server.USERS_DIRECTORIES,
+            owner,
+            DEMO_FILE
+        )
+        self.assertIn(server_path, server.User.shared_resources)
+        self.assertEqual(
+            server.User.shared_resources[server_path],
+            [owner, user2]
+        )
+
+        # remove the second user
+        received = SHARE_CLIENTS[0].call(
+            "delete",
+            "/".join(["shares", DEMO_FILE, user2])
+        )
+        self.assertEqual(received.status_code, 200)
+        self.assertNotIn(server_path, server.User.shared_resources)
 
 
 if __name__ == '__main__':
