@@ -252,7 +252,7 @@ class UserApi(Resource):
         else:
             psw_hash = sha256_crypt.encrypt(psw)
             code = os.urandom(16).encode('hex')
-            UserApi.pending[user] = \
+            UserApi.pending[username] = \
                 {"password": psw_hash,
                  "code": code,
                  "timestamp": time.time()}
@@ -279,7 +279,7 @@ class UserApi(Resource):
         if username in User.users:
             return "This user is already active", HTTP_CONFLICT
         elif code == UserApi.pending[username]["code"]:
-            User(user, UserApi.pending[username]["password"])
+            User(username, UserApi.pending[username]["password"])
             del UserApi.pending[username]
             if UserApi.pending:
                 with open(PENDING_USERS, "w") as p_u:
