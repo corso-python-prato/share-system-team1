@@ -145,7 +145,7 @@ class ServerCommunicator(object):
         r = self._try_request(requests.post, success_log, error_log, **request)
         if r.status_code == 404:
             print "file not found on server"
-        elif r.status_code == 201:
+        elif r.status_code == 200:
             self.snapshot_manager.update_snapshot(action = "delete" , body = {"src_path": dst_path})
             self.snapshot_manager.save_snapshot(r.text)
 
