@@ -307,7 +307,7 @@ class FileSystemOperatorTest(unittest.TestCase):
         self.event_handler = DirectoryEventHandler(self.server_com,
             self.snapshot_manager)
         self.file_system_op = FileSystemOperator(self.event_handler,
-            self.server_com)
+            self.server_com, snapshot_manager = self.snapshot_manager)
 
     def tearDown(self):
         httpretty.disable()

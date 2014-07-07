@@ -224,7 +224,8 @@ class ServerCommunicator(object):
 
 class FileSystemOperator(object):
 
-    def __init__(self, event_handler, server_com):
+    def __init__(self, event_handler, server_com, snapshot_manager):
+        self.snapshot_manager = snapshot_manager
         self.event_handler = event_handler
         self.server_com = server_com
 
@@ -683,7 +684,7 @@ def main():
         snapshot_manager = snapshot_manager)
 
     event_handler = DirectoryEventHandler(server_com, snapshot_manager)
-    file_system_op = FileSystemOperator(event_handler, server_com)
+    file_system_op = FileSystemOperator(event_handler, server_com, snapshot_manager)
     executer = CommandExecuter(file_system_op, server_com)
     server_com.setExecuter(executer)
     observer = Observer()
