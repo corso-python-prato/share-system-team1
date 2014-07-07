@@ -71,7 +71,7 @@ class User(object):
 
     users = {}
     
-    shared_dirs = {}
+    shared_resources = {}
     # { "shared_directory": [user1, user2, ...] }
 
     # CLASS AND STATIC METHODS
@@ -234,38 +234,40 @@ class User(object):
 
     def add_share(self, client_path, beneficiary):
         server_path = self.get_server_path(client_path)
-        if not server_path or not os.path.isdir(server_path):
+        if not server_path:
             return False
 
-        if beneficiary not in User.users:
+        try:
+            ben = User.users[beneficiary]
+        except KeyError:
+            # beneficiary is not an user
             return False
 
-        dir_list = server_path.split("/")
-        owner = dir_list[1]
-        folder_name = dir_list.pop()
-        new_client_path = "_".join(["SHARED", owner, folder_name])
-        ben = User.users[beneficiary]
+        path_parts = server_path.split("/")
+        if len(path_parts) > 3:
+            # shared resource has to be in owner's root
+            return False
 
-        if server_path not in User.shared_dirs:
-            User.shared_dirs[server_path] = [owner, beneficiary]
+        resource_name = path_parts.pop()
+        new_client_path = os.path.join("shares", self.username, resource_name)
+
+        if server_path not in User.shared_resources:
+            User.shared_resources[server_path] = [owner, beneficiary]
         else:
-            User.shared_dirs[server_path].append(beneficiary)
+            User.shared_resources[server_path].append(beneficiary)
 
-        # try to add the new_client_path to the beneficiary's paths, 
-        # changing the name until this is not already present
-        counter = 1
-        while new_client_path in ben.paths:
-            new_client_path = "_".join([new_client_path, str(counter)])
 
-        ben.paths[new_client_path] = server_path
+        ben.paths[new_client_path] = self.paths[client_path]
 
-        # add to the beneficiary's paths every file and folder in the shared
-        # folder
-        for path, value in self.paths.items():
-            if path.startswith(client_path):
-                to_insert = path.replace(client_path, new_client_path, 1)
-                ben.paths[to_insert] = value
+        if os.path.isdir(server_path):
+            # add to the beneficiary's paths every file and folder in the 
+            # shared folder
+            for path, value in self.paths.items():
+                if path.startswith(client_path):
+                    to_insert = path.replace(client_path, new_client_path, 1)
+                    ben.paths[to_insert] = value
 
+        ben.timestamp = time.time()        
         return True
 
 
@@ -435,31 +437,21 @@ class Actions(Resource):
 
 
 class Shares(Resource):
-    def post(self):
-        """ Expected as POST data:
-        { 
-            "path" : <path>
-            "beneficiary": <string>
-        }
-        """
+    def post(self, client_path, beneficiary):
         owner = User.get_user(auth.username())
-        try:
-            client_path = request.form["path"]
-        except KeyError:
-            abort(HTTP_BAD_REQUEST)
 
         if not owner.add_share(client_path, beneficiary):
             abort(HTTP_BAD_REQUEST)     # TODO: choice the code
         else:
             return HTTP_OK          # TODO: timestamp is needed here?
 
-    def delete(self, client_path, user=None):
-        if user:
-            pass
-            # elimina l'utente dallo share
-        else:
-            pass
-            # elimina lo share completamente
+    # def delete(self, client_path, user=None):
+    #     if user:
+    #         pass
+    #         # elimina l'utente dallo share
+    #     else:
+    #         pass
+    #         # elimina lo share completamente
 
 
 @auth.verify_password
@@ -501,8 +493,8 @@ api.add_resource(Files, "{}files/<path:client_path>".format(_API_PREFIX),
 api.add_resource(Actions, "{}actions/<string:cmd>".format(_API_PREFIX))
 api.add_resource(
     Shares,
-    "{}shares/".format(_API_PREFIX),
-    "{}shares/<path:client_path>".format(_API_PREFIX)
+    # "{}shares/".format(_API_PREFIX),
+    "{}shares/<path:client_path>/<string:beneficiary>".format(_API_PREFIX)
 )
 
 if __name__ == "__main__":
