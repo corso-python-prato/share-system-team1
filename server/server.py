@@ -92,7 +92,7 @@ class User(object):
             raise MissingUserError("User doesn't exist")
 
     # DYNAMIC METHODS
-    def __init__(self, username, clear_password, from_dict=None):
+    def __init__(self, username, password, from_dict=None):
         # if restoring the server
         if from_dict:
             self.psw = from_dict["psw"]
@@ -101,7 +101,6 @@ class User(object):
             User.users[username] = self
             return
 
-        psw_hash = sha256_crypt.encrypt(clear_password)
         full_path = os.path.join(USERS_DIRECTORIES, username)
         try:
             os.mkdir(full_path)
@@ -109,7 +108,7 @@ class User(object):
             abort(HTTP_CONFLICT)
 
         # OBJECT ATTRIBUTES
-        self.psw = psw_hash
+        self.psw = password
 
         # path of each file and each directory of the user:
         #     { client_path : [server_path, md5, timestamp] }
