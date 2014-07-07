@@ -17,6 +17,8 @@ import time
 import json
 import os
 
+from communication_system import CmdMessageServer
+import asyncore
 
 SERVER_URL = "localhost"
 SERVER_PORT = "5000"
@@ -662,10 +664,21 @@ def main():
     if is_new:
         server_com.create_user(config['username'], config['password'])
     observer.start()
+
+    client_command = {}
+    sock_server = CmdMessageServer(
+        config['cmd_host'],
+        int(config['cmd_port']),
+        client_command)
+
+    last_synk_time = 0
     try:
         while True:
-            server_com.synchronize(file_system_op)
-            time.sleep(5)
+            asyncore.poll(timeout=5.0)
+            if (time.time() - last_synk_time) >= 5.0:
+                print (time.time() - last_synk_time)
+                last_synk_time = time.time()
+                server_com.synchronize(file_system_op)
     except KeyboardInterrupt:
         observer.stop()
     observer.join()
