@@ -609,7 +609,7 @@ class DirSnapshotManager(object):
             
             elif not self.is_syncro(server_timestamp): # 2) b
                 for new_server_path in new_server_paths: # 2) b 1
-                    if not self.find_file_md5(server_snapshot, new_server_path) in self.local_full_snapshot: #2) b 1 I
+                    if not self.find_file_md5(server_snapshot, new_server_path) in self.local_full_snapshot: # 2) b 1 I
                         if self.check_files_timestamp(server_snapshot, new_server_path):
                             print "delete remote:\t" + new_server_path
                             command_list.append({'remote_delete': [new_server_path]})
