@@ -449,6 +449,28 @@ class TestSequenceFunctions(unittest.TestCase):
         rv = DEMO_CLIENT.call("post", "shares/path_to_share/{}".format(SHARES_CLIENTS[2].user))
         self.assertEqual(rv.status_code, 200)
 
+    def test_can_write(self):
+        DEMO_CLIENT.set_fake_usr(True)
+        rv = DEMO_CLIENT.call("post", "shares/dir/usr")
+        self.assertEqual(rv.status_code, 401)
+
+        DEMO_CLIENT.set_fake_usr(False)
+
+        f = open(DEMO_FILE, "r")
+        data = { "file_content": f }
+        rv = DEMO_CLIENT.call("post", "files/try_to_modify/"+DEMO_FILE, data)
+        f.close()
+        self.assertEqual(rv.status_code, 201)
+
+        rv = DEMO_CLIENT.call("post", "shares/try_to_modify/{}".format(SHARES_CLIENTS[3].user))
+        self.assertEqual(rv.status_code, 200)
+
+        f = open(DEMO_FILE, "r")
+        data = { "file_content": f }
+        rv = SHARES_CLIENTS[3].call("post", "shares/{}/try_to_modify/".format(DEMO_CLIENT.user)+DEMO_FILE, data)
+        f.close()
+        self.assertEqual(rv.status_code, 400)
+
 
     def test_files_differences(self):
         client = TestClient(
