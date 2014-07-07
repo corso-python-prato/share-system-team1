@@ -37,6 +37,11 @@ class TestCmdMessageClient(unittest.TestCase):
         data = struct.pack(pack_format, cmd_struct)
         command = communication_system.unpacking_message(data, pack_format)
         self.assertEqual(command, self.cmd_struct)
+
+    def test_command_not_found(self):
+        self.assertEqual(
+            {'result': 'error', 'details': ['command not found']},
+            communication_system.command_not_found('wrong_command'))
       
         
 if __name__ == '__main__':
