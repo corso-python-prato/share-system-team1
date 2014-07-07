@@ -206,7 +206,7 @@ class User(object):
         User.save_users()
 
 
-class Resource(Resource):
+class Resource_with_auth(Resource):
     method_decorators = [auth.login_required]
 
 
@@ -293,6 +293,7 @@ class Files(Resource):
         """Delete the user who is making the request
         """
         pass
+class Files(Resource_with_auth):
     def _diffs(self):
         """ Send a JSON with the timestamp of the last change in user
         directories and an md5 for each file
@@ -380,7 +381,7 @@ class Files(Resource):
         return u.timestamp, HTTP_CREATED
 
 
-class Actions(Resource):
+class Actions(Resource_with_auth):
     def _delete(self):
         """ Expected as POST data:
         { "path" : <path>} """
