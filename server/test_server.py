@@ -66,12 +66,10 @@ def set_tmp_params(father_dir):
 
 class EmailTest(unittest.TestCase):
 
-    config = server.ConfigParser.ConfigParser()
-    config.read('email_settings.ini')
-    MAIL_SERVER = config.get('email', 'smtp_address')
-    MAIL_PORT = config.getint('email', 'smtp_port')
-    MAIL_USERNAME = config.get('email', 'smtp_username')
-    MAIL_PASSWORD = config.get('email', 'smtp_password')
+    MAIL_SERVER = 'smtp_address'
+    MAIL_PORT = 'smtp_port'
+    MAIL_USERNAME = 'smtp_username'
+    MAIL_PASSWORD = 'smtp_password'
     TESTING = True
 
     def setUp(self):
