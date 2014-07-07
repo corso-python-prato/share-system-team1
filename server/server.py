@@ -248,6 +248,29 @@ class Files(Resource):
                 json.dump(UserApi.pending, p_u)
             #insert send_mail()
             return "user added to pending users", HTTP_CREATED
+    def put(self, cmd):
+        """Activate a pending user
+        Expected
+        {"user": <username>
+        "code": <activation code>}"""
+        try:
+            user = request.form["user"]
+            code = request.form["code"]
+        except KeyErcreateror:
+            abort(HTTP_BAD_REQUEST)
+
+        if (os.path.isfile(PENDING_USERS)):
+            with open(PENDING_USERS, "r") as p_u:
+                UserApi.pending = json.load(p_u)
+
+        if user in User.users:
+            return "This user is already active", HTTP_CONFLICT
+        elif code == UserApi.pending[user]["code"]:
+            User(user, UserApi.pending[user]["password"])
+            del UserApi.pending[user]
+            with open(PENDING_USERS, "w") as p_u:
+                json.dump(UserApi.pending, p_u)
+            return "user activated", HTTP_CREATED
     def _diffs(self):
         """ Send a JSON with the timestamp of the last change in user
         directories and an md5 for each file
