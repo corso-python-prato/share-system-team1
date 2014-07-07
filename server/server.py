@@ -197,7 +197,8 @@ class User(object):
 
         return os.path.join(new_server_path, filename)
 
-    def push_path(self, client_path, server_path, update_user_data=True):
+    def push_path(self, client_path, server_path,
+            update_user_data=True, only_modify=False):
         md5 = to_md5(server_path)
         now = time.time()
         file_meta = [server_path, md5, now]
@@ -205,8 +206,9 @@ class User(object):
 
         if server_path in User.shared_resources:
             for ben in User.shared_resources[server_path][1:]:
-                ben_path = self.get_shared_path(server_path)
-                ben.paths[ben_path] = file_meta
+                if not only_modify:
+                    ben_path = self.get_shared_path(server_path)
+                    ben.paths[ben_path] = file_meta
                 ben.timestamp = now
 
         if update_user_data:
@@ -370,7 +372,7 @@ class Files(Resource):
         f = request.files["file_content"]
         f.save(server_path)
 
-        u.push_path(client_path, server_path)
+        u.push_path(client_path, server_path, only_modify=True)
         return u.timestamp, HTTP_CREATED
 
     def post(self, client_path):
