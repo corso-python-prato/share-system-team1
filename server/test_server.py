@@ -11,6 +11,7 @@ from base64 import b64encode
 
 TEST_DIRECTORY = "test_users_dirs/"
 TEST_USER_DATA = "test_user_data.json"
+TEST_PENDING_USERS = "test_user_pending.tmp"
 
 DEMO_USER = "i_am_an_user@rawbox.it"
 DEMO_PSW = "very_secret_password"
@@ -77,6 +78,9 @@ class EmailTest(unittest.TestCase):
         self.app = server.Flask(__name__)
         self.app.config.from_object(__name__)
         self.mail = server.Mail(self.app)
+        server.app.config.update(TESTING=True)
+        self.tc = server.app.test_client()
+        server.PENDING_USERS = TEST_PENDING_USERS
 
     def test_mail(self):
         receiver = "test@rawbox.com"
@@ -91,6 +95,21 @@ class EmailTest(unittest.TestCase):
             assert len(outbox) == 1
             assert outbox[0].subject == "test"
             assert outbox[0].body == "test content"
+
+    def test_create_user_mail(self):
+        user = "NennoLello"
+        psw = "zerocloninell'orto"
+        data = {
+            "psw": psw
+        }
+
+        url = "".join(("API/v1/user/", user))
+        with self.mail.record_messages() as outbox:
+            req = self.tc.post(url, data=data, headers=None)
+            with open(server.PENDING_USERS, "r") as pending_file:
+                code = json.load(pending_file)[user]["code"]
+                assert outbox[0].body == code
+        os.remove(TEST_PENDING_USERS)
 
 
 class TestClient(object):
