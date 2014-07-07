@@ -1,8 +1,8 @@
+from watchdog.observers.polling import PollingObserver as Observer
 from client_daemon import DirSnapshotManager
 from client_daemon import DirectoryEventHandler
 from client_daemon import ServerCommunicator
 from client_daemon import FileSystemOperator
-from watchdog.observers.polling import PollingObserver as Observer
 import httpretty
 import unittest
 import requests
@@ -10,9 +10,9 @@ import hashlib
 import base64
 import shutil
 import json
+import time
 import sys
 import os
-import time
 
 class TestEnvironment(object):
 

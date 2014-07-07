@@ -2,8 +2,8 @@
 # -*- coding:utf-8 -*-
 
 import communication_system
-import struct
 import unittest
+import struct
 import json
 
 

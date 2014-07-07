@@ -1,18 +1,17 @@
 #!/usr/bin/env python
 #-*- coding: utf-8 -*-
 
-from flask import Flask, request
-from flask.ext.httpauth import HTTPBasicAuth
 from flask.ext.restful import reqparse, abort, Api, Resource
+from flask.ext.httpauth import HTTPBasicAuth
 from passlib.hash import sha256_crypt
+from flask import Flask, request
+from server_errors import *
+import hashlib
+import shutil
 import time
-import datetime
 import json
 import os
-import shutil
-import hashlib
 
-from server_errors import *
 
 
 HTTP_CONFLICT = 409
