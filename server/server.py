@@ -455,30 +455,14 @@ def verify_password(username, password):
         return sha256_crypt.verify(password, u.psw)
 
 
-@app.route("{}create_user".format(_API_PREFIX), methods=["POST"])
-def create_user():
-        """ Expected as POST data:
-        { "user": <username>, "psw": <password> } """
-        try:
-            user = request.form["user"]
-            psw = request.form["psw"]
-        except KeyError:
-            abort(HTTP_BAD_REQUEST)
-
-        if user in User.users:
-            return "This user already exists", HTTP_CONFLICT
-        else:
-            User(user, psw)
-            return "user created", HTTP_CREATED
-
-
 def main():
     if not os.path.isdir(USERS_DIRECTORIES):
         os.mkdir(USERS_DIRECTORIES)
     User.user_class_init()
     app.run(host="0.0.0.0", debug=True)         # TODO: remove debug=True
 
-
+api.add_resource(UserApi, "{}user/<string:cmd>".format(_API_PREFIX),
+    "{}/user/".format(_API_PREFIX))
 api.add_resource(Files, "{}files/<path:client_path>".format(_API_PREFIX),
     "{}files/".format(_API_PREFIX))
 api.add_resource(Actions, "{}actions/<string:cmd>".format(_API_PREFIX))
