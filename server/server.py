@@ -200,16 +200,40 @@ class User(object):
     def push_path(self, client_path, server_path, update_user_data=True):
         md5 = to_md5(server_path)
         now = time.time()
-        self.paths[client_path] = [server_path, md5, now]
+        file_meta = [server_path, md5, now]
+        self.paths[client_path] = file_meta
+
+        if server_path in User.shared_resources:
+            for ben in User.shared_resources[server_path][1:]:
+                ben_path = self.get_shared_path(server_path)
+                ben.paths[ben_path] = file_meta
+                ben.timestamp = now
+
         if update_user_data:
             self.timestamp = now
             User.save_users()
-        # TODO: manage shared folder here. Something like:
-        # for s, v in shared_folder.items():
-        #     if server_path.startswith(s):
-        #         update each user
+
+    def _rm_shared_path(self, client_path, now):
+        server_path = self.get_server_path(client_path)
+        if not server_path:
+            return
+
+        shared_path = self.get_shared_path(server_path)
+        if not server_path in User.shared_resources:
+            return
+
+        for ben in User.shared_resources[server_path][1:]:
+            del ben.paths[shared_path]
+            ben.timestamp = now
+
 
     def rm_path(self, client_path):
+        '''
+        Remove the path from the paths dictionary. If there are empty
+        directories, remove them from the filesystem.
+        '''
+        now = time.time()
+        self.timestamp = now
         # remove empty directories
         directory_path, filename = os.path.split(client_path)
         if directory_path != "":
@@ -220,16 +244,17 @@ class User(object):
                 server_subdir = self.paths[client_subdir][0]
                 try:
                     os.rmdir(server_subdir)
-                except OSError:         # the directory is not empty
+                except OSError:
+                    # the directory is not empty
                     break
                 else:
                     del self.paths[client_subdir]
-                    # TODO: manage shared folder here.
+                    self._rm_shared_path(client_subdir, now)
                     dir_list.pop()
 
         # remove the argument client_path and save
         del self.paths[client_path]
-        self.timestamp = time.time()
+        self._rm_shared_path(client_path, now)
         User.save_users()
 
     def add_share(self, client_path, beneficiary):
@@ -259,7 +284,8 @@ class User(object):
                     to_insert = path.replace(client_path, new_client_path, 1)
                     ben.paths[to_insert] = value
 
-        ben.timestamp = time.time()        
+        ben.timestamp = time.time()
+        User.save_users()
         return True
 
     def get_shared_path(self, server_path):
@@ -468,6 +494,7 @@ class Shares(Resource):
                     del ben.paths[to_remove]
 
         ben.timestamp = time.time()
+        User.save_users()
         return HTTP_OK
 
     def _remove_share(self, owner, server_path, client_path):
@@ -476,6 +503,9 @@ class Shares(Resource):
                 self._remove_beneficiary(owner, server_path, client_path, ben)
         except KeyError:
             abort(HTTP_BAD_REQUEST)
+        else:
+            User.save_users()
+            return HTTP_OK
 
     def delete(self, client_path, user=None):
         owner = User.get_user(auth.username())
