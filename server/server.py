@@ -243,20 +243,12 @@ class User(object):
             # beneficiary is not an user
             return False
 
-        path_parts = server_path.split("/")
-        if len(path_parts) > 3:
-            # shared resource has to be in owner's root
-            return False
-
-        resource_name = path_parts.pop()
-        new_client_path = os.path.join("shares", self.username, resource_name)
-
         if server_path not in User.shared_resources:
             User.shared_resources[server_path] = [owner, beneficiary]
         else:
             User.shared_resources[server_path].append(beneficiary)
 
-
+        new_client_path = self.get_shared_path(server_path)
         ben.paths[new_client_path] = self.paths[client_path]
 
         if os.path.isdir(server_path):
@@ -269,6 +261,15 @@ class User(object):
 
         ben.timestamp = time.time()        
         return True
+
+    def get_shared_path(self, server_path):
+        path_parts = server_path.split("/")
+        if len(path_parts) > 3:
+            # shared resource has to be in owner's root
+            return False
+
+        resource_name = path_parts.pop()
+        return os.path.join("shares", self.username, resource_name)
 
 
 class Resource(Resource):
@@ -445,13 +446,48 @@ class Shares(Resource):
         else:
             return HTTP_OK          # TODO: timestamp is needed here?
 
-    # def delete(self, client_path, user=None):
-    #     if user:
-    #         pass
-    #         # elimina l'utente dallo share
-    #     else:
-    #         pass
-    #         # elimina lo share completamente
+    def _remove_beneficiary(self, owner, server_path, client_path,
+            beneficiary):
+        try:
+            ben = User.users[beneficiary]
+            User.shared_resources[server_path].remove(beneficiary)
+        except (KeyError, ValueError):
+            abort(HTTP_BAD_REQUEST)
+        else:
+            if len(User.shared_resources[server_path]) == 1:
+                # owner is the first element in the list
+                del User.shared_resources[server_path]
+
+        ben_path = owner.get_shared_path(server_path)
+        ben.rm_path(ben_path)
+        if os.path.isdir(server_path):
+            # remove every path from beneficiary's paths
+            for path, value in owner.paths.items():
+                if path.startswith(client_path):
+                    to_remove = path.replace(client_path, ben_path, 1)
+                    del ben.paths[to_remove]
+
+        ben.timestamp = time.time()
+        return HTTP_OK
+
+    def _remove_share(self, owner, server_path, client_path):
+        try:
+            for ben in User.shared_resources[server_path][1:]:
+                self._remove_beneficiary(owner, server_path, client_path, ben)
+        except KeyError:
+            abort(HTTP_BAD_REQUEST)
+
+    def delete(self, client_path, user=None):
+        owner = User.get_user(auth.username())
+        server_path = self.get_server_path(client_path)
+        if not server_path:
+            abort(HTTP_BAD_REQUEST)
+
+        if user:
+            return self._remove_beneficiary(owner, server_path, client_path,
+                    user)
+        else:
+            return self._remove_share(owner, server_path, client_path)
 
 
 @auth.verify_password
@@ -493,7 +529,7 @@ api.add_resource(Files, "{}files/<path:client_path>".format(_API_PREFIX),
 api.add_resource(Actions, "{}actions/<string:cmd>".format(_API_PREFIX))
 api.add_resource(
     Shares,
-    # "{}shares/".format(_API_PREFIX),
+    "{}shares/<path:client_path>".format(_API_PREFIX),
     "{}shares/<path:client_path>/<string:beneficiary>".format(_API_PREFIX)
 )
 
