@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 #-*- coding: utf-8 -*-
 
+
 import server
 import os
 import json
@@ -13,7 +14,7 @@ TEST_USER_DATA = "test_user_data.json"
 
 DEMO_USER = "i_am_an_user@rawbox.it"
 DEMO_PSW = "very_secret_password"
-DEMO_FAKE_USER = "fake_usr"
+DEMO_FAKE_USER = "fake_user"
 DEMO_CLIENT = None
 
 DEMO_FILE = "somefile.txt"
@@ -33,13 +34,13 @@ def transfer(path, flag=True, test=True):
         new_path = "{}/{}".format(DEMO_DEST_MOVE_PATH, path)
 
     if test:
-        data = { 
+        data = {
             "file_src": client_path,
             "file_dest": os.path.join(new_path, DEMO_FILE)
         }
         rv = DEMO_CLIENT.call("post", "actions/"+func, data)
     else:
-        data = { 
+        data = {
             "file_src": NO_SERVER_PATH,
             "file_dest": os.path.join(new_path, DEMO_FILE)
         }
@@ -49,8 +50,8 @@ def transfer(path, flag=True, test=True):
 
 
 def set_tmp_params(father_dir):
-    ''' Add a file in user's directory, in the path passed in argument 
-    Please, use path here with only a word (not "dir/subdir") '''
+    """ Add a file in user's directory, in the path passed in argument
+    Please, use path here with only a word (not "dir/subdir") """
     client_path = os.path.join(father_dir, DEMO_FILE)
     server_path = os.path.join(TEST_DIRECTORY, DEMO_USER, client_path)
     os.makedirs(os.path.dirname(server_path))
@@ -66,10 +67,10 @@ def set_tmp_params(father_dir):
 
 class EmailTest(unittest.TestCase):
 
-    MAIL_SERVER = 'smtp_address'
-    MAIL_PORT = 'smtp_port'
-    MAIL_USERNAME = 'smtp_username'
-    MAIL_PASSWORD = 'smtp_password'
+    MAIL_SERVER = "smtp_address"
+    MAIL_PORT = "smtp_port"
+    MAIL_USERNAME = "smtp_username"
+    MAIL_PASSWORD = "smtp_password"
     TESTING = True
 
     def setUp(self):
@@ -111,24 +112,23 @@ class TestClient(object):
     def call(self, HTTP_verb, url, data=None, auth=True):
         return self.VERBS[HTTP_verb](
             server._API_PREFIX + url,
-            data = data,
-            headers = self.headers if auth else None
+            data=data,
+            headers=self.headers if auth else None
         )
 
     def create_demo_user(self, flag=False):
-        usr = "user"
+        usr = "user_demo"
         psw = "psw"
         if flag:
-            usr = "fake_usr"
+            usr = "fake_user"
             psw = "fake_psw"
 
         data = {
-            usr: self.user,
             psw: self.psw
         }
-        return self.call("post", "create_user", data, auth=False)
-    
-    def set_fake_usr(self, flag=False):
+        return self.call("post", "/user/create" + self.user, data, auth=False)
+
+    def set_fake_user(self, flag=False):
         self.headers["Authorization"] = "".join((
             "Basic ",
             b64encode("{0}:{1}".format(
@@ -150,8 +150,8 @@ class TestSequenceFunctions(unittest.TestCase):
             os.mkdir(TEST_DIRECTORY)
 
         server.USERS_DIRECTORIES = TEST_DIRECTORY
-    
-        # set a test "USER_DATA" json
+
+        # set test jsons
         open(TEST_USER_DATA, "w").close()
         server.USERS_DATA = TEST_USER_DATA
 
@@ -180,16 +180,16 @@ class TestSequenceFunctions(unittest.TestCase):
         # check if a new user is correctly created
         dirs_counter = len(os.listdir(server.USERS_DIRECTORIES))
 
-        user = "Gianni"
+        user = "Gianni@ilovejava.it"
         psw = "IloveJava"
         client = TestClient(user, psw)
-        
+
         rv = client.create_demo_user(True)
         self.assertEqual(rv.status_code, server.HTTP_BAD_REQUEST)
 
         rv = client.create_demo_user()
         self.assertEqual(rv.status_code, server.HTTP_CREATED)
-        
+
         # check if a directory is created
         new_counter = len(os.listdir(server.USERS_DIRECTORIES))
         self.assertEqual(dirs_counter+1, new_counter)
@@ -241,26 +241,26 @@ class TestSequenceFunctions(unittest.TestCase):
             f.close()
 
             self.assertEqual(rv.status_code, 400)
-           
+
         # TODO: other tests here?
 
 
     def test_files_post(self):
         demo_path = "somepath/somefile.txt"
-        DEMO_CLIENT.set_fake_usr(True)
+        DEMO_CLIENT.set_fake_user(True)
         f = open(DEMO_FILE, "r")
         data = { "file_content": f }
         rv = DEMO_CLIENT.call("post", "files/"+demo_path, data)
         f.close()
         self.assertEqual(rv.status_code, 401)
 
-        DEMO_CLIENT.set_fake_usr(False)
+        DEMO_CLIENT.set_fake_user(False)
         f = open(DEMO_FILE, "r")
         data = { "file_content": f }
         rv = DEMO_CLIENT.call("post", "files/"+demo_path, data)
         f.close()
         self.assertEqual(rv.status_code, 201)
-        
+
         with open("{}{}/{}".format(TEST_DIRECTORY, DEMO_USER, demo_path)) as f:
             uploaded_content = f.read()
             self.assertEqual(DEMO_CONTENT, uploaded_content)
@@ -273,11 +273,11 @@ class TestSequenceFunctions(unittest.TestCase):
 
     def test_files_get(self):
         client_path, server_path = set_tmp_params("dwn")
-        DEMO_CLIENT.set_fake_usr(True)
+        DEMO_CLIENT.set_fake_user(True)
         rv = DEMO_CLIENT.call("get", "files/"+client_path)
         self.assertEqual(rv.status_code, 401)
 
-        DEMO_CLIENT.set_fake_usr(False)
+        DEMO_CLIENT.set_fake_user(False)
         rv = DEMO_CLIENT.call("get", "files/"+client_path)
         self.assertEqual(rv.status_code, 200)
 
@@ -302,11 +302,11 @@ class TestSequenceFunctions(unittest.TestCase):
 
         f = open(DEMO_FILE, "r")
         data = { "file_content": f }
-        DEMO_CLIENT.set_fake_usr(True)
+        DEMO_CLIENT.set_fake_user(True)
         rv = DEMO_CLIENT.call("put", "files/"+demo_path, data)
         f.close()
         self.assertEqual(rv.status_code, 401)
-        DEMO_CLIENT.set_fake_usr(False)
+        DEMO_CLIENT.set_fake_user(False)
         f = open(DEMO_FILE, "r")
         data = { "file_content": f }
         rv = DEMO_CLIENT.call("put", "files/"+demo_path, data)
@@ -326,17 +326,17 @@ class TestSequenceFunctions(unittest.TestCase):
         full_server_path = os.path.join(server_path, DEMO_FILE)
 
         data = { "path": client_path }
-        DEMO_CLIENT.set_fake_usr(True)
+        DEMO_CLIENT.set_fake_user(True)
         rv = DEMO_CLIENT.call("post", "actions/delete", data)
-        
+
         self.assertEqual(rv.status_code, 401)
 
-        DEMO_CLIENT.set_fake_usr(False)
+        DEMO_CLIENT.set_fake_user(False)
         rv = DEMO_CLIENT.call("post", "actions/delete", data)
-        
+
         self.assertEqual(rv.status_code, 200)
         self.assertFalse(os.path.isfile(full_server_path))
-        
+
         #check if the file is correctly removed from the dictionary
         self.assertFalse(server_path in server.User.users[DEMO_USER].paths)
 
@@ -372,14 +372,14 @@ class TestSequenceFunctions(unittest.TestCase):
 
 
     def test_actions_copy(self):
-        DEMO_CLIENT.set_fake_usr(True)
-        data = { 
+        DEMO_CLIENT.set_fake_user(True)
+        data = {
         "file_src": "src",
         "file_dest": "dest"
         }
         rv = DEMO_CLIENT.call("post", "actions/copy", data)
         self.assertEqual(rv.status_code, 401)
-        DEMO_CLIENT.set_fake_usr(False)
+        DEMO_CLIENT.set_fake_user(False)
         rv, client_path, server_path = transfer("cp", True)
         self.assertEqual(rv.status_code, 201)
 
@@ -387,7 +387,7 @@ class TestSequenceFunctions(unittest.TestCase):
                 DEMO_USER,
                 DEMO_DEST_COPY_PATH,
                 client_path)
-        
+
         self.assertEqual(os.path.isfile(server_path), True)
 
         u = server.User.users[DEMO_USER]
@@ -398,9 +398,9 @@ class TestSequenceFunctions(unittest.TestCase):
                 True
         )
 
-        
+
         client_path, server_path = set_tmp_params("prova")
-        data = { 
+        data = {
         "file_src": client_path,
         "file_dest": client_path
         }
@@ -409,14 +409,14 @@ class TestSequenceFunctions(unittest.TestCase):
 
 
     def test_actions_move(self):
-        DEMO_CLIENT.set_fake_usr(True)
-        data = { 
+        DEMO_CLIENT.set_fake_user(True)
+        data = {
         "file_src": "src",
         "file_dest": "dest"
         }
         rv = DEMO_CLIENT.call("post", "actions/move", data)
         self.assertEqual(rv.status_code, 401)
-        DEMO_CLIENT.set_fake_usr(False)
+        DEMO_CLIENT.set_fake_user(False)
         rv, client_path, server_path = transfer("mv", False)
         self.assertEqual(rv.status_code, 201)
 
@@ -466,11 +466,11 @@ class TestSequenceFunctions(unittest.TestCase):
 
         rv = client.call("get", "files/")
         self.assertEqual(rv.status_code, 200)
-        
+
         snapshot2 = json.loads(rv.data)
         self.assertGreater(snapshot2["timestamp"], snapshot1["timestamp"])
         self.assertEqual(len(snapshot2["snapshot"]), 1)
-        
+
         for s in snapshot2["snapshot"].values():
             self.assertEqual(len(s), 2)
 
@@ -489,7 +489,6 @@ class TestSequenceFunctions(unittest.TestCase):
         for s in snapshot3["snapshot"].values():
             self.assertEqual(len(s), 1)
 
-
     def test_user_class_init(self):
         # create a temporary directory and work on it
         working_directory = os.getcwd()
@@ -507,7 +506,7 @@ class TestSequenceFunctions(unittest.TestCase):
         previous_users = server.User.users
         server.User.user_class_init()
         self.assertEqual(server.User.users, previous_users)
-        
+
         # check 2: if there is a json, upload the users from it
         username = "UserName"
         tmp_dict = {
@@ -546,6 +545,6 @@ class TestSequenceFunctions(unittest.TestCase):
         shutil.rmtree(test_dir)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # make tests!
     unittest.main()
