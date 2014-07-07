@@ -271,7 +271,7 @@ class User(object):
             return False
 
         if server_path not in User.shared_resources:
-            User.shared_resources[server_path] = [owner, beneficiary]
+            User.shared_resources[server_path] = [self.username, beneficiary]
         else:
             User.shared_resources[server_path].append(beneficiary)
 
