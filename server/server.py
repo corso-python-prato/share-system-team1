@@ -211,6 +211,9 @@ class Resource(Resource):
     method_decorators = [auth.login_required]
 
 
+class UserApi(Resource):
+    pending = {}
+
 class Files(Resource):
     def post(self, cmd):
         """Create a user registration request
@@ -248,6 +251,7 @@ class Files(Resource):
                 json.dump(UserApi.pending, p_u)
             #insert send_mail()
             return "user added to pending users", HTTP_CREATED
+
     def put(self, cmd):
         """Activate a pending user
         Expected
@@ -271,6 +275,25 @@ class Files(Resource):
             with open(PENDING_USERS, "w") as p_u:
                 json.dump(UserApi.pending, p_u)
             return "user activated", HTTP_CREATED
+
+    def get(self, cmd=None):
+        if not cmd:
+            return self._get_user()
+        elif cmd == "delete":
+            return self._delete()
+        else:
+            return "wrong command", HTTP_BAD_REQUEST
+
+    def _get_user(self):
+        """GET user data
+        for now return {"user": <username>, "psw": <password>}"""
+        pass
+
+    @auth.login_required
+    def _delete(self):
+        """Delete the user who is making the request
+        """
+        pass
     def _diffs(self):
         """ Send a JSON with the timestamp of the last change in user
         directories and an md5 for each file
