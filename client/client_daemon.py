@@ -23,13 +23,19 @@ import asyncore
 SERVER_URL = "localhost"
 SERVER_PORT = "5000"
 API_PREFIX = "API/v1"
+CONFIG_DIR_PATH = ""
 
-def get_relpath(abs_path, dir_path):
+def get_relpath(abs_path):
     """form absolute path return relative path """
-    if abs_path.startswith(dir_path):
-        return abs_path[len(dir_path) + 1:]
+    if abs_path.startswith(CONFIG_DIR_PATH):
+        return abs_path[len(CONFIG_DIR_PATH) + 1:]
     return abs_path
 
+def get_abspath(rel_path):
+    """form relative path return relative absolute """
+    if not rel_path.startswith(CONFIG_DIR_PATH):
+        return "/".join([CONFIG_DIR_PATH, rel_path])
+    return rel_path
 
 class ServerCommunicator(object):
 
@@ -73,13 +79,9 @@ class ServerCommunicator(object):
             self.executer.syncronize_executer(command_list)
             self.snapshot_manager.save_timestamp(server_timestamp)
 
-    def get_abspath(self, dst_path):
-        """ from relative path return absolute path """
-        return os.path.join(self.dir_path, dst_path)
-
     def get_url_relpath(self, abs_path):
         """ form get_abspath return the relative path for url """
-        return get_relpath(abs_path, self.dir_path).replace(os.path.sep, '/')
+        return get_relpath(abs_path).replace(os.path.sep, '/')
 
     def download_file(self, dst_path):
         """ download a file from server"""
@@ -94,7 +96,7 @@ class ServerCommunicator(object):
         request = {"url": server_url}
         
         r = self._try_request(requests.get, success_log, error_log, **request)
-        local_path = self.get_abspath(dst_path)
+        local_path = get_abspath(dst_path)
         
         if r.status_code == 200:
             return local_path, r.text
@@ -242,8 +244,7 @@ class FileSystemOperator(object):
             create file
             when watchdog see the first event on this path ignore it
         """
-
-        self.add_event_to_ignore(self.server_com.get_abspath(path))
+        self.add_event_to_ignore(get_abspath(path))
         abs_path, content = self.server_com.download_file(path)
         if abs_path and content:
             try:
@@ -265,8 +266,8 @@ class FileSystemOperator(object):
             move the file from origin_path to dst_path
             when watchdog see the first event on this path ignore it
         """
-        self.add_event_to_ignore(self.server_com.get_abspath(origin_path))
-        self.add_event_to_ignore(self.server_com.get_abspath(dst_path))
+        self.add_event_to_ignore(get_abspath(origin_path))
+        self.add_event_to_ignore(get_abspath(dst_path))
         try:
             os.makedirs(os.path.split(dst_path)[0], 0755)
         except OSError:
@@ -282,9 +283,9 @@ class FileSystemOperator(object):
             copy the file from origin_path to dst_path
             when watchdog see the first event on this path ignore it
         """
-        self.add_event_to_ignore(self.server_com.get_abspath(dst_path))
-        origin_path = self.server_com.get_abspath(origin_path)
-        dst_path = self.server_com.get_abspath(dst_path)
+        self.add_event_to_ignore(get_abspath(dst_path))
+        origin_path = get_abspath(origin_path)
+        dst_path = get_abspath(dst_path)
         try:
             os.makedirs(os.path.split(dst_path)[0], 0755)
         except OSError:
@@ -299,9 +300,8 @@ class FileSystemOperator(object):
             delete file
             when watchdog see the first event on this path ignore it
         """
-
-        self.add_event_to_ignore(self.server_com.get_abspath(path))
-        path = self.server_com.get_abspath(path)
+        self.add_event_to_ignore(get_abspath(path))
+        path = get_abspath(path)
         if os.path.isdir(path):
             try:
                 shutil.rmtree(path)
@@ -483,7 +483,7 @@ class DirSnapshotManager(object):
             for f in files:
                 full_path = os.path.join(root, f)
                 file_md5 = self.file_snapMd5(full_path)
-                rel_path = get_relpath(full_path, self.dir_path)
+                rel_path = get_relpath(full_path)
                 if file_md5 in dir_snapshot:
                     dir_snapshot[file_md5].append(rel_path)
                 else:
@@ -673,7 +673,9 @@ class CommandExecuter(object):
 
 
 def main():
-    config , is_new = load_config()
+    config, is_new = load_config()
+    global CONFIG_DIR_PATH
+    CONFIG_DIR_PATH = config['dir_path']
     snapshot_manager = DirSnapshotManager(config['dir_path'], config['snapshot_file_path'])
 
     server_com = ServerCommunicator(
