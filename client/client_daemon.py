@@ -536,19 +536,19 @@ class DirSnapshotManager(object):
         new_client_paths, new_server_paths, equal_paths =  self.diff_snapshot_paths(self.local_full_snapshot , server_snapshot)
         command_list = []
         #NO internal conflict
-        if self.local_check():  #1)
-            if  not self.is_syncro(server_timestamp): #1) b.
-                for new_server_path in new_server_paths: #1) b 1
+        if self.local_check():  # 1)
+            if  not self.is_syncro(server_timestamp): # 1) b.
+                for new_server_path in new_server_paths: # 1) b 1
                     server_md5 = self.find_file_md5(server_snapshot, new_server_path)
-                    if not server_md5 in self.local_full_snapshot: #1) b 1 I
+                    if not server_md5 in self.local_full_snapshot: # 1) b 1 I
                         print "download:\t" + new_server_path
                         command_list.append({'local_download': [new_server_path]})
-                    else: #1) b 1 II
+                    else: # 1) b 1 II
                         print "copy or rename:\t" + new_server_path
                         src_local_path = self.local_full_snapshot[server_md5][0]
                         command_list.append({'local_copy': [src_local_path, new_server_path]})
                 
-                for equal_path in equal_paths: #1) b 2
+                for equal_path in equal_paths: # 1) b 2
                     client_md5 = self.find_file_md5(self.local_full_snapshot, equal_path, False)
                     if client_md5 != self.find_file_md5(server_snapshot, equal_path):
                         print "update download:\t" + equal_path
@@ -556,30 +556,30 @@ class DirSnapshotManager(object):
                     else:
                         print "no action:\t" + equal_path
                 
-                for new_client_path in new_client_paths: #1) b 3
+                for new_client_path in new_client_paths: # 1) b 3
                     print "remove local:\t" + new_client_path
                     command_list.append({'local_delete': [new_client_path]})
             else:
                 print "synchronized"
         #internal conflicts
         else: # 2)
-            if self.is_syncro(server_timestamp): #2) a
+            if self.is_syncro(server_timestamp): # 2) a
                 print "****\tpush all\t****" 
-                for new_server_path in new_server_paths: #2) a 1
+                for new_server_path in new_server_paths: # 2) a 1
                     print "remove:\t" + new_server_path
                     command_list.append({'remote_delete': [new_server_path]})
-                for equal_path in equal_paths: #2) a 2
+                for equal_path in equal_paths: # 2) a 2
                     if self.find_file_md5(self.local_full_snapshot, equal_path, False) != self.find_file_md5(server_snapshot, equal_path):
                         print "update:\t" + equal_path
                         command_list.append({'remote_update': [equal_path]})
                     else:
                         print "no action:\t" + equal_path
-                for new_client_path in new_client_paths: #2) a 3
+                for new_client_path in new_client_paths: # 2) a 3
                     print "upload:\t" + new_client_path
                     command_list.append({'remote_upload': [new_client_path]})
             
-            elif not self.is_syncro(server_timestamp): #2) b
-                for new_server_path in new_server_paths: #2) b 1
+            elif not self.is_syncro(server_timestamp): # 2) b
+                for new_server_path in new_server_paths: # 2) b 1
                     if not self.find_file_md5(server_snapshot, new_server_path) in self.local_full_snapshot: #2) b 1 I
                         if self.check_files_timestamp(server_snapshot, new_server_path):
                             print "delete remote:\t" + new_server_path
@@ -587,16 +587,16 @@ class DirSnapshotManager(object):
                         else:
                             print "download local:\t" + new_server_path
                             command_list.append({'local_download': [new_server_path]})
-                    else: #2) b 1 II
+                    else: # 2) b 1 II
                         print  "copy or rename:\t" + new_server_path
                         command_list.append({'local_copy': [new_server_path]})
                
-                for equal_path in equal_paths: #2) b 2
+                for equal_path in equal_paths: # 2) b 2
                     if self.find_file_md5(self.local_full_snapshot, equal_path, False) != self.find_file_md5(server_snapshot, equal_path):
-                        if self.check_files_timestamp(server_snapshot, equal_path): #2) b 2 I
+                        if self.check_files_timestamp(server_snapshot, equal_path): # 2) b 2 I
                             print "server push:\t" + equal_path
                             command_list.append({'remote_upload': [equal_path]})
-                        else:  #2) b 2 II 
+                        else:  # 2) b 2 II
                             print "create.conflicted:\t" + equal_path
                             conflicted_path = "{}/{}.conflicted".format(
                                 "/".join(equal_path.split('/')[:-1]),
@@ -606,7 +606,7 @@ class DirSnapshotManager(object):
                             command_list.append({'local_copyAndRename': [equal_path, conflicted_path]})
                     else:
                         print "no action:\t" + equal_path
-                for new_client_path in new_client_paths: #2) b 3
+                for new_client_path in new_client_paths: # 2) b 3
                     print "remove remote\t" + new_client_path 
                     command_list.append({'remote_delete': [new_client_path]})
 
