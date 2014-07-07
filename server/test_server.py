@@ -95,9 +95,10 @@ class EmailTest(unittest.TestCase):
 
 class TestClient(object):
 
-    def __init__(self, user, psw):
+    def __init__(self, user, psw, code=None):
         self.user = user
         self.psw = psw
+        self.code = code
         self.headers = {
             "Authorization": "Basic "
             + b64encode("{0}:{1}".format(user, psw))
@@ -127,6 +128,17 @@ class TestClient(object):
             psw: self.psw
         }
         return self.call("post", "/user/create" + self.user, data, auth=False)
+
+    def activate_demo_user(self, code, flag=False):
+        self.code = code
+        if flag:
+            user = "fake_user"
+            code = "fake_randcode 64"
+
+        data = {
+            "code": self.code
+        }
+        return self.call("put", "/user/activate/" + self.user, data, auth=False)
 
     def set_fake_user(self, flag=False):
         self.headers["Authorization"] = "".join((
