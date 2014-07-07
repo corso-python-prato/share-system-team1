@@ -238,9 +238,9 @@ class Resource_with_auth(Resource):
 class UserApi(Resource):
     pending = {}
 
-    def post(self, cmd):
+    def post(self, username):
         """Create a user registration request
-        Expected {"user": <username>, "psw": <password>}
+        Expected {"psw": <password>}
         save pending as
         {<username>:
             {
@@ -253,18 +253,17 @@ class UserApi(Resource):
             with open(PENDING_USERS, "r") as p_u:
                 UserApi.pending = json.load(p_u)
         try:
-            user = request.form["user"]
             psw = request.form["psw"]
         except KeyError:
             abort(HTTP_BAD_REQUEST)
 
-        if user in UserApi.pending:
+        if username in UserApi.pending:
             return "This user have arleady a pending request", HTTP_CONFLICT
-        elif user in User.users:
+        elif username in User.users:
             return "This user already exists", HTTP_CONFLICT
         else:
             psw_hash = sha256_crypt.encrypt(psw)
-            code = base64.b64encode(os.urandom(64))
+            code = os.urandom(16).encode('hex')
             UserApi.pending[user] = \
                 {"password": psw_hash,
                  "code": code,
@@ -272,16 +271,15 @@ class UserApi(Resource):
 
             with open(PENDING_USERS, "w") as p_u:
                 json.dump(UserApi.pending, p_u)
-            #insert send_mail()
+            content = code
+            send_mail(username, "RawBox activation code", content)
             return "user added to pending users", HTTP_CREATED
 
-    def put(self, cmd):
+    def put(self, username):
         """Activate a pending user
         Expected
-        {"user": <username>
-        "code": <activation code>}"""
+        {"code": <activation code>}"""
         try:
-            user = request.form["user"]
             code = request.form["code"]
         except KeyErcreateror:
             abort(HTTP_BAD_REQUEST)
@@ -290,19 +288,22 @@ class UserApi(Resource):
             with open(PENDING_USERS, "r") as p_u:
                 UserApi.pending = json.load(p_u)
 
-        if user in User.users:
+        if username in User.users:
             return "This user is already active", HTTP_CONFLICT
-        elif code == UserApi.pending[user]["code"]:
-            User(user, UserApi.pending[user]["password"])
-            del UserApi.pending[user]
-            with open(PENDING_USERS, "w") as p_u:
-                json.dump(UserApi.pending, p_u)
+        elif code == UserApi.pending[username]["code"]:
+            User(user, UserApi.pending[username]["password"])
+            del UserApi.pending[username]
+            if UserApi.pending:
+                with open(PENDING_USERS, "w") as p_u:
+                    json.dump(UserApi.pending, p_u)
+            else:
+                os.remove(PENDING_USERS)
             return "user activated", HTTP_CREATED
 
-    def get(self, cmd=None):
-        if not cmd:
+    def get(self, username=None):
+        if not username:
             return self._get_user()
-        elif cmd == "delete":
+        elif username == "delete":
             return self._delete()
         else:
             return "wrong command", HTTP_BAD_REQUEST
@@ -487,7 +488,7 @@ def main():
     User.user_class_init()
     app.run(host="0.0.0.0", debug=True)         # TODO: remove debug=True
 
-api.add_resource(UserApi, "{}user/<string:cmd>".format(_API_PREFIX),
+api.add_resource(UserApi, "{}user/<string:username>".format(_API_PREFIX),
     "{}/user/".format(_API_PREFIX))
 api.add_resource(Files, "{}files/<path:client_path>".format(_API_PREFIX),
     "{}files/".format(_API_PREFIX))
