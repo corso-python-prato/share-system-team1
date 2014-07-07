@@ -11,6 +11,7 @@ import json
 import os
 import shutil
 import hashlib
+import base64
 
 from server_errors import *
 
@@ -28,6 +29,7 @@ auth = HTTPBasicAuth()
 _API_PREFIX = "/API/v1/"
 USERS_DIRECTORIES = "user_dirs/"
 USERS_DATA = "user_data.json"
+PENDING_USERS = "pending.tmp"
 parser = reqparse.RequestParser()
 parser.add_argument("task", type=str)
 
@@ -213,7 +215,6 @@ class Resource_with_auth(Resource):
 class UserApi(Resource):
     pending = {}
 
-class Files(Resource):
     def post(self, cmd):
         """Create a user registration request
         Expected {"user": <username>, "psw": <password>}
@@ -293,6 +294,8 @@ class Files(Resource):
         """Delete the user who is making the request
         """
         pass
+
+
 class Files(Resource_with_auth):
     def _diffs(self):
         """ Send a JSON with the timestamp of the last change in user
