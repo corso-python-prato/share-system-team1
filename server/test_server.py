@@ -64,6 +64,34 @@ def set_tmp_params(father_dir):
     return client_path, server_path
 
 
+class EmailTest(unittest.TestCase):
+
+    MAIL_SERVER = 'smtp_address'
+    MAIL_PORT = 'smtp_port'
+    MAIL_USERNAME = 'smtp_username'
+    MAIL_PASSWORD = 'smtp_password'
+    TESTING = True
+
+    def setUp(self):
+        self.app = server.Flask(__name__)
+        self.app.config.from_object(__name__)
+        self.mail = server.Mail(self.app)
+
+    def test_mail(self):
+        receiver = "test@rawbox.com"
+        obj = "test"
+        content = "test content"
+        with self.mail.record_messages() as outbox:
+            server.send_mail(
+                receiver,
+                obj,
+                content
+            )
+            assert len(outbox) == 1
+            assert outbox[0].subject == "test"
+            assert outbox[0].body == "test content"
+
+
 class TestClient(object):
 
     def __init__(self, user, psw):

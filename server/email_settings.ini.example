@@ -1,0 +1,13 @@
+[email]
+
+# the address of the smtp server
+smtp_address = address
+
+# the port of the smtp server
+smtp_port = port
+
+# the username of the smtp server (if required)
+smtp_username = username
+
+# the password of the smtp server (if required)
+smtp_password = password
