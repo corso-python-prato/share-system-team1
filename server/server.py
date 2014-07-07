@@ -212,6 +212,42 @@ class Resource(Resource):
 
 
 class Files(Resource):
+    def post(self, cmd):
+        """Create a user registration request
+        Expected {"user": <username>, "psw": <password>}
+        save pending as
+        {<username>:
+            {
+            "psw": <password>,
+            "code": <activation_code>
+            "timestamp": <timestamp>
+            }
+        }"""
+        if (os.path.isfile(PENDING_USERS)):
+            with open(PENDING_USERS, "r") as p_u:
+                UserApi.pending = json.load(p_u)
+        try:
+            user = request.form["user"]
+            psw = request.form["psw"]
+        except KeyError:
+            abort(HTTP_BAD_REQUEST)
+
+        if user in UserApi.pending:
+            return "This user have arleady a pending request", HTTP_CONFLICT
+        elif user in User.users:
+            return "This user already exists", HTTP_CONFLICT
+        else:
+            psw_hash = sha256_crypt.encrypt(psw)
+            code = base64.b64encode(os.urandom(64))
+            UserApi.pending[user] = \
+                {"password": psw_hash,
+                 "code": code,
+                 "timestamp": time.time()}
+
+            with open(PENDING_USERS, "w") as p_u:
+                json.dump(UserApi.pending, p_u)
+            #insert send_mail()
+            return "user added to pending users", HTTP_CREATED
     def _diffs(self):
         """ Send a JSON with the timestamp of the last change in user
         directories and an md5 for each file
