@@ -44,18 +44,6 @@ PENDING_USERS = "pending.tmp"
 parser = reqparse.RequestParser()
 parser.add_argument("task", type=str)
 
-@app.route('/minfo')
-def send_mail(receiver, obj, content):
-    """ Send an email to the 'receiver', with the
-    specified object ('obj') and the specified 'content' """
-    msg = Message(
-        obj,
-        sender="RawBoxTeam",
-        recipients=[receiver])
-    msg.body = content
-    with app.app_context():
-        mail.send(msg)
-
 
 def to_md5(path, block_size=2**20):
     """ if path is a file, return a md5;
@@ -470,6 +458,19 @@ class Actions(Resource_with_auth):
             return Actions.commands[cmd](self)
         except KeyError:
             return abort(HTTP_NOT_FOUND)
+
+
+@app.route('/minfo')
+def send_mail(receiver, obj, content):
+    """ Send an email to the 'receiver', with the
+    specified object ('obj') and the specified 'content' """
+    msg = Message(
+        obj,
+        sender="RawBoxTeam",
+        recipients=[receiver])
+    msg.body = content
+    with app.app_context():
+        mail.send(msg)
 
 
 @auth.verify_password
