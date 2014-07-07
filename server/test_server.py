@@ -7,6 +7,8 @@ import json
 import unittest
 import shutil
 from base64 import b64encode
+import string
+import random
 
 TEST_DIRECTORY = "test_users_dirs/"
 TEST_USER_DATA = "test_user_data.json"
@@ -15,6 +17,8 @@ DEMO_USER = "i_am_an_user@rawbox.it"
 DEMO_PSW = "very_secret_password"
 DEMO_FAKE_USER = "fake_usr"
 DEMO_CLIENT = None
+
+SHARES_CLIENTS = []
 
 DEMO_FILE = "somefile.txt"
 DEMO_CONTENT = "Hello my dear,\nit's a beautiful day here in Compiobbi."
@@ -133,6 +137,16 @@ class TestSequenceFunctions(unittest.TestCase):
         DEMO_CLIENT.create_demo_user()
         with open(DEMO_FILE, "w") as f:
             f.write(DEMO_CONTENT)
+
+        # create some clients for share tests
+        for i in range(5):
+            random.seed(i)
+            user = "".join(random.sample(string.letters, 7))
+            random.seed(i+40)
+            psw = "".join(random.sample(string.letters, 10))
+            u = TestClient(user, psw)
+            u.create_demo_user()
+            SHARES_CLIENTS.append(u)
 
 
     @classmethod
