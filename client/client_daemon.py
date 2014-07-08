@@ -71,7 +71,7 @@ class ServerCommunicator(object):
             print "SERVER SAY: ", server_snapshot, server_timestamp ,"\n"
             command_list = self.snapshot_manager.syncronize_dispatcher(server_timestamp, server_snapshot)
             self.executer.syncronize_executer(command_list)
-            self.snapshot_manager.save_snapshot(server_timestamp)
+            self.snapshot_manager.save_timestamp(server_timestamp)
 
     def get_abspath(self, dst_path):
         """ from relative path return absolute path """
@@ -128,6 +128,7 @@ class ServerCommunicator(object):
         if r.status_code == 409:
             print "already exists"
         elif r.status_code == 201:
+            self.snapshot_manager.update_snapshot(action = "upload" , body = {"src_path": dst_path})
             self.snapshot_manager.save_snapshot(r.text)
 
     def delete_file(self, dst_path):
@@ -144,12 +145,13 @@ class ServerCommunicator(object):
         r = self._try_request(requests.post, success_log, error_log, **request)
         if r.status_code == 404:
             print "file not found on server"
-        elif r.status_code == 201:
+        elif r.status_code == 200:
+            self.snapshot_manager.update_snapshot(action = "delete" , body = {"src_path": dst_path})
             self.snapshot_manager.save_snapshot(r.text)
 
     def move_file(self, src_path, dst_path):
         """ send to server a message of file moved """
-        
+
         error_log = "ERROR move request " + dst_path
         success_log = "file moved! " + dst_path
 
@@ -166,6 +168,10 @@ class ServerCommunicator(object):
         if r.status_code == 404:
             print "file not found on server"
         elif r.status_code == 201:
+            self.snapshot_manager.update_snapshot(
+                action = "move",
+                body = {"src_path": src_path, "dst_path": dst_path}
+            )
             self.snapshot_manager.save_snapshot(r.text)
 
     def copy_file(self, src_path, dst_path):
@@ -186,6 +192,10 @@ class ServerCommunicator(object):
         if r.status_code == 404:
             print "file not found on server"
         elif r.status_code == 201:
+            self.snapshot_manager.update_snapshot(
+                action = "copy",
+                body = {"src_path": src_path, "dst_path": dst_path}
+            )
             self.snapshot_manager.save_snapshot(r.text)
 
     def create_user(self, username, password):
@@ -214,7 +224,8 @@ class ServerCommunicator(object):
 
 class FileSystemOperator(object):
 
-    def __init__(self, event_handler, server_com):
+    def __init__(self, event_handler, server_com, snapshot_manager):
+        self.snapshot_manager = snapshot_manager
         self.event_handler = event_handler
         self.server_com = server_com
 
@@ -461,11 +472,7 @@ class DirSnapshotManager(object):
 
     def global_md5(self, server_snapshot = False):
         """ calculate the global md5 of local_full_snapshot """
-        if server_snapshot:
-            snap_list = list(server_snapshot)
-        else:
-            snap_list = list(self.local_full_snapshot)
-        snap_list.sort()
+        snap_list = sorted(list(self.local_full_snapshot))
         return hashlib.md5(str(snap_list)).hexdigest()
 
     def instant_snapshot(self):
@@ -485,12 +492,41 @@ class DirSnapshotManager(object):
 
     def save_snapshot(self, timestamp):
         """ save snapshot to file """
-        self.local_full_snapshot = self.instant_snapshot()
         self.last_status['timestamp'] = timestamp
         self.last_status['snapshot'] = self.global_md5()
 
         with open(self.snapshot_file_path, 'w') as f:
             f.write(json.dumps({"timestamp": timestamp, "snapshot": self.last_status['snapshot']}))
+
+    def update_snapshot(self, action, body):
+        """ update local snapshot with a new md5 and relative path """
+        if action == "upload":
+            self.local_full_snapshot[self.file_snapMd5(body['src_path'])] = [get_relpath(body["src_path"], self.dir_path)]
+        elif action == "copy":
+            self.local_full_snapshot[self.file_snapMd5(body['src_path'])].append(dst_path)
+        elif action == "delete":
+            md5_file = self.local_full_snapshot[self.file_snapMd5(body['src_path'])]
+            for path in md5_file:
+                if path == get_relpath(src_path, self.dir_path):
+                    md5_file.remove(path)
+        elif action == "move":
+            md5_file = self.local_full_snapshot[self.file_snapMd5(body['src_path'])]
+            for path in md5_file:
+                if path == get_relpath(src_path, self.dir_path):
+                    md5_file.remove(path)
+                    md5_file.append(get_relpath(dst_path, self.dir_path))
+
+    def save_timestamp(self, timestamp):
+        """
+            save timestamp to file only if getfile
+            timestamp is < than the last timestamp saved
+        """
+        with open(self.snapshot_file_path, 'r') as f:
+            last_snap = json.load(f)
+        if float(last_snap['timestamp']) < float(timestamp):
+            last_snap['timestamp'] = timestamp
+            with open(self.snapshot_file_path, 'w') as f:
+                f.write(json.dumps(last_snap,f))
 
     def diff_snapshot_paths(self, snap_client, snap_server):
         """
@@ -569,7 +605,7 @@ class DirSnapshotManager(object):
                         print "no action:\t" + equal_path
                 for new_client_path in new_client_paths: #2) a 3
                     print "upload:\t" + new_client_path
-                    command_list.append({'remote_upload': [new_client_path]})
+                    command_list.append({'remote_upload': ["/".join([self.dir_path, new_client_path])]})
             
             elif not self.is_syncro(server_timestamp): #2) b
                 for new_server_path in new_server_paths: #2) b 1
@@ -625,7 +661,7 @@ class CommandExecuter(object):
                 command_type = command.split('_')[1]
                 if command_dest == 'remote':
                     {
-
+                        'upload': self.remote.upload_file,
                         'delete': self.remote.delete_file,
                     }.get(command_type,error)(*(command_row[command]))
                 else:
@@ -648,7 +684,7 @@ def main():
         snapshot_manager = snapshot_manager)
 
     event_handler = DirectoryEventHandler(server_com, snapshot_manager)
-    file_system_op = FileSystemOperator(event_handler, server_com)
+    file_system_op = FileSystemOperator(event_handler, server_com, snapshot_manager)
     executer = CommandExecuter(file_system_op, server_com)
     server_com.setExecuter(executer)
     observer = Observer()

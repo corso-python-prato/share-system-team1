@@ -176,7 +176,7 @@ def main():
     else:
         os.system('clear')
 
-    conf = load_config()
+    conf, is_new = load_config()
     comm_sock = CmdMessageClient(conf['cmd_host'], int(conf['cmd_port']))
     try:
         RawBoxCmd(RawBoxExecuter(comm_sock)).cmdloop()
