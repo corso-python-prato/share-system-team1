@@ -588,12 +588,17 @@ class TestSequenceFunctions(unittest.TestCase):
         f.close()
         self.assertEqual(rv.status_code, 201)
 
+        with open("{}{}/{}/{}".format(TEST_DIRECTORY, DEMO_USER, "path_to_share", DEMO_FILE)) as f:
+            uploaded_content = f.read()
+            self.assertEqual(DEMO_CONTENT, uploaded_content)
+
         # share the folder
         rv = DEMO_CLIENT.call("post", "shares/path_to_share/{}".format(
             SHARE_CLIENTS[2].user)
         )
         self.assertEqual(rv.status_code, 200)
-        # TODO: check if the file is really shared
+
+        self.assertEqual("shares/{}/path_to_share".format(DEMO_CLIENT.user) in server.User.users[SHARE_CLIENTS[2].user].paths, True)
 
 
     def test_can_write(self):
@@ -630,6 +635,22 @@ class TestSequenceFunctions(unittest.TestCase):
 
         data = { "path": "shares/{}/try_to_modify/".format(DEMO_CLIENT.user)+DEMO_FILE }
         rv = SHARE_CLIENTS[3].call("post", "actions/delete", data)       
+        self.assertEqual(rv.status_code, 403)
+
+        f = open(DEMO_FILE, "r")
+        data = { "file_content": f }
+        rv = SHARE_CLIENTS[3].call("post", "files/a_path/"+DEMO_FILE, data)
+        f.close()
+        self.assertEqual(rv.status_code, 201)
+
+        data = { 
+        "file_src": "a_path/"+DEMO_FILE,
+        "file_dest": "shares/{}/try_to_modify/".format(DEMO_CLIENT.user)
+        }
+        rv = SHARE_CLIENTS[3].call("post", "actions/copy", data)
+        self.assertEqual(rv.status_code, 403)
+
+        rv = SHARE_CLIENTS[3].call("post", "actions/move", data)
         self.assertEqual(rv.status_code, 403)
 
 
