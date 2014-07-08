@@ -442,7 +442,7 @@ class TestSequenceFunctions(unittest.TestCase):
         f.close()
         self.assertEqual(rv.status_code, 201)
 
-        rv = DEMO_CLIENT.call("post", "shares/{}/{}".format(DEMO_FILE, SHARES_CLIENTS[1].user))
+        rv = DEMO_CLIENT.call("post", "shares/{}/{}".format(DEMO_FILE, SHARE_CLIENTS[1].user))
         self.assertEqual(rv.status_code, 200)
 
         f = open(DEMO_FILE, "r")
@@ -451,40 +451,8 @@ class TestSequenceFunctions(unittest.TestCase):
         f.close()
         self.assertEqual(rv.status_code, 201)
 
-        rv = DEMO_CLIENT.call("post", "shares/path_to_share/{}".format(SHARES_CLIENTS[2].user))
+        rv = DEMO_CLIENT.call("post", "shares/path_to_share/{}".format(SHARE_CLIENTS[2].user))
         self.assertEqual(rv.status_code, 200)
-
-    def test_can_write(self):
-        DEMO_CLIENT.set_fake_usr(True)
-        rv = DEMO_CLIENT.call("post", "shares/dir/usr")
-        self.assertEqual(rv.status_code, 401)
-
-        DEMO_CLIENT.set_fake_usr(False)
-
-        f = open(DEMO_FILE, "r")
-        data = { "file_content": f }
-        rv = DEMO_CLIENT.call("post", "files/try_to_modify/"+DEMO_FILE, data)
-        f.close()
-        self.assertEqual(rv.status_code, 201)
-
-        rv = DEMO_CLIENT.call("post", "shares/try_to_modify/{}".format(SHARES_CLIENTS[3].user))
-        self.assertEqual(rv.status_code, 200)
-
-        f = open(DEMO_FILE, "r")
-        data = { "file_content": f }
-        rv = SHARES_CLIENTS[3].call("post", "files/shares/{}/try_to_modify/".format(DEMO_CLIENT.user)+DEMO_FILE, data)
-        f.close()
-        self.assertEqual(rv.status_code, 403)
-
-        f = open(DEMO_FILE, "r")
-        data = { "file_content": f }
-        rv = SHARES_CLIENTS[3].call("put", "files/shares/{}/try_to_modify/".format(DEMO_CLIENT.user)+DEMO_FILE, data)
-        f.close()
-        self.assertEqual(rv.status_code, 403)
-
-        data = { "path": "shares/{}/try_to_modify/".format(DEMO_CLIENT.user)+DEMO_FILE }
-        rv = SHARES_CLIENTS[3].call("post", "actions/delete" , data)
-        self.assertEqual(rv.status_code, 403)
         
 
     def test_files_differences(self):
@@ -637,25 +605,32 @@ class TestSequenceFunctions(unittest.TestCase):
 
         f = open(DEMO_FILE, "r")
         data = { "file_content": f }
-        rv = DEMO_CLIENT.call("post", "files/try_to_modify/" + DEMO_FILE, data)
+        rv = DEMO_CLIENT.call("post", "files/try_to_modify/"+DEMO_FILE, data)
         f.close()
         self.assertEqual(rv.status_code, 201)
 
-        rv = DEMO_CLIENT.call("post", "shares/try_to_modify/{}".format(
-            SHARE_CLIENTS[3].user)
-        )
+        rv = DEMO_CLIENT.call("post", "shares/try_to_modify/{}".format(SHARE_CLIENTS[3].user))
         self.assertEqual(rv.status_code, 200)
 
         f = open(DEMO_FILE, "r")
         data = { "file_content": f }
-        rv = SHARE_CLIENTS[3].call(
-            "post",
-            "shares/{}/try_to_modify/{}".format(
-                DEMO_CLIENT.user, DEMO_FILE
-            ), data
-        )
+        rv = SHARE_CLIENTS[3].call("post", "files/shares/{}/try_to_modify/".format(DEMO_CLIENT.user)+DEMO_FILE, data)
         f.close()
-        self.assertEqual(rv.status_code, 400)
+        self.assertEqual(rv.status_code, 403)
+
+        f = open(DEMO_FILE, "r")
+        data = { "file_content": f }
+        rv = SHARE_CLIENTS[3].call("put", "files/shares/{}/try_to_modify/".format(DEMO_CLIENT.user)+DEMO_FILE, data)
+        f.close()
+        self.assertEqual(rv.status_code, 403)
+
+        data = { "path": "shares/{}/try_to_modify/".format(DEMO_CLIENT.user)+DEMO_FILE }
+        rv = SHARE_CLIENTS[3].call("post", "actions/delete" , data)
+        self.assertEqual(rv.status_code, 403)
+
+        data = { "path": "shares/{}/try_to_modify/".format(DEMO_CLIENT.user)+DEMO_FILE }
+        rv = SHARE_CLIENTS[3].call("post", "actions/delete", data)       
+        self.assertEqual(rv.status_code, 403)
 
 
     def test_remove_beneficiary(self):
