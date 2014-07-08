@@ -381,7 +381,11 @@ class Files(Resource):
         Expected as POST data:
         { "file_content" : <file>} """
         u = User.get_user(auth.username())
-        if u.get_server_path(client_path):
+        server_path = u.get_server_path(client_path)
+
+        if server_path:
+            if not can_write(auth.username(), server_path):
+                abort(HTTP_FORBIDDEN)           
             return "A file of the same name already exists in the same path", \
                 HTTP_CONFLICT
 
@@ -402,12 +406,15 @@ class Actions(Resource):
     def _delete(self):
         """ Expected as POST data:
         { "path" : <path>} """
+        print "ciao"
         u = User.get_user(auth.username())
         client_path = request.form["path"]
         server_path = u.get_server_path(client_path)
         if not server_path:
             abort(HTTP_NOT_FOUND)
-
+            
+        if not can_write(auth.username(), server_path):
+                abort(HTTP_FORBIDDEN)
         os.remove(server_path)
 
         u.rm_path(client_path)
