@@ -255,8 +255,7 @@ class User(object):
         if directory_path != "":
             dir_list = directory_path.split("/")
 
-            while (len(dir_list) > 0) \
-                    and not (len(dir_list) == 2 and dir_list[0] == "shares"):
+            while (len(dir_list) > 0):
                 # stop if dir_list == [] or dir_list == ["shares", "some_user"]
                 client_subdir = os.path.join(*dir_list)
                 server_subdir = self.paths[client_subdir][0]
