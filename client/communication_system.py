@@ -54,6 +54,11 @@ class CommunicatorSock(asyncore.dispatcher_with_send):
 
     def handle_read(self):
         header = self.recv(struct.calcsize(LENGTH_FORMAT))
+        if header == '':
+            ''' disconnection detect:
+                recv return a void string for disconnection event
+            '''
+            return
         data_length = unpacking_message(header)
         data = self.recv(data_length)
         command = unpacking_message(data, '!{}s'.format(data_length))
