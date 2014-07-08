@@ -629,7 +629,7 @@ class TestSequenceFunctions(unittest.TestCase):
         self.assertEqual(rv.status_code, 403)
 
         data = { "path": "shares/{}/try_to_modify/".format(DEMO_CLIENT.user)+DEMO_FILE }
-        rv = DEMO_CLIENT.call("post", "actions/delete", data)       
+        rv = SHARE_CLIENTS[3].call("post", "actions/delete", data)       
         self.assertEqual(rv.status_code, 403)
 
 
