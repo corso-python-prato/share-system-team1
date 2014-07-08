@@ -395,7 +395,7 @@ class Files(Resource):
 
         if server_path:
             if not can_write(auth.username(), server_path):
-                abort(HTTP_FORBIDDEN)           
+                abort(HTTP_FORBIDDEN)
             return "A file of the same name already exists in the same path", \
                 HTTP_CONFLICT
 
@@ -421,7 +421,6 @@ class Actions(Resource):
         server_path = u.get_server_path(client_path)
         if not server_path:
             abort(HTTP_NOT_FOUND)
-            
         if not can_write(auth.username(), server_path):
                 abort(HTTP_FORBIDDEN)
         os.remove(server_path)
