@@ -45,6 +45,10 @@ auth.password = cGFzc3dvcmRTZWdyZXRpc3NpbWE=
 data = {'file_content': 'LOREM IPSIUM!', 'file_name': 'prova.txt'} http://127.0.0.1:5000/API/v1/files/test_mock/prova.txt
 
 
+#### SHARES ####
+curl -X POST localhost:5000/API/v1/shares/mypath/UserName -u UserName:password
+
+
 #### DEVELOPING SUITE ####
 # generate an html with the coverage of your code
 nosetests --with-coverage --cover-erase --cover-html --cover-package=server
