@@ -68,7 +68,7 @@ class User(object):
 
     users = {}
     shared_resources = {}
-    # { "shared_directory": [user1, user2, ...] }
+    # { "shared_server_path": [user1, user2, ...] }
 
     # CLASS AND STATIC METHODS
     @staticmethod
@@ -200,12 +200,21 @@ class User(object):
         file_meta = [server_path, md5, now]
         self.paths[client_path] = file_meta
 
-        if server_path in User.shared_resources:
-            for ben in User.shared_resources[server_path][1:]:
-                if not only_modify:
-                    ben_path = self.get_shared_path(server_path)
-                    ben.paths[ben_path] = file_meta
-                ben.timestamp = now
+        for share, beneficiaries in User.shared_resources.items():
+            if server_path.startswith(share):
+                # create the new client path
+                ben_path = server_path.replace(
+                    share,
+                    self.create_shared_path(share), 1
+                )
+
+                # upgrade every beneficiaries
+                for ben in beneficiaries[1:]:
+                    ben_user = User.users[ben]
+                    if not only_modify:
+                        ben_user.paths[ben_path] = file_meta
+                    ben_user.timestamp = now
+                break
 
         if update_user_data:
             self.timestamp = now
@@ -216,7 +225,7 @@ class User(object):
         if not server_path:
             return
 
-        shared_path = self.get_shared_path(server_path)
+        shared_path = self.create_shared_path(server_path)
         if not server_path in User.shared_resources:
             return
 
@@ -273,7 +282,7 @@ class User(object):
         else:
             User.shared_resources[server_path].append(beneficiary)
 
-        new_client_path = self.get_shared_path(server_path)
+        new_client_path = self.create_shared_path(server_path)
         ben.paths[new_client_path] = self.paths[client_path]
 
         if os.path.isdir(server_path):
@@ -288,7 +297,10 @@ class User(object):
         User.save_users()
         return True
 
-    def get_shared_path(self, server_path):
+    def create_shared_path(self, server_path):
+        '''
+        Called when a new resourece is shared.
+        '''
         path_parts = server_path.split("/")
         if len(path_parts) > 3:
             # shared resource has to be in owner's root
@@ -379,7 +391,11 @@ class Files(Resource):
         Expected as POST data:
         { "file_content" : <file>} """
         u = User.get_user(auth.username())
-        if u.get_server_path(client_path):
+        server_path = u.get_server_path(client_path)
+
+        if server_path:
+            if not can_write(auth.username(), server_path):
+                abort(HTTP_FORBIDDEN)           
             return "A file of the same name already exists in the same path", \
                 HTTP_CONFLICT
 
@@ -405,7 +421,9 @@ class Actions(Resource):
         server_path = u.get_server_path(client_path)
         if not server_path:
             abort(HTTP_NOT_FOUND)
-
+            
+        if not can_write(auth.username(), server_path):
+                abort(HTTP_FORBIDDEN)
         os.remove(server_path)
 
         u.rm_path(client_path)
@@ -484,7 +502,7 @@ class Shares(Resource):
                 # owner is the first element in the list
                 del User.shared_resources[server_path]
 
-        ben_path = owner.get_shared_path(server_path)
+        ben_path = owner.create_shared_path(server_path)
         ben.rm_path(ben_path)
         if os.path.isdir(server_path):
             # remove every path from beneficiary's paths

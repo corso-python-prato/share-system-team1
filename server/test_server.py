@@ -429,6 +429,31 @@ class TestSequenceFunctions(unittest.TestCase):
         rv, client_path, server_path = transfer("mv", False, False)
         self.assertEqual(rv.status_code, 404)
 
+    def test_add_share(self):
+        DEMO_CLIENT.set_fake_usr(True)
+        rv = DEMO_CLIENT.call("post", "shares/dir/usr")
+        self.assertEqual(rv.status_code, 401)
+
+        DEMO_CLIENT.set_fake_usr(False)
+
+        f = open(DEMO_FILE, "r")
+        data = { "file_content": f }
+        rv = DEMO_CLIENT.call("post", "files/"+DEMO_FILE, data)
+        f.close()
+        self.assertEqual(rv.status_code, 201)
+
+        rv = DEMO_CLIENT.call("post", "shares/{}/{}".format(DEMO_FILE, SHARE_CLIENTS[1].user))
+        self.assertEqual(rv.status_code, 200)
+
+        f = open(DEMO_FILE, "r")
+        data = { "file_content": f }
+        rv = DEMO_CLIENT.call("post", "files/path_to_share/"+DEMO_FILE, data)
+        f.close()
+        self.assertEqual(rv.status_code, 201)
+
+        rv = DEMO_CLIENT.call("post", "shares/path_to_share/{}".format(SHARE_CLIENTS[2].user))
+        self.assertEqual(rv.status_code, 200)
+        
 
     def test_files_differences(self):
         client = TestClient(
@@ -556,16 +581,19 @@ class TestSequenceFunctions(unittest.TestCase):
         )
         self.assertEqual(rv.status_code, 200)
 
+        # upload a file
         f = open(DEMO_FILE, "r")
         data = { "file_content": f }
         rv = DEMO_CLIENT.call("post", "files/path_to_share/"+DEMO_FILE, data)
         f.close()
         self.assertEqual(rv.status_code, 201)
 
+        # share the folder
         rv = DEMO_CLIENT.call("post", "shares/path_to_share/{}".format(
             SHARE_CLIENTS[2].user)
         )
         self.assertEqual(rv.status_code, 200)
+        # TODO: check if the file is really shared
 
 
     def test_can_write(self):
@@ -577,25 +605,32 @@ class TestSequenceFunctions(unittest.TestCase):
 
         f = open(DEMO_FILE, "r")
         data = { "file_content": f }
-        rv = DEMO_CLIENT.call("post", "files/try_to_modify/" + DEMO_FILE, data)
+        rv = DEMO_CLIENT.call("post", "files/try_to_modify/"+DEMO_FILE, data)
         f.close()
         self.assertEqual(rv.status_code, 201)
 
-        rv = DEMO_CLIENT.call("post", "shares/try_to_modify/{}".format(
-            SHARE_CLIENTS[3].user)
-        )
+        rv = DEMO_CLIENT.call("post", "shares/try_to_modify/{}".format(SHARE_CLIENTS[3].user))
         self.assertEqual(rv.status_code, 200)
 
         f = open(DEMO_FILE, "r")
         data = { "file_content": f }
-        rv = SHARE_CLIENTS[3].call(
-            "post",
-            "shares/{}/try_to_modify/{}".format(
-                DEMO_CLIENT.user, DEMO_FILE
-            ), data
-        )
+        rv = SHARE_CLIENTS[3].call("post", "files/shares/{}/try_to_modify/".format(DEMO_CLIENT.user)+DEMO_FILE, data)
         f.close()
-        self.assertEqual(rv.status_code, 400)
+        self.assertEqual(rv.status_code, 403)
+
+        f = open(DEMO_FILE, "r")
+        data = { "file_content": f }
+        rv = SHARE_CLIENTS[3].call("put", "files/shares/{}/try_to_modify/".format(DEMO_CLIENT.user)+DEMO_FILE, data)
+        f.close()
+        self.assertEqual(rv.status_code, 403)
+
+        data = { "path": "shares/{}/try_to_modify/".format(DEMO_CLIENT.user)+DEMO_FILE }
+        rv = SHARE_CLIENTS[3].call("post", "actions/delete" , data)
+        self.assertEqual(rv.status_code, 403)
+
+        data = { "path": "shares/{}/try_to_modify/".format(DEMO_CLIENT.user)+DEMO_FILE }
+        rv = SHARE_CLIENTS[3].call("post", "actions/delete", data)       
+        self.assertEqual(rv.status_code, 403)
 
 
     def test_remove_beneficiary(self):
@@ -657,6 +692,67 @@ class TestSequenceFunctions(unittest.TestCase):
         )
         self.assertEqual(received.status_code, 200)
         self.assertNotIn(server_path, server.User.shared_resources)
+
+
+    def test_modifications_in_shared_directory(self):
+        owner = SHARE_CLIENTS[3].user
+        beneficiary = SHARE_CLIENTS[4].user
+        subdir = "pappalabaisa"
+
+        # upload a file
+        with open(DEMO_FILE, "r") as f:
+            data = { "file_content": f }
+            rv = SHARE_CLIENTS[3].call(
+                "post",
+                "".join(["files/", subdir, "/", DEMO_FILE]),
+                data
+            )
+        self.assertEqual(rv.status_code, 201)
+
+        # share subdir with beneficiary
+        rv = SHARE_CLIENTS[3].call(
+            "post",
+            "shares/{}/{}".format(subdir, beneficiary)
+        )
+        self.assertEqual(rv.status_code, 200)
+
+        # update the shared file and check if it's ok
+        owner_timestamp = server.User.users[owner].timestamp
+        with open("second_file", "w") as f:
+            f.write("ps, scordavo di dirti ciao.")
+        with open("second_file", "r") as f:
+            data = { "file_content": f }
+            rv = SHARE_CLIENTS[3].call(
+                "put",
+                "".join(["files/", subdir, "/", DEMO_FILE]),
+                data
+            )
+        self.assertEqual(rv.status_code, 201)
+        os.remove("second_file")
+
+        owner_new_timestamp = server.User.users[owner].timestamp
+        self.assertGreater(owner_new_timestamp, owner_timestamp)
+
+        ben_timestamp = server.User.users[beneficiary].timestamp
+        self.assertEqual(owner_new_timestamp, ben_timestamp)
+
+        # upload a new file in shared directory and check
+        with open(DEMO_FILE, "r") as f:
+            data = { "file_content": f }
+            rv = SHARE_CLIENTS[3].call(
+                "post",
+                "".join(["files/", subdir, "/", "new_file"]),
+                data
+            )
+        self.assertEqual(rv.status_code, 201)
+        self.assertEqual(
+            server.User.users[owner].timestamp,
+            server.User.users[beneficiary].timestamp
+        )
+        self.assertIn(
+            "/".join(["shares", owner, subdir, "new_file"]),
+            server.User.users[beneficiary].paths
+        )
 
 
 if __name__ == '__main__':
