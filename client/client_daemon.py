@@ -197,6 +197,7 @@ class ServerCommunicator(object):
 
     def create_user(self, param):
 
+        self.msg["details"] = []
         error_log = "User creation error"
         success_log = "user created!"
 
@@ -211,14 +212,14 @@ class ServerCommunicator(object):
         }
 
         response = self._try_request(
-            requests.post, success_log, error_log, **request).status_code
+            requests.post, success_log, error_log, **request)
 
-        self.msg["result"] = response
+        self.msg["result"] = response.status_code
         
-        if response == 201:
+        if response.status_code == 201:
             self.msg["details"].append(
                 "Check your email for the activation code")
-        elif response == 409:
+        elif response.status_code == 409:
             self.msg["details"].append("User already exists")
         else:
             self.msg["details"].append("Bad request")
@@ -227,6 +228,7 @@ class ServerCommunicator(object):
 
     def get_user(self, param):
 
+        self.msg["details"] = []
         error_log = "cannot get user data"
         success_log = "user data retrived"
 
@@ -242,13 +244,13 @@ class ServerCommunicator(object):
 
         response = self._try_request(
             requests.get, success_log, error_log, **request)
-        print response.text
+        
         self.msg["result"] = response.status_code
         self.msg["details"].append(eval(response.text))
 
-        if response == 200:
+        if response.status_code == 200:
             self.msg["details"].append("User data retrived")
-        elif response == 404:
+        elif response.status_code == 404:
             self.msg["details"].append("User not found")
         else:
             self.msg["details"].append("Bad request")
@@ -257,6 +259,7 @@ class ServerCommunicator(object):
 
     def delete_user(self, param):
 
+        self.msg["details"] = []
         error_log = "Cannot delete user"
         success_log = "Usere deleted"
 
@@ -271,13 +274,13 @@ class ServerCommunicator(object):
         }
 
         response = self._try_request(
-            requests.get, success_log, error_log, **request).status_code
+            requests.get, success_log, error_log, **request)
 
-        self.msg["result"] = response
+        self.msg["result"] = response.status_code
 
-        if response == 200:
+        if response.status_code == 200:
             self.msg["details"].append("User deleted")
-        elif response == 404:
+        elif response.status_code == 404:
             self.msg["details"].append("User not found")
         else:
             self.msg["details"].append("Bad request")
@@ -285,11 +288,12 @@ class ServerCommunicator(object):
         return self.msg
 
     def activate_user(self, param):
-
+        
+        self.msg["details"] = []
         error_log = "Cannot activate user"
         success_log = "User activated"
 
-        server_url = "{}/user/activate"
+        server_url = "{}/user/activate".format(self.server_url)
 
         request = {
             "url": server_url,
@@ -300,13 +304,13 @@ class ServerCommunicator(object):
         }
 
         response = self._try_request(
-            requests.get, success_log, error_log, **request).status_code
+            requests.put, success_log, error_log, **request)
 
-        self.msg["result"] = response
+        self.msg["result"] = response.status_code
 
-        if response == 200:
+        if response.status_code == 200:
             self.msg["details"].append("User created")
-        elif response == 404:
+        elif response.status_code == 404:
             self.msg["details"].append("User not found")
         else:
             self.msg["details"].append("Bad request")
