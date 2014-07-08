@@ -719,7 +719,48 @@ class TestSequenceFunctions(unittest.TestCase):
         self.assertNotIn(server_path, server.User.shared_resources)
 
 
-    def test_modifications_in_shared_directory(self):
+    def test_remove_share(self):
+        owner = SHARE_CLIENTS[0].user
+        user1 = SHARE_CLIENTS[1].user
+        user2 = SHARE_CLIENTS[2].user
+
+        # upload a file
+        with open(DEMO_FILE, "r") as f:
+            data = { "file_content": f }
+            rv = SHARE_CLIENTS[0].call("post", "files/shared_file", data)
+
+        # test if aborts when the resource is not shared
+        received = SHARE_CLIENTS[0].call(
+            "delete",
+            "/".join(["shares", "shared_file"])
+        )
+        self.assertEqual(received.status_code, 400)
+
+        # share a file with a couple of users
+        for usern in [user1, user2]:
+            received = SHARE_CLIENTS[0].call(
+                "post",
+                "/".join(["shares", "shared_file", usern])
+            )
+            self.assertEqual(received.status_code, 200)
+
+        # remove the share on the resource and check
+        received = SHARE_CLIENTS[0].call(
+                "delete",
+                "/".join(["shares", "shared_file"])
+        )
+        self.assertEqual(received.status_code, 200)
+        self.assertNotIn(
+            os.path.join(
+                server.USERS_DIRECTORIES,
+                owner,
+                "shared_file"
+            ),
+            server.User.shared_resources
+        )
+
+
+    def test_changes_in_shared_directory(self):
         owner = SHARE_CLIENTS[3].user
         beneficiary = SHARE_CLIENTS[4].user
         subdir = "pappalabaisa"
