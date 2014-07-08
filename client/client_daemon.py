@@ -39,10 +39,9 @@ def get_abspath(rel_path):
 
 class ServerCommunicator(object):
 
-    def __init__(self, server_url, username, password, dir_path, snapshot_manager):
+    def __init__(self, server_url, username, password, snapshot_manager):
         self.auth = HTTPBasicAuth(username, password)
         self.server_url = server_url
-        self.dir_path = dir_path
         self.snapshot_manager = snapshot_manager
 
     def setExecuter(self, executer):
@@ -434,9 +433,8 @@ class DirectoryEventHandler(FileSystemEventHandler):
 
 
 class DirSnapshotManager(object):
-    def __init__(self, dir_path, snapshot_file_path):
+    def __init__(self, snapshot_file_path):
         """ load the last global snapshot and create a instant_snapshot of local directory"""
-        self.dir_path = dir_path
         self.snapshot_file_path = snapshot_file_path
         self.last_status = self._load_status()
         self.local_full_snapshot = self.instant_snapshot()
@@ -479,7 +477,7 @@ class DirSnapshotManager(object):
         """ create a snapshot of directory """
 
         dir_snapshot = {}
-        for root, dirs, files in os.walk(self.dir_path):
+        for root, dirs, files in os.walk(CONFIG_DIR_PATH):
             for f in files:
                 full_path = os.path.join(root, f)
                 file_md5 = self.file_snapMd5(full_path)
@@ -501,20 +499,20 @@ class DirSnapshotManager(object):
     def update_snapshot(self, action, body):
         """ update local snapshot with a new md5 and relative path """
         if action == "upload":
-            self.local_full_snapshot[self.file_snapMd5(body['src_path'])] = [get_relpath(body["src_path"], self.dir_path)]
+            self.local_full_snapshot[self.file_snapMd5(body['src_path'])] = [get_relpath(body["src_path"])]
         elif action == "copy":
             self.local_full_snapshot[self.file_snapMd5(body['src_path'])].append(dst_path)
         elif action == "delete":
             md5_file = self.local_full_snapshot[self.file_snapMd5(body['src_path'])]
             for path in md5_file:
-                if path == get_relpath(src_path, self.dir_path):
+                if path == get_relpath(src_path):
                     md5_file.remove(path)
         elif action == "move":
             md5_file = self.local_full_snapshot[self.file_snapMd5(body['src_path'])]
             for path in md5_file:
-                if path == get_relpath(src_path, self.dir_path):
+                if path == get_relpath(src_path):
                     md5_file.remove(path)
-                    md5_file.append(get_relpath(dst_path, self.dir_path))
+                    md5_file.append(get_relpath(dst_path))
 
     def save_timestamp(self, timestamp):
         """
@@ -605,7 +603,7 @@ class DirSnapshotManager(object):
                         print "no action:\t" + equal_path
                 for new_client_path in new_client_paths: # 2) a 3
                     print "upload:\t" + new_client_path
-                    command_list.append({'remote_upload': ["/".join([self.dir_path, new_client_path])]})
+                    command_list.append({'remote_upload': ["/".join([CONFIG_DIR_PATH, new_client_path])]})
             
             elif not self.is_syncro(server_timestamp): # 2) b
                 for new_server_path in new_server_paths: # 2) b 1
