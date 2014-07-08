@@ -782,7 +782,7 @@ class TestSequenceFunctions(unittest.TestCase):
             data = { "file_content": f }
             rv = SHARE_CLIENTS[3].call(
                 "post",
-                "".join(["files/", subdir, "/", "new_file"]),
+                "".join(["files/", subdir, "/other_subdir/new_file"]),
                 data
             )
         self.assertEqual(rv.status_code, 201)
@@ -791,7 +791,25 @@ class TestSequenceFunctions(unittest.TestCase):
             server.User.users[beneficiary].timestamp
         )
         self.assertIn(
-            "/".join(["shares", owner, subdir, "new_file"]),
+            "/".join(["shares", owner, subdir, "other_subdir/new_file"]),
+            server.User.users[beneficiary].paths
+        )
+
+        # remove a file and check
+        data = { "path": "".join([subdir, "/other_subdir/new_file"]) }
+        rv = SHARE_CLIENTS[3].call("post", "actions/delete", data)
+        self.assertEqual(rv.status_code, 200)
+
+        self.assertEqual(
+            server.User.users[owner].timestamp,
+            server.User.users[beneficiary].timestamp
+        )
+        self.assertNotIn(
+            "/".join(["shares", owner, subdir, "other_subdir"]),
+            server.User.users[beneficiary].paths
+        )
+        self.assertNotIn(
+            "/".join(["shares", owner, subdir, "other_subdir/new_file"]),
             server.User.users[beneficiary].paths
         )
 

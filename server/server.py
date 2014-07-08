@@ -274,7 +274,6 @@ class User(object):
                         for ben_name in User.shared_resources[share][1:]:
                             ben_user = User.get_user(ben_name)
                             del ben_user.paths[ben_path]
-                            ben_user.timestamp = now
                     # step 3: remove from paths
                     del self.paths[client_subdir]
                     dir_list.pop()
