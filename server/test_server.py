@@ -429,7 +429,6 @@ class TestSequenceFunctions(unittest.TestCase):
         rv, client_path, server_path = transfer("mv", False, False)
         self.assertEqual(rv.status_code, 404)
 
-<<<<<<< HEAD
     def test_add_share(self):
         DEMO_CLIENT.set_fake_usr(True)
         rv = DEMO_CLIENT.call("post", "shares/dir/usr")
@@ -487,8 +486,6 @@ class TestSequenceFunctions(unittest.TestCase):
         rv = SHARES_CLIENTS[3].call("post", "actions/delete" , data)
         self.assertEqual(rv.status_code, 403)
         
-=======
->>>>>>> 657d4f1a3647931424fd7b03e42899d6c784ef58
 
     def test_files_differences(self):
         client = TestClient(
@@ -781,13 +778,6 @@ class TestSequenceFunctions(unittest.TestCase):
             "/".join(["shares", owner, subdir, "new_file"]),
             server.User.users[beneficiary].paths
         )
-
-
-        
-
-
-
-
 
 
 if __name__ == '__main__':
