@@ -674,13 +674,12 @@ def main():
     config, is_new = load_config()
     global CONFIG_DIR_PATH
     CONFIG_DIR_PATH = config['dir_path']
-    snapshot_manager = DirSnapshotManager(config['dir_path'], config['snapshot_file_path'])
+    snapshot_manager = DirSnapshotManager(config['snapshot_file_path'])
 
     server_com = ServerCommunicator(
         server_url=config['server_url'],
         username=config['username'],
         password=config['password'],
-        dir_path=config['dir_path'],
         snapshot_manager = snapshot_manager)
 
     event_handler = DirectoryEventHandler(server_com, snapshot_manager)
