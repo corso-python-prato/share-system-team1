@@ -6,7 +6,6 @@ from flask.ext.httpauth import HTTPBasicAuth
 from flask.ext.restful import reqparse, abort, Api, Resource
 from passlib.hash import sha256_crypt
 import time
-import datetime
 import json
 import os
 import shutil
@@ -34,7 +33,7 @@ parser = reqparse.RequestParser()
 parser.add_argument("task", type=str)
 
 
-def to_md5(path, block_size=2**20):
+def to_md5(path, block_size=2 ** 20):
     """ if path is a file, return a md5;
     if path is a directory, return False """
     if os.path.isdir(path):
@@ -55,7 +54,7 @@ def can_write(username, server_path):
     (the server_path begins with his name)
     '''
     if re.match("^{}{}(\/.)?".format(USERS_DIRECTORIES, username),
-            server_path):
+                server_path):
         return True
     else:
         return False
@@ -68,7 +67,6 @@ class User(object):
     server_path is for shared directories management """
 
     users = {}
-    
     shared_resources = {}
     # { "shared_server_path": [user1, user2, ...] }
 
@@ -195,8 +193,8 @@ class User(object):
 
         return os.path.join(new_server_path, filename)
 
-    def push_path(self, client_path, server_path,
-            update_user_data=True, only_modify=False):
+    def push_path(self, client_path, server_path, update_user_data=True,
+                  only_modify=False):
         md5 = to_md5(server_path)
         now = time.time()
         file_meta = [server_path, md5, now]
@@ -234,7 +232,6 @@ class User(object):
         for ben in User.shared_resources[server_path][1:]:
             del ben.paths[shared_path]
             ben.timestamp = now
-
 
     def rm_path(self, client_path):
         '''
@@ -289,7 +286,7 @@ class User(object):
         ben.paths[new_client_path] = self.paths[client_path]
 
         if os.path.isdir(server_path):
-            # add to the beneficiary's paths every file and folder in the 
+            # add to the beneficiary's paths every file and folder in the
             # shared folder
             for path, value in self.paths.items():
                 if path.startswith(client_path):
@@ -398,7 +395,7 @@ class Files(Resource):
 
         if server_path:
             if not can_write(auth.username(), server_path):
-                abort(HTTP_FORBIDDEN)           
+                abort(HTTP_FORBIDDEN)
             return "A file of the same name already exists in the same path", \
                 HTTP_CONFLICT
 
@@ -424,7 +421,6 @@ class Actions(Resource):
         server_path = u.get_server_path(client_path)
         if not server_path:
             abort(HTTP_NOT_FOUND)
-            
         if not can_write(auth.username(), server_path):
                 abort(HTTP_FORBIDDEN)
         os.remove(server_path)
@@ -494,7 +490,7 @@ class Shares(Resource):
             return HTTP_OK          # TODO: timestamp is needed here?
 
     def _remove_beneficiary(self, owner, server_path, client_path,
-            beneficiary):
+                            beneficiary):
         try:
             ben = User.users[beneficiary]
             User.shared_resources[server_path].remove(beneficiary)
@@ -507,7 +503,6 @@ class Shares(Resource):
 
         ben_path = owner.create_shared_path(server_path)
         ben.rm_path(ben_path)
-        
         if os.path.isdir(server_path):
             # remove every path from beneficiary's paths
             for path, value in owner.paths.items():
@@ -534,11 +529,13 @@ class Shares(Resource):
         server_path = owner.get_server_path(client_path)
         if not server_path:
             return "The specified file or directory is not present", \
-                    HTTP_BAD_REQUEST
-
+                HTTP_BAD_REQUEST
         if beneficiary:
-            return self._remove_beneficiary(owner, server_path, client_path,
-                    beneficiary)
+            return self._remove_beneficiary(
+                owner,
+                server_path,
+                client_path,
+                beneficiary)
         else:
             return self._remove_share(owner, server_path, client_path)
 
@@ -577,7 +574,9 @@ def main():
     app.run(host="0.0.0.0", debug=True)         # TODO: remove debug=True
 
 
-api.add_resource(Files, "{}files/<path:client_path>".format(_API_PREFIX),
+api.add_resource(
+    Files,
+    "{}files/<path:client_path>".format(_API_PREFIX),
     "{}files/".format(_API_PREFIX))
 api.add_resource(Actions, "{}actions/<string:cmd>".format(_API_PREFIX))
 api.add_resource(
