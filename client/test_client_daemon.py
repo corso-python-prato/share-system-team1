@@ -84,7 +84,11 @@ class ServerCommunicatorTest(unittest.TestCase):
         httpretty.register_uri(
             httpretty.POST,
             'http://127.0.0.1:5000/API/v1/user/create',
-            status=201)
+            responses=[ 
+                httpretty.Response(body='{}', status=201),
+                httpretty.Response(body='{}', status=409),
+                httpretty.Response(body='{"something wrong"}', status=400)
+            ])
         httpretty.register_uri(httpretty.GET,
             'http://127.0.0.1:5000/API/v1/files',
             body=str({
@@ -98,6 +102,24 @@ class ServerCommunicatorTest(unittest.TestCase):
                 'a8f5f167f44f4964e6c998eee827110b': [{"path":  u'nuova path server con md5 nuovo e timestamp minore',"timestamp":123122}]}),
                 content_type="application/json"
         )
+        httpretty.register_uri(httpretty.GET, 'http://127.0.0.1:5000/API/v1/user', 
+            responses=[ 
+                httpretty.Response(body='{"user":"usernameFarlocco","psw":"passwordSegretissima"}', status=200),
+                httpretty.Response(body='{}', status=404),
+                httpretty.Response(body='{"something wrong"}', status=400)
+            ])
+        httpretty.register_uri(httpretty.GET, 'http://127.0.0.1:5000/API/v1/user/delete', 
+            responses=[ 
+                httpretty.Response(body='{}',status=200),
+                httpretty.Response(body='{}',status=404),
+                httpretty.Response(body='{}',status=400)
+            ])
+        httpretty.register_uri(httpretty.PUT, 'http://127.0.0.1:5000/API/v1/user/activate', 
+            responses=[ 
+                httpretty.Response(body='{}',status=200),
+                httpretty.Response(body='{}',status=404),
+                httpretty.Response(body='{}',status=400)
+            ])
 
         self.dir = "/tmp/home/test_rawbox/folder"
         self.another_dir = "/tmp/home/test_rawbox/folder/other_folder"
@@ -228,38 +250,50 @@ class ServerCommunicatorTest(unittest.TestCase):
         self.assertEqual(method, 'POST')
 
     def test_create_user(self):
-        test_username = "test_username"
-        test_password = "test_password"
-        mock_auth_user = ":".join([self.username, self.password])
-        self.server_comm.create_user({"user":test_username, "psw":test_password})
-        encoded = httpretty.last_request().headers['authorization'].split()[1]
-        authorization_decoded = base64.decodestring(encoded)
-        path = httpretty.last_request().path
-        host = httpretty.last_request().headers['host']
-        method = httpretty.last_request().method
+        msg1 = self.server_comm.create_user({"user":self.username, "psw":self.password})
+        self.assertEqual(msg1["result"], 201)
+        self.assertEqual(msg1["details"][0],"Check your email for the activation code")
+        msg2 = self.server_comm.create_user({"user":self.username, "psw":self.password})
+        self.assertEqual(msg2["result"], 409)
+        self.assertEqual(msg2["details"][0], "User already exists")
+        msg3 = self.server_comm.create_user({"user":self.username, "psw":self.password})
+        self.assertEqual(msg3["result"], 400)
+        self.assertEqual(msg3["details"][0], "Bad request")
 
-        #check if authorization are equal
-        self.assertEqual(authorization_decoded, mock_auth_user)
-        #check if url and host are equal
-        self.assertEqual(path, '/API/v1/user/create')
-        self.assertEqual(host, '127.0.0.1:5000')
-        #check if methods are equal
-        self.assertEqual(method, 'POST')
-
-    def test_get_user(self):
-        httpretty.register_uri(httpretty.GET, 'http://127.0.0.1:5000/API/v1/user', 
-            responses=[ 
-                httpretty.Response(body='{"user":"usernameFarlocco","psw":"passwordSegretissima"}', status=200),
-                httpretty.Response(body='{"user":"usernameFarlocco","psw":"passwordSegretissima"}', status=404),
-                httpretty.Response(body='{"user":"usernameFarlocco","psw":"passwordSegretissima"}', status=400)
-            ])
+    def test_get_user(self): 
         msg1 = self.server_comm.get_user({"user":self.username, "psw":self.password})
         self.assertEqual(msg1["result"], 200)
+        self.assertEqual(msg1["details"][0],{"user":"usernameFarlocco","psw":"passwordSegretissima"})
         msg2 = self.server_comm.get_user({"user":self.username, "psw":self.password})
         self.assertEqual(msg2["result"], 404)
+        self.assertEqual(msg2["details"][0],{})
         msg3 = self.server_comm.get_user({"user":self.username, "psw":self.password})
         self.assertEqual(msg3["result"], 400)
-       
+        self.assertEqual(msg3["details"][0],{"something wrong"})
+
+    def test_delete_user(self):
+        msg1 = self.server_comm.delete_user({"user":self.username, "psw":self.password})
+        self.assertEqual(msg1["result"], 200)
+        self.assertEqual(msg1["details"][0], "User deleted")
+        msg2 = self.server_comm.delete_user({"user":self.username, "psw":self.password})
+        self.assertEqual(msg2["result"], 404)
+        self.assertEqual(msg2["details"][0], "User not found")
+        msg3 = self.server_comm.delete_user({"user":self.username, "psw":self.password})
+        self.assertEqual(msg3["result"], 400)
+        self.assertEqual(msg3["details"][0], "Bad request")
+
+    def test_activate_user(self):
+        code = "qwerty12345"
+        msg1 = self.server_comm.activate_user({"user":self.username, "code":code})
+        self.assertEqual(msg1["result"], 200)
+        self.assertEqual(msg1["details"][0], "User created")
+        msg2 = self.server_comm.activate_user({"user":self.username, "code":code})
+        self.assertEqual(msg2["result"], 404)
+        self.assertEqual(msg2["details"][0], "User not found")
+        msg3 = self.server_comm.activate_user({"user":self.username, "code":code})
+        self.assertEqual(msg3["result"], 400)
+        self.assertEqual(msg3["details"][0], "Bad request")
+
 
     
     def test_syncronize(self):
