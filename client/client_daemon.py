@@ -280,15 +280,15 @@ class ServerCommunicator(object):
 
         if response.status_code == 200:
             self.msg["details"].append("User deleted")
-        elif response.status_code == 404:
-            self.msg["details"].append("User not found")
+        elif response.status_code == 401:
+            self.msg["details"].append("Access denied")
         else:
             self.msg["details"].append("Bad request")
 
         return self.msg
 
     def activate_user(self, param):
-        
+
         self.msg["details"] = []
         error_log = "Cannot activate user"
         success_log = "User activated"
