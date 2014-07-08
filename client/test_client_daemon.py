@@ -58,6 +58,13 @@ class ServerCommunicatorTest(unittest.TestCase):
     def setUp(self):
         class DirSnapshotManager(object):
 
+            def __init__(self):
+                self.server_snapshot = False
+                self.server_timestamp = False
+                self.command_list = False
+                self.action = False
+                self.body = False
+
             def syncronize_dispatcher(self, server_timestamp, server_snapshot):
                 self.server_timestamp = server_timestamp
                 self.server_snapshot = server_snapshot
@@ -68,6 +75,13 @@ class ServerCommunicatorTest(unittest.TestCase):
 
             def save_snapshot(self, timestamp):
                 self.timestamp = timestamp
+
+            def update_snapshot(self, action, body):
+                self.action = action
+                self.body = body
+
+            def save_timestamp(self, timestamp):
+                self.server_timestamp = timestamp
 
 
         httpretty.enable()
