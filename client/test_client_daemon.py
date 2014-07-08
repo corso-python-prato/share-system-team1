@@ -12,6 +12,7 @@ from watchdog.events import DirDeletedEvent
 from watchdog.events import DirModifiedEvent
 from watchdog.events import DirCreatedEvent
 from watchdog.events import DirMovedEvent
+import client_daemon
 import httpretty
 import unittest
 import hashlib
