@@ -419,7 +419,6 @@ class Actions(Resource):
     def _delete(self):
         """ Expected as POST data:
         { "path" : <path>} """
-        print "ciao"
         u = User.get_user(auth.username())
         client_path = request.form["path"]
         server_path = u.get_server_path(client_path)
