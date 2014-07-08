@@ -467,10 +467,20 @@ class TestSequenceFunctions(unittest.TestCase):
 
         f = open(DEMO_FILE, "r")
         data = { "file_content": f }
-        rv = SHARES_CLIENTS[3].call("post", "shares/{}/try_to_modify/".format(DEMO_CLIENT.user)+DEMO_FILE, data)
+        rv = SHARES_CLIENTS[3].call("post", "files/shares/{}/try_to_modify/".format(DEMO_CLIENT.user)+DEMO_FILE, data)
         f.close()
-        self.assertEqual(rv.status_code, 400)
+        self.assertEqual(rv.status_code, 403)
 
+        f = open(DEMO_FILE, "r")
+        data = { "file_content": f }
+        rv = SHARES_CLIENTS[3].call("put", "files/shares/{}/try_to_modify/".format(DEMO_CLIENT.user)+DEMO_FILE, data)
+        f.close()
+        self.assertEqual(rv.status_code, 403)
+
+        data = { "path": "shares/{}/try_to_modify/".format(DEMO_CLIENT.user)+DEMO_FILE }
+        rv = SHARES_CLIENTS[3].call("post", "actions/delete" , data)
+        self.assertEqual(rv.status_code, 403)
+        
 
     def test_files_differences(self):
         client = TestClient(
