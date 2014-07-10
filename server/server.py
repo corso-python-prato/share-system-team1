@@ -301,19 +301,9 @@ class UserApi(Resource):
                     os.remove(PENDING_USERS)
                 return "user activated", HTTP_CREATED
             else:
-
-    def get(self, username=None):
-        if not username:
-            return self._get_user()
-        elif username == "delete":
-            return self._delete()
+                return "wrong code", HTTP_NOT_FOUND
         else:
-            return "wrong command", HTTP_BAD_REQUEST
-
-    def _get_user(self):
-        """GET user data
-        for now return {"user": <username>, "psw": <password>}"""
-        pass
+            return "user need to be created", HTTP_NOT_FOUND
 
     @auth.login_required
     def _delete(self):
