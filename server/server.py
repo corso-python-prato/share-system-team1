@@ -218,6 +218,12 @@ class User(object):
         self.timestamp = time.time()
         User.save_users()
 
+    def delete_user(self, username):
+        user_root = self.paths[""][0]
+        del User.users[username]
+        shutil.rmtree(user_root)
+        User.save_users()
+
 
 class Resource_with_auth(Resource):
     method_decorators = [auth.login_required]
