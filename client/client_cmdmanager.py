@@ -162,6 +162,7 @@ class RawBoxCmd(cmd.Cmd):
 
     def do_create(self, line):
         """
+        create user <username>  (create a new RawBox user)
         create user <name>  (create a new RawBox user)
         create group <name> (create a new shareable folder with your friends)
         """
