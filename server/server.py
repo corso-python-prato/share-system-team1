@@ -244,8 +244,11 @@ class UserApi(Resource):
             }
         }"""
         if (os.path.isfile(PENDING_USERS)):
-            with open(PENDING_USERS, "r") as p_u:
-                UserApi.pending = json.load(p_u)
+            try:
+                with open(PENDING_USERS, "r") as p_u:
+                    UserApi.pending = json.load(p_u)
+            except ValueError:  # the file exists but is not a json
+                os.remove(PENDING_USERS)
         try:
             psw = request.form["psw"]
         except KeyError:
@@ -279,8 +282,11 @@ class UserApi(Resource):
             abort(HTTP_BAD_REQUEST)
 
         if (os.path.isfile(PENDING_USERS)):
-            with open(PENDING_USERS, "r") as p_u:
-                UserApi.pending = json.load(p_u)
+            try:
+                with open(PENDING_USERS, "r") as p_u:
+                    UserApi.pending = json.load(p_u)
+            except ValueError:  # the file exists but is not a json
+                os.remove(PENDING_USERS)
 
         if username in User.users:
             return "This user is already active", HTTP_CONFLICT
