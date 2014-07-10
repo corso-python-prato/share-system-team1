@@ -243,10 +243,10 @@ class User(object):
             User.save_users()
 
     def rm_path(self, client_path):
-        '''
+        """
         Remove the path from the paths dictionary. If there are empty
         directories, remove them from the filesystem.
-        '''
+        """
         now = time.time()
         self.timestamp = now
 
@@ -256,7 +256,6 @@ class User(object):
             dir_list = directory_path.split("/")
 
             while len(dir_list) > 0:
-                # stop if dir_list == [] or dir_list == ["shares", "some_user"]
                 client_subdir = os.path.join(*dir_list)
                 server_subdir = self.paths[client_subdir][0]
                 try:
@@ -269,8 +268,8 @@ class User(object):
                     # step 2: remove from shared beneficiary's paths
                     is_shared = self._get_ben_path(server_subdir)
                     if is_shared:
-                        share, ben_path = is_shared
-                        for ben_name in User.shared_resources[share][1:]:
+                        shared_server_path, ben_path = is_shared
+                        for ben_name in User.shared_resources[shared_server_path][1:]:
                             ben_user = User.get_user(ben_name)
                             del ben_user.paths[ben_path]
                     # step 3: remove from paths
@@ -280,11 +279,15 @@ class User(object):
         # remove from shared beneficiary's paths
         is_shared = self._get_ben_path(self.get_server_path(client_path))
         if is_shared:
-            share, ben_path = is_shared
-            for ben_name in User.shared_resources[share][1:]:
+            shared_server_path, ben_path = is_shared
+            for ben_name in User.shared_resources[shared_server_path][1:]:
                 ben_user = User.get_user(ben_name)
                 del ben_user.paths[ben_path]
                 ben_user.timestamp = now
+            # if the shared resource is a removed file or an empty directory
+            # remove it from shared_resources
+            if not os.path.exists(shared_server_path):
+                del User.shared_resources[shared_server_path]
 
         # remove the argument client_path and save
         del self.paths[client_path]

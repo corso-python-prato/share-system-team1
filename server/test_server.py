@@ -753,11 +753,11 @@ class TestSequenceFunctions(unittest.TestCase):
         )
         self.assertEqual(rv.status_code, 200)
 
-        # update the shared file and check if it's ok
+        # update a shared file and check if it's ok
         owner_timestamp = server.User.users[owner].timestamp
-        with open("second_file", "w") as f:
+        with open("modified_file", "w") as f:
             f.write("ps, scordavo di dirti ciao.")
-        with open("second_file", "r") as f:
+        with open("modified_file", "r") as f:
             data = { "file_content": f }
             rv = SHARE_CLIENTS[3].call(
                 "put",
@@ -765,7 +765,7 @@ class TestSequenceFunctions(unittest.TestCase):
                 data
             )
         self.assertEqual(rv.status_code, 201)
-        os.remove("second_file")
+        os.remove("modified_file")
 
         owner_new_timestamp = server.User.users[owner].timestamp
         self.assertGreater(owner_new_timestamp, owner_timestamp)
@@ -808,6 +808,22 @@ class TestSequenceFunctions(unittest.TestCase):
             "/".join(["shares", owner, subdir, "other_subdir/new_file"]),
             server.User.users[beneficiary].paths
         )
+
+        # remove every file in shared subdir and check if the shared_resource
+        # has been removed
+        data = { "path": "/".join([subdir, DEMO_FILE]) }
+        rv = SHARE_CLIENTS[3].call("post", "actions/delete", data)
+        self.assertEqual(rv.status_code, 200)
+
+        self.assertNotIn(
+            os.path.join(
+                server.USERS_DIRECTORIES,
+                owner,
+                subdir
+            ),
+            server.User.shared_resources
+        )
+
 
 
 if __name__ == '__main__':
