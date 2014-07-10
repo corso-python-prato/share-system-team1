@@ -40,7 +40,7 @@ auth = HTTPBasicAuth()
 _API_PREFIX = "/API/v1/"
 USERS_DIRECTORIES = "user_dirs/"
 USERS_DATA = "user_data.json"
-PENDING_USERS = "pending.tmp"
+PENDING_USERS = ".pending.tmp"
 parser = reqparse.RequestParser()
 parser.add_argument("task", type=str)
 
