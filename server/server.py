@@ -13,7 +13,6 @@ import json
 import os
 
 
-
 HTTP_CONFLICT = 409
 HTTP_CREATED = 201
 HTTP_NOT_FOUND = 404
@@ -25,6 +24,7 @@ app = Flask(__name__)
 api = Api(app)
 auth = HTTPBasicAuth()
 _API_PREFIX = "/API/v1/"
+SERVER_ROOT = "."
 USERS_DIRECTORIES = "user_dirs/"
 USERS_DATA = "user_data.json"
 parser = reqparse.RequestParser()
@@ -390,9 +390,12 @@ def create_user():
 
 
 def main():
+    os.chdir(SERVER_ROOT)
+    
     if not os.path.isdir(USERS_DIRECTORIES):
         os.mkdir(USERS_DIRECTORIES)
     User.user_class_init()
+
     app.run(host="0.0.0.0", debug=True)         # TODO: remove debug=True
 
 
