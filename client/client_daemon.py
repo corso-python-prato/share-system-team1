@@ -601,7 +601,7 @@ class DirSnapshotManager(object):
                 for equal_path in equal_paths: # 2) a 2
                     if self.find_file_md5(self.local_full_snapshot, equal_path, False) != self.find_file_md5(server_snapshot, equal_path):
                         print "update:\t" + equal_path
-                        command_list.append({'remote_update': [equal_path]})
+                        command_list.append({'remote_update': [equal_path, True]})
                     else:
                         print "no action:\t" + equal_path
                 for new_client_path in new_client_paths: # 2) a 3
@@ -663,13 +663,15 @@ class CommandExecuter(object):
                 if command_dest == 'remote':
                     {
                         'upload': self.remote.upload_file,
+                        'update': self.remote.upload_file,
                         'delete': self.remote.delete_file,
                     }.get(command_type,error)(*(command_row[command]))
                 else:
                     {
                         'copy': self.local.copy_a_file,
                         'download': self.local.write_a_file,
-                        'delete': self.local.delete_a_file
+                        'delete': self.local.delete_a_file,
+                        'copyAndRename': self.local.copy_and_rename,
                     }.get(command_type,error)(*(command_row[command]))
 
 
