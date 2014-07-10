@@ -306,10 +306,15 @@ class UserApi(Resource):
             return "user need to be created", HTTP_NOT_FOUND
 
     @auth.login_required
-    def _delete(self):
+    def delete(self, username):
         """Delete the user who is making the request
         """
-        pass
+        current_user = User.get_user(auth.username())
+        if current_user == username:
+            current_user.delete_user(username)
+            return "user deleted", HTTP_OK
+        else:
+            return "access denied", HTTP_BAD_REQUEST
 
 
 class Files(Resource_with_auth):
