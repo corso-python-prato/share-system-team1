@@ -39,6 +39,14 @@ def unpacking_message(data, format=LENGTH_FORMAT):
     return data
 
 
+def command_not_found(command):
+    '''
+        basic resposnse for command not found error
+        return dictionary with result and details key
+    '''
+    return {'result': 'error', 'details': ['command not found']}
+
+
 class CommunicatorSock(asyncore.dispatcher_with_send):
 
     def _executer(self, command):
@@ -46,10 +54,16 @@ class CommunicatorSock(asyncore.dispatcher_with_send):
 
     def handle_read(self):
         header = self.recv(struct.calcsize(LENGTH_FORMAT))
+        if header == '':
+            ''' disconnection detect:
+                recv return a void string for disconnection event
+            '''
+            return
         data_length = unpacking_message(header)
         data = self.recv(data_length)
         command = unpacking_message(data, '!{}s'.format(data_length))
-        self._executer(command)
+        response = self._executer(command)
+        self.send_message(command['request'], response)
 
     def send_message(self, command_type, param=None):
         data = packing_message(command_type, param)
@@ -63,8 +77,9 @@ class CmdMessageHandler(CommunicatorSock):
         self.cmd = cmd
 
     def _executer(self, command):
-        response = self.cmd[command['request']](command["body"])
-        self.send_message(command['request'], response)
+        return self.cmd.get(
+            command['request'],
+            command_not_found)(command["body"])
 
 
 class CmdMessageServer(asyncore.dispatcher):
@@ -101,4 +116,3 @@ class CmdMessageClient(CommunicatorSock):
         data = self.recv(data_length)
         command = unpacking_message(data, '!{}s'.format(data_length))
         return command
-        

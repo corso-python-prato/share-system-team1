@@ -17,6 +17,8 @@ import time
 import json
 import os
 
+from communication_system import CmdMessageServer
+import asyncore
 
 SERVER_URL = "localhost"
 SERVER_PORT = "5000"
@@ -76,7 +78,7 @@ class ServerCommunicator(object):
             command_list = self.snapshot_manager.syncronize_dispatcher(
                 server_timestamp, server_snapshot)
             self.executer.syncronize_executer(command_list)
-            self.snapshot_manager.save_snapshot(server_timestamp)
+            self.snapshot_manager.save_timestamp(server_timestamp)
 
     def get_abspath(self, dst_path):
         """ from relative path return absolute path """
@@ -135,6 +137,7 @@ class ServerCommunicator(object):
         if r.status_code == 409:
             print "already exists"
         elif r.status_code == 201:
+            self.snapshot_manager.update_snapshot(action = "upload" , body = {"src_path": dst_path})
             self.snapshot_manager.save_snapshot(r.text)
 
     def delete_file(self, dst_path):
@@ -151,7 +154,8 @@ class ServerCommunicator(object):
         r = self._try_request(requests.post, success_log, error_log, **request)
         if r.status_code == 404:
             print "file not found on server"
-        elif r.status_code == 201:
+        elif r.status_code == 200:
+            self.snapshot_manager.update_snapshot(action = "delete" , body = {"src_path": dst_path})
             self.snapshot_manager.save_snapshot(r.text)
 
     def move_file(self, src_path, dst_path):
@@ -173,6 +177,10 @@ class ServerCommunicator(object):
         if r.status_code == 404:
             print "file not found on server"
         elif r.status_code == 201:
+            self.snapshot_manager.update_snapshot(
+                action = "move",
+                body = {"src_path": src_path, "dst_path": dst_path}
+            )
             self.snapshot_manager.save_snapshot(r.text)
 
     def copy_file(self, src_path, dst_path):
@@ -193,6 +201,10 @@ class ServerCommunicator(object):
         if r.status_code == 404:
             print "file not found on server"
         elif r.status_code == 201:
+            self.snapshot_manager.update_snapshot(
+                action = "copy",
+                body = {"src_path": src_path, "dst_path": dst_path}
+            )
             self.snapshot_manager.save_snapshot(r.text)
 
     def create_user(self, param):
@@ -316,28 +328,26 @@ class ServerCommunicator(object):
 
 class FileSystemOperator(object):
 
-    def __init__(self, event_handler, server_com):
+    def __init__(self, event_handler, server_com, snapshot_manager):
+        self.snapshot_manager = snapshot_manager
         self.event_handler = event_handler
         self.server_com = server_com
 
-    def send_lock(self, path):
-        self.event_handler.path_ignored.append(path)
-
-    def send_unlock(self):
-        self.event_handler.path_ignored = []
+    def add_event_to_ignore(self, path):
+        self.event_handler.paths_ignored.append(path)
 
     def write_a_file(self, path):
         """
         write a file (download if exist or not [get and put])
 
-            send lock to watchdog
+            send a path to ignore to watchdog
             download the file from server
             create directory chain
             create file
-            send unlock to watchdog
+            when watchdog see the first event on this path ignore it
         """
 
-        self.send_lock(self.server_com.get_abspath(path))
+        self.add_event_to_ignore(self.server_com.get_abspath(path))
         abs_path, content = self.server_com.download_file(path)
         if abs_path and content:
             try:
@@ -349,38 +359,34 @@ class FileSystemOperator(object):
             time.sleep(3)
         else:
             print "file not found on server"
-        self.send_unlock()
 
     def move_a_file(self, origin_path, dst_path):
         """
         move a file
 
-            send lock to watchdog for origin and dst path
+            send a path to ignore to watchdog for origin and dst path
             create directory chain for dst_path
             move the file from origin_path to dst_path
-            send unlock to watchdog
+            when watchdog see the first event on this path ignore it
         """
-        self.send_lock(self.server_com.get_abspath(origin_path))
-        self.send_lock(self.server_com.get_abspath(dst_path))
+        self.add_event_to_ignore(self.server_com.get_abspath(origin_path))
+        self.add_event_to_ignore(self.server_com.get_abspath(dst_path))
         try:
             os.makedirs(os.path.split(dst_path)[0], 0755)
         except OSError:
             pass
         shutil.move(origin_path, dst_path)
-        time.sleep(3)
-        self.send_unlock()
 
     def copy_a_file(self, origin_path, dst_path):
         """
         copy a file
 
-            send lock to watchdog for origin and dest path
+            send a path to ignore to watchdog for dest path (because copy is a creation event)
             create directory chain for dst_path
             copy the file from origin_path to dst_path
-            send unlock to watchdog
+            when watchdog see the first event on this path ignore it
         """
-        self.send_lock(self.server_com.get_abspath(origin_path))
-        self.send_lock(self.server_com.get_abspath(dst_path))
+        self.add_event_to_ignore(self.server_com.get_abspath(dst_path))
         origin_path = self.server_com.get_abspath(origin_path)
         dst_path = self.server_com.get_abspath(dst_path)
         try:
@@ -388,19 +394,17 @@ class FileSystemOperator(object):
         except OSError:
             pass
         shutil.copyfile(origin_path, dst_path)
-        time.sleep(3)
-        self.send_unlock()
 
     def delete_a_file(self, path):
         """
         delete a file
 
-            send lock to watchdog
+            send a path to ignore to watchdog
             delete file
-            send unlock to watchdog
+            when watchdog see the first event on this path ignore it
         """
 
-        self.send_lock(self.server_com.get_abspath(path))
+        self.add_event_to_ignore(self.server_com.get_abspath(path))
         path = self.server_com.get_abspath(path)
         if os.path.isdir(path):
             try:
@@ -409,8 +413,6 @@ class FileSystemOperator(object):
                 pass
         else:
             os.remove(path)
-        time.sleep(3)
-        self.send_unlock()
 
 
 def load_config():
@@ -454,7 +456,7 @@ class DirectoryEventHandler(FileSystemEventHandler):
     def __init__(self, cmd, snap):
         self.cmd = cmd
         self.snap = snap
-        self.path_ignored = []
+        self.paths_ignored = []
 
     def _is_copy(self, abs_path):
         """
@@ -477,11 +479,13 @@ class DirectoryEventHandler(FileSystemEventHandler):
         :type event:
             :class:`DirMovedEvent` or :class:`FileMovedEvent`
         """
-        if event.src_path not in self.path_ignored:
+        if event.src_path not in self.paths_ignored:
             if not event.is_directory:
                 self.cmd.move_file(event.src_path, event.dest_path)
         else:
             print "ingnored move on ", event.src_path
+            self.paths_ignored.remove(event.src_path)
+            self.paths_ignored.remove(event.dest_path)
 
     def on_created(self, event):
         """Called when a file or directory is created.
@@ -492,14 +496,16 @@ class DirectoryEventHandler(FileSystemEventHandler):
             :class:`DirCreatedEvent` or :class:`FileCreatedEvent`
         """
 
-        if event.src_path not in self.path_ignored:
-            copy = self._is_copy(event.src_path)
-            if copy:
-                self.cmd.copy_file(copy, event.src_path)
-            else:
-                self.cmd.upload_file(event.src_path)
+        if event.src_path not in self.paths_ignored:
+            if not event.is_directory:
+                copy = self._is_copy(event.src_path)
+                if copy:
+                    self.cmd.copy_file(copy, event.src_path)
+                else:
+                    self.cmd.upload_file(event.src_path)
         else:
             print "ingnored create on ", event.src_path
+            self.paths_ignored.remove(event.src_path)
 
     def on_deleted(self, event):
         """Called when a file or directory is deleted.
@@ -509,11 +515,12 @@ class DirectoryEventHandler(FileSystemEventHandler):
         :type event:
             :class:`DirDeletedEvent` or :class:`FileDeletedEvent`
         """
-        if event.src_path not in self.path_ignored:
+        if event.src_path not in self.paths_ignored:
             if not event.is_directory:
                 self.cmd.delete_file(event.src_path)
         else:
             print "ingnored deletion on ", event.src_path
+            self.paths_ignored.remove(event.src_path)
 
     def on_modified(self, event):
         """Called when a file or directory is modified.
@@ -524,11 +531,12 @@ class DirectoryEventHandler(FileSystemEventHandler):
             :class:`DirModifiedEvent` or :class:`FileModifiedEvent`
         """
 
-        if event.src_path not in self.path_ignored:
+        if event.src_path not in self.paths_ignored:
             if not event.is_directory:
                 self.cmd.upload_file(event.src_path, put_file=True)
         else:
             print "ingnored modified on ", event.src_path
+            self.paths_ignored.remove(event.src_path)
 
 
 class DirSnapshotManager(object):
@@ -571,11 +579,7 @@ class DirSnapshotManager(object):
 
     def global_md5(self, server_snapshot=False):
         """ calculate the global md5 of local_full_snapshot """
-        if server_snapshot:
-            snap_list = list(server_snapshot)
-        else:
-            snap_list = list(self.local_full_snapshot)
-        snap_list.sort()
+        snap_list = sorted(list(self.local_full_snapshot))
         return hashlib.md5(str(snap_list)).hexdigest()
 
     def instant_snapshot(self):
@@ -595,13 +599,42 @@ class DirSnapshotManager(object):
 
     def save_snapshot(self, timestamp):
         """ save snapshot to file """
-        self.local_full_snapshot = self.instant_snapshot()
         self.last_status['timestamp'] = timestamp
         self.last_status['snapshot'] = self.global_md5()
 
         with open(self.snapshot_file_path, 'w') as f:
             f.write(
                 json.dumps({"timestamp": timestamp, "snapshot": self.last_status['snapshot']}))
+
+    def update_snapshot(self, action, body):
+        """ update local snapshot with a new md5 and relative path """
+        if action == "upload":
+            self.local_full_snapshot[self.file_snapMd5(body['src_path'])] = [get_relpath(body["src_path"], self.dir_path)]
+        elif action == "copy":
+            self.local_full_snapshot[self.file_snapMd5(body['src_path'])].append(dst_path)
+        elif action == "delete":
+            md5_file = self.local_full_snapshot[self.file_snapMd5(body['src_path'])]
+            for path in md5_file:
+                if path == get_relpath(src_path, self.dir_path):
+                    md5_file.remove(path)
+        elif action == "move":
+            md5_file = self.local_full_snapshot[self.file_snapMd5(body['src_path'])]
+            for path in md5_file:
+                if path == get_relpath(src_path, self.dir_path):
+                    md5_file.remove(path)
+                    md5_file.append(get_relpath(dst_path, self.dir_path))
+
+    def save_timestamp(self, timestamp):
+        """
+            save timestamp to file only if getfile
+            timestamp is < than the last timestamp saved
+        """
+        with open(self.snapshot_file_path, 'r') as f:
+            last_snap = json.load(f)
+        if float(last_snap['timestamp']) < float(timestamp):
+            last_snap['timestamp'] = timestamp
+            with open(self.snapshot_file_path, 'w') as f:
+                f.write(json.dumps(last_snap,f))
 
     def diff_snapshot_paths(self, snap_client, snap_server):
         """
@@ -687,12 +720,13 @@ class DirSnapshotManager(object):
                         print "no action:\t" + equal_path
                 for new_client_path in new_client_paths:  # 2) a 3
                     print "upload:\t" + new_client_path
-                    command_list.append({'remote_upload': [new_client_path]})
 
-            elif not self.is_syncro(server_timestamp):  # 2) b
-                for new_server_path in new_server_paths:  # 2) b 1
-                    # 2) b 1 I
-                    if not self.find_file_md5(server_snapshot, new_server_path) in self.local_full_snapshot:
+                    command_list.append({'remote_upload': ["/".join([self.dir_path, new_client_path])]})
+            
+            elif not self.is_syncro(server_timestamp): #2) b
+                for new_server_path in new_server_paths: #2) b 1
+                    if not self.find_file_md5(server_snapshot, new_server_path) in self.local_full_snapshot: #2) b 1 I
+
                         if self.check_files_timestamp(server_snapshot, new_server_path):
                             print "delete remote:\t" + new_server_path
                             command_list.append(
@@ -753,7 +787,7 @@ class CommandExecuter(object):
                 command_type = command.split('_')[1]
                 if command_dest == 'remote':
                     {
-
+                        'upload': self.remote.upload_file,
                         'delete': self.remote.delete_file,
                     }.get(command_type, error)(*(command_row[command]))
                 else:
@@ -777,7 +811,7 @@ def main():
         snapshot_manager=snapshot_manager)
 
     event_handler = DirectoryEventHandler(server_com, snapshot_manager)
-    file_system_op = FileSystemOperator(event_handler, server_com)
+    file_system_op = FileSystemOperator(event_handler, server_com, snapshot_manager)
     executer = CommandExecuter(file_system_op, server_com)
     server_com.setExecuter(executer)
     observer = Observer()
@@ -785,10 +819,20 @@ def main():
     if is_new:
         server_com.create_user({"user":config['username'], "psw":config['password']})
     observer.start()
+
+    client_command = {}
+    sock_server = CmdMessageServer(
+        config['cmd_host'],
+        int(config['cmd_port']),
+        client_command)
+
+    last_synk_time = 0
     try:
         while True:
-            server_com.synchronize(file_system_op)
-            time.sleep(5)
+            asyncore.poll(timeout=5.0)
+            if (time.time() - last_synk_time) >= 5.0:
+                last_synk_time = time.time()
+                server_com.synchronize(file_system_op)
     except KeyboardInterrupt:
         observer.stop()
     observer.join()

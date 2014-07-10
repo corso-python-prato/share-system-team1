@@ -97,7 +97,21 @@ class RawBoxExecuter(object):
         self.print_response(self.comm_sock.read_message())
 
     def print_response(self, response):
-        print 'Response for "{}" command\nresult: {}'.format(response['request'], response['body'])
+        ''' print response from the daemon.
+            the response is a dictionary as:
+            {
+                'request': type of command
+                'body':
+                    'result': result for command
+                    'details': list of eventual detail for command
+            }
+        '''
+        print 'Response for "{}" command'.format(response['request'])
+        print 'result: {}'.format(response['body']['result'])
+        if response['body']['details']:
+            print 'details:'
+            for detail in response['body']['details']:
+                print '\t{}'.format(detail)
 
 
 class RawBoxCmd(cmd.Cmd):
@@ -162,7 +176,7 @@ def main():
     else:
         os.system('clear')
 
-    conf = load_config()
+    conf, is_new = load_config()
     comm_sock = CmdMessageClient(conf['cmd_host'], int(conf['cmd_port']))
     try:
         RawBoxCmd(RawBoxExecuter(comm_sock)).cmdloop()
