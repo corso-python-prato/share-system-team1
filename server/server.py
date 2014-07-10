@@ -24,9 +24,9 @@ app = Flask(__name__)
 api = Api(app)
 auth = HTTPBasicAuth()
 _API_PREFIX = "/API/v1/"
+
 SERVER_ROOT = "."
-USERS_DIRECTORIES = "user_dirs/"
-USERS_DATA = "user_data.json"
+
 parser = reqparse.RequestParser()
 parser.add_argument("task", type=str)
 
@@ -389,13 +389,17 @@ def create_user():
             return "user created", HTTP_CREATED
 
 
-def main():
-    os.chdir(SERVER_ROOT)
-    
+def server_setup():
+    global USERS_DIRECTORIES
+    USERS_DIRECTORIES = os.path.join(SERVER_ROOT, "user_dirs/")
+    global USERS_DATA
+    USERS_DATA = os.path.join(SERVER_ROOT, "user_data.json")
     if not os.path.isdir(USERS_DIRECTORIES):
-        os.mkdir(USERS_DIRECTORIES)
+        os.makedirs(USERS_DIRECTORIES)
     User.user_class_init()
 
+def main():
+    server_setup()
     app.run(host="0.0.0.0", debug=True)         # TODO: remove debug=True
 
 
