@@ -25,13 +25,16 @@ class RawBoxExecuter(object):
         self.comm_sock = comm_sock
 
     def _create_user(self, username=None):
-        """create user if not exists"""
+        """ create user if not exists """
         command_type = 'create_user'
 
         if not username:
-            username = take_input('insert your user name: ')
-        else:
-            username = " ".join(username)
+            username = take_input('insert your username: ')
+
+        email_regex = re.compile('[^@]+@[^@]+\.[^@]+')
+        while not email_regex.match(username):
+            Message('WARNING', 'invalid email')
+            email = take_input('insert your username: ')
 
         password = take_input('insert your password: ', password = True)
         rpt_password = take_input('Repeat your password: ', password = True)
@@ -40,6 +43,13 @@ class RawBoxExecuter(object):
             password = take_input('insert your password: ', password = True)
             rpt_password = take_input('Repeat your password: ', password = True)
 
+        param = {
+                'user': username,
+                'psw': password,
+            }
+
+        self.comm_sock.send_message(command_type, param)
+        self.print_response(self.comm_sock.read_message())
         email_regex = re.compile('[^@]+@[^@]+\.[^@]+')
         email = take_input('insert your user email: ')
         
