@@ -445,6 +445,8 @@ class DirSnapshotManager(object):
     def local_check(self):
         """ check id daemon is synchronized with local directory """
         local_global_snapshot = self.global_md5()
+        if self.last_status['snapshot'] == "":
+            return True
         last_global_snapthot = self.last_status['snapshot']
         return local_global_snapshot == last_global_snapthot
 
