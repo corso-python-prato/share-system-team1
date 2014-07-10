@@ -23,20 +23,25 @@ import asyncore
 SERVER_URL = "localhost"
 SERVER_PORT = "5000"
 API_PREFIX = "API/v1"
+CONFIG_DIR_PATH = ""
 
-def get_relpath(abs_path, dir_path):
+def get_relpath(abs_path):
     """form absolute path return relative path """
-    if abs_path.startswith(dir_path):
-        return abs_path[len(dir_path) + 1:]
+    if abs_path.startswith(CONFIG_DIR_PATH):
+        return abs_path[len(CONFIG_DIR_PATH) + 1:]
     return abs_path
 
+def get_abspath(rel_path):
+    """form relative path return relative absolute """
+    if not rel_path.startswith(CONFIG_DIR_PATH):
+        return "/".join([CONFIG_DIR_PATH, rel_path])
+    return rel_path
 
 class ServerCommunicator(object):
 
-    def __init__(self, server_url, username, password, dir_path, snapshot_manager):
+    def __init__(self, server_url, username, password, snapshot_manager):
         self.auth = HTTPBasicAuth(username, password)
         self.server_url = server_url
-        self.dir_path = dir_path
         self.snapshot_manager = snapshot_manager
 
     def setExecuter(self, executer):
@@ -67,19 +72,15 @@ class ServerCommunicator(object):
         
         if sync.status_code != 401:
             server_snapshot = sync.json()['snapshot']
-            server_timestamp =sync.json()['timestamp']
+            server_timestamp = sync.json()['timestamp']
             print "SERVER SAY: ", server_snapshot, server_timestamp ,"\n"
             command_list = self.snapshot_manager.syncronize_dispatcher(server_timestamp, server_snapshot)
             self.executer.syncronize_executer(command_list)
             self.snapshot_manager.save_timestamp(server_timestamp)
 
-    def get_abspath(self, dst_path):
-        """ from relative path return absolute path """
-        return os.path.join(self.dir_path, dst_path)
-
     def get_url_relpath(self, abs_path):
         """ form get_abspath return the relative path for url """
-        return get_relpath(abs_path, self.dir_path).replace(os.path.sep, '/')
+        return get_relpath(abs_path).replace(os.path.sep, '/')
 
     def download_file(self, dst_path):
         """ download a file from server"""
@@ -94,11 +95,11 @@ class ServerCommunicator(object):
         request = {"url": server_url}
         
         r = self._try_request(requests.get, success_log, error_log, **request)
-        local_path = self.get_abspath(dst_path)
+        local_path = get_abspath(dst_path)
         
         if r.status_code == 200:
             return local_path, r.text
-        elif r.status_code == 401 or r.status_code == 404:
+        else:
             return False, False
 
     def upload_file(self, dst_path, put_file = False):
@@ -242,12 +243,11 @@ class FileSystemOperator(object):
             create file
             when watchdog see the first event on this path ignore it
         """
-
-        self.add_event_to_ignore(self.server_com.get_abspath(path))
+        self.add_event_to_ignore(get_abspath(path))
         abs_path, content = self.server_com.download_file(path)
         if abs_path and content:
             try:
-                os.makedirs(os.path.split(abs_path)[0], 0755 )
+                os.makedirs(os.path.split(abs_path)[0], 0755)
             except OSError:
                 pass
             with open(abs_path, 'wb') as f:
@@ -265,8 +265,8 @@ class FileSystemOperator(object):
             move the file from origin_path to dst_path
             when watchdog see the first event on this path ignore it
         """
-        self.add_event_to_ignore(self.server_com.get_abspath(origin_path))
-        self.add_event_to_ignore(self.server_com.get_abspath(dst_path))
+        self.add_event_to_ignore(get_abspath(origin_path))
+        self.add_event_to_ignore(get_abspath(dst_path))
         try:
             os.makedirs(os.path.split(dst_path)[0], 0755)
         except OSError:
@@ -282,9 +282,9 @@ class FileSystemOperator(object):
             copy the file from origin_path to dst_path
             when watchdog see the first event on this path ignore it
         """
-        self.add_event_to_ignore(self.server_com.get_abspath(dst_path))
-        origin_path = self.server_com.get_abspath(origin_path)
-        dst_path = self.server_com.get_abspath(dst_path)
+        self.add_event_to_ignore(get_abspath(dst_path))
+        origin_path = get_abspath(origin_path)
+        dst_path = get_abspath(dst_path)
         try:
             os.makedirs(os.path.split(dst_path)[0], 0755)
         except OSError:
@@ -299,9 +299,8 @@ class FileSystemOperator(object):
             delete file
             when watchdog see the first event on this path ignore it
         """
-
-        self.add_event_to_ignore(self.server_com.get_abspath(path))
-        path = self.server_com.get_abspath(path)
+        self.add_event_to_ignore(get_abspath(path))
+        path = get_abspath(path)
         if os.path.isdir(path):
             try:
                 shutil.rmtree(path)
@@ -324,8 +323,8 @@ def load_config():
             pass
             
         # TODO: ask to cmd_manager to create a new user
-        user = "Alalah@tropos.fo"
-        psw = "pokpsd"
+        user = "username"
+        psw = "password"
 
         config = {
             "server_url" : "http://{}:{}/{}".format(
@@ -434,9 +433,8 @@ class DirectoryEventHandler(FileSystemEventHandler):
 
 
 class DirSnapshotManager(object):
-    def __init__(self, dir_path, snapshot_file_path):
+    def __init__(self, snapshot_file_path):
         """ load the last global snapshot and create a instant_snapshot of local directory"""
-        self.dir_path = dir_path
         self.snapshot_file_path = snapshot_file_path
         self.last_status = self._load_status()
         self.local_full_snapshot = self.instant_snapshot()
@@ -479,11 +477,11 @@ class DirSnapshotManager(object):
         """ create a snapshot of directory """
 
         dir_snapshot = {}
-        for root, dirs, files in os.walk(self.dir_path):
+        for root, dirs, files in os.walk(CONFIG_DIR_PATH):
             for f in files:
                 full_path = os.path.join(root, f)
                 file_md5 = self.file_snapMd5(full_path)
-                rel_path = get_relpath(full_path, self.dir_path)
+                rel_path = get_relpath(full_path)
                 if file_md5 in dir_snapshot:
                     dir_snapshot[file_md5].append(rel_path)
                 else:
@@ -501,20 +499,20 @@ class DirSnapshotManager(object):
     def update_snapshot(self, action, body):
         """ update local snapshot with a new md5 and relative path """
         if action == "upload":
-            self.local_full_snapshot[self.file_snapMd5(body['src_path'])] = [get_relpath(body["src_path"], self.dir_path)]
+            self.local_full_snapshot[self.file_snapMd5(body['src_path'])] = [get_relpath(body["src_path"])]
         elif action == "copy":
             self.local_full_snapshot[self.file_snapMd5(body['src_path'])].append(dst_path)
         elif action == "delete":
             md5_file = self.local_full_snapshot[self.file_snapMd5(body['src_path'])]
             for path in md5_file:
-                if path == get_relpath(src_path, self.dir_path):
+                if path == get_relpath(src_path):
                     md5_file.remove(path)
         elif action == "move":
             md5_file = self.local_full_snapshot[self.file_snapMd5(body['src_path'])]
             for path in md5_file:
-                if path == get_relpath(src_path, self.dir_path):
+                if path == get_relpath(src_path):
                     md5_file.remove(path)
-                    md5_file.append(get_relpath(dst_path, self.dir_path))
+                    md5_file.append(get_relpath(dst_path))
 
     def save_timestamp(self, timestamp):
         """
@@ -565,19 +563,19 @@ class DirSnapshotManager(object):
         new_client_paths, new_server_paths, equal_paths =  self.diff_snapshot_paths(self.local_full_snapshot , server_snapshot)
         command_list = []
         #NO internal conflict
-        if self.local_check():  #1)
-            if  not self.is_syncro(server_timestamp): #1) b.
-                for new_server_path in new_server_paths: #1) b 1
+        if self.local_check():  # 1)
+            if  not self.is_syncro(server_timestamp): # 1) b.
+                for new_server_path in new_server_paths: # 1) b 1
                     server_md5 = self.find_file_md5(server_snapshot, new_server_path)
-                    if not server_md5 in self.local_full_snapshot: #1) b 1 I
+                    if not server_md5 in self.local_full_snapshot: # 1) b 1 I
                         print "download:\t" + new_server_path
                         command_list.append({'local_download': [new_server_path]})
-                    else: #1) b 1 II
+                    else: # 1) b 1 II
                         print "copy or rename:\t" + new_server_path
                         src_local_path = self.local_full_snapshot[server_md5][0]
                         command_list.append({'local_copy': [src_local_path, new_server_path]})
                 
-                for equal_path in equal_paths: #1) b 2
+                for equal_path in equal_paths: # 1) b 2
                     client_md5 = self.find_file_md5(self.local_full_snapshot, equal_path, False)
                     if client_md5 != self.find_file_md5(server_snapshot, equal_path):
                         print "update download:\t" + equal_path
@@ -585,47 +583,47 @@ class DirSnapshotManager(object):
                     else:
                         print "no action:\t" + equal_path
                 
-                for new_client_path in new_client_paths: #1) b 3
+                for new_client_path in new_client_paths: # 1) b 3
                     print "remove local:\t" + new_client_path
                     command_list.append({'local_delete': [new_client_path]})
             else:
                 print "synchronized"
         #internal conflicts
         else: # 2)
-            if self.is_syncro(server_timestamp): #2) a
+            if self.is_syncro(server_timestamp): # 2) a
                 print "****\tpush all\t****" 
-                for new_server_path in new_server_paths: #2) a 1
+                for new_server_path in new_server_paths: # 2) a 1
                     print "remove:\t" + new_server_path
                     command_list.append({'remote_delete': [new_server_path]})
-                for equal_path in equal_paths: #2) a 2
+                for equal_path in equal_paths: # 2) a 2
                     if self.find_file_md5(self.local_full_snapshot, equal_path, False) != self.find_file_md5(server_snapshot, equal_path):
                         print "update:\t" + equal_path
                         command_list.append({'remote_update': [equal_path]})
                     else:
                         print "no action:\t" + equal_path
-                for new_client_path in new_client_paths: #2) a 3
+                for new_client_path in new_client_paths: # 2) a 3
                     print "upload:\t" + new_client_path
-                    command_list.append({'remote_upload': ["/".join([self.dir_path, new_client_path])]})
+                    command_list.append({'remote_upload': ["/".join([CONFIG_DIR_PATH, new_client_path])]})
             
-            elif not self.is_syncro(server_timestamp): #2) b
-                for new_server_path in new_server_paths: #2) b 1
-                    if not self.find_file_md5(server_snapshot, new_server_path) in self.local_full_snapshot: #2) b 1 I
+            elif not self.is_syncro(server_timestamp): # 2) b
+                for new_server_path in new_server_paths: # 2) b 1
+                    if not self.find_file_md5(server_snapshot, new_server_path) in self.local_full_snapshot: # 2) b 1 I
                         if self.check_files_timestamp(server_snapshot, new_server_path):
                             print "delete remote:\t" + new_server_path
                             command_list.append({'remote_delete': [new_server_path]})
                         else:
                             print "download local:\t" + new_server_path
                             command_list.append({'local_download': [new_server_path]})
-                    else: #2) b 1 II
+                    else: # 2) b 1 II
                         print  "copy or rename:\t" + new_server_path
                         command_list.append({'local_copy': [new_server_path]})
                
-                for equal_path in equal_paths: #2) b 2
+                for equal_path in equal_paths: # 2) b 2
                     if self.find_file_md5(self.local_full_snapshot, equal_path, False) != self.find_file_md5(server_snapshot, equal_path):
-                        if self.check_files_timestamp(server_snapshot, equal_path): #2) b 2 I
+                        if self.check_files_timestamp(server_snapshot, equal_path): # 2) b 2 I
                             print "server push:\t" + equal_path
                             command_list.append({'remote_upload': [equal_path]})
-                        else:  #2) b 2 II 
+                        else:  # 2) b 2 II
                             print "create.conflicted:\t" + equal_path
                             conflicted_path = "{}/{}.conflicted".format(
                                 "/".join(equal_path.split('/')[:-1]),
@@ -635,7 +633,7 @@ class DirSnapshotManager(object):
                             command_list.append({'local_copyAndRename': [equal_path, conflicted_path]})
                     else:
                         print "no action:\t" + equal_path
-                for new_client_path in new_client_paths: #2) b 3
+                for new_client_path in new_client_paths: # 2) b 3
                     print "remove remote\t" + new_client_path 
                     command_list.append({'remote_delete': [new_client_path]})
 
@@ -673,14 +671,15 @@ class CommandExecuter(object):
 
 
 def main():
-    config , is_new = load_config()
-    snapshot_manager = DirSnapshotManager(config['dir_path'], config['snapshot_file_path'])
+    config, is_new = load_config()
+    global CONFIG_DIR_PATH
+    CONFIG_DIR_PATH = config['dir_path']
+    snapshot_manager = DirSnapshotManager(config['snapshot_file_path'])
 
     server_com = ServerCommunicator(
         server_url=config['server_url'],
         username=config['username'],
         password=config['password'],
-        dir_path=config['dir_path'],
         snapshot_manager = snapshot_manager)
 
     event_handler = DirectoryEventHandler(server_com, snapshot_manager)

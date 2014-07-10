@@ -1,14 +1,15 @@
 #!/usr/bin/env python
 #-*- coding: utf-8 -*-
 
-import server
-import os
-import json
-import unittest
-import shutil
 from base64 import b64encode
+import unittest
+import server
+import shutil
 import string
 import random
+import json
+import os
+
 
 TEST_DIRECTORY = "test_users_dirs/"
 TEST_USER_DATA = "test_user_data.json"
