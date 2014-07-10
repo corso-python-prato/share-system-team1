@@ -14,13 +14,12 @@ import re
 
 from server_errors import *
 
-
-HTTP_CONFLICT = 409
+HTTP_OK = 200
 HTTP_CREATED = 201
+HTTP_BAD_REQUEST = 400
 HTTP_FORBIDDEN = 403
 HTTP_NOT_FOUND = 404
-HTTP_BAD_REQUEST = 400
-HTTP_OK = 200
+HTTP_CONFLICT = 409
 HTTP_GONE = 410
 
 app = Flask(__name__)
@@ -48,11 +47,11 @@ def to_md5(path, block_size=2 ** 20):
 
 
 def can_write(username, server_path):
-    '''
+    """
     This sharing system is in read-only mode.
     Check if an user is the owner of a file (or father directory).
     (the server_path begins with his name)
-    '''
+    """
     if re.match("^{}{}(\/.)?".format(USERS_DIRECTORIES, username),
                 server_path):
         return True
@@ -269,7 +268,8 @@ class User(object):
                     is_shared = self._get_ben_path(server_subdir)
                     if is_shared:
                         shared_server_path, ben_path = is_shared
-                        for ben_name in User.shared_resources[shared_server_path][1:]:
+                        for ben_name in \
+                                User.shared_resources[shared_server_path][1:]:
                             ben_user = User.get_user(ben_name)
                             del ben_user.paths[ben_path]
                     # step 3: remove from paths
