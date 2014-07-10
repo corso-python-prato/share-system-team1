@@ -110,6 +110,30 @@ class TestClient(object):
         ))
 
 
+class NewRootTestExample(unittest.TestCase):
+    other_directory = "proppolo"
+
+    def setUp(self):
+        server.SERVER_ROOT = NewRootTestExample.other_directory
+        server.server_setup()
+
+    def test_setup_server(self):
+        self.assertEqual(
+            server.USERS_DIRECTORIES,
+            os.path.join(NewRootTestExample.other_directory, "user_dirs/")
+        )
+        self.assertEqual(
+            server.USERS_DATA,
+            os.path.join(NewRootTestExample.other_directory, "user_data.json")
+        )
+        self.assertTrue(
+            os.path.isdir(server.USERS_DIRECTORIES)
+        )
+
+    def tearDown(self):
+        shutil.rmtree(NewRootTestExample.other_directory)
+
+
 class TestSequenceFunctions(unittest.TestCase):
 
     @classmethod
