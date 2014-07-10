@@ -175,6 +175,16 @@ class RawBoxCmd(cmd.Cmd):
         else:
             Message('INFO', self.do_create.__doc__)
 
+    def do_activate(self, line):
+        """
+        activate <username> code=<code> (activate a new RawBox user previously created)
+        """
+        if line:
+            user = line.split()[0]
+            code = line.split()[1][5:]
+            self.executer._activate_user(user, code)
+        else:
+            Message('INFO', self.do_activate.__doc__)
     def do_q(self, line=None):
         """ exit from RawBox"""
         if take_input('[Exit] are you sure? y/n ') == 'y':
