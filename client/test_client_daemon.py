@@ -12,17 +12,14 @@ from watchdog.events import DirDeletedEvent
 from watchdog.events import DirModifiedEvent
 from watchdog.events import DirCreatedEvent
 from watchdog.events import DirMovedEvent
-
+import client_daemon
 import httpretty
 import unittest
-import requests
 import hashlib
 import base64
 import shutil
 import json
-import sys
 import os
-
 
 class TestEnvironment(object):
 
@@ -124,6 +121,7 @@ class ServerCommunicatorTest(unittest.TestCase):
         )
 
         self.dir = "/tmp/home/test_rawbox/folder"
+        client_daemon.CONFIG_DIR_PATH = self.dir
         self.another_dir = "/tmp/home/test_rawbox/folder/other_folder"
         file_name = "f_for_cdaemon_test.txt"
         if not os.path.exists(self.dir):
@@ -141,7 +139,6 @@ class ServerCommunicatorTest(unittest.TestCase):
             'http://127.0.0.1:5000/API/v1',
             self.username,
             self.password,
-            self.dir,
             snapshot_manager)
         
     def tearDown(self):
@@ -303,6 +300,7 @@ class FileSystemOperatorTest(unittest.TestCase):
         self.test_main_path, self.shared_dir, self.test_folder_1, self.test_folder_2, self.test_file_1, self.test_file_2, self.conf_snap_path, self.conf_snap_gen = self.environment.create()
 
         self.client_path = '/tmp/user_dir'
+        client_daemon.CONFIG_DIR_PATH = self.client_path
         self.filename = 'test_file_1.txt'
         if not os.path.exists(self.client_path):
             os.makedirs(self.client_path)
@@ -310,13 +308,11 @@ class FileSystemOperatorTest(unittest.TestCase):
         httpretty.register_uri(httpretty.GET, 'http://localhost/api/v1/files/{}'.format(self.filename),
             body='this is a test',
             content_type='text/plain')
-        self.snapshot_manager = DirSnapshotManager(self.client_path,
-            snapshot_file_path= self.conf_snap_path)
+        self.snapshot_manager = DirSnapshotManager(self.conf_snap_path)
         self.server_com = ServerCommunicator(
             server_url='http://localhost/api/v1',
             username='usernameFarlocco',
             password='passwordSegretissima',
-            dir_path=self.client_path,
             snapshot_manager= self.snapshot_manager)
         self.event_handler = DirectoryEventHandler(self.server_com,
             self.snapshot_manager)
@@ -386,14 +382,14 @@ class DirSnapshotManagerTest(unittest.TestCase):
         #Generate test folder tree and configuration file
         self.environment = TestEnvironment()
         self.test_main_path, self.test_share_dir, self.test_folder_1, self.test_folder_2, self.test_file_1, self.test_file_2, self.conf_snap_path, self.conf_snap_gen = self.environment.create()
+        client_daemon.CONFIG_DIR_PATH = self.test_share_dir
 
         self.true_snapshot= {
             '81bcb26fd4acfaa5d0acc7eef1d3013a': ['sub_dir_2/test_file_2.txt'],
             'fea80f2db003d4ebc4536023814aa885': ['sub_dir_1/test_file_1.txt'],
         }
         self.md5_snapshot = 'ab8d6b3c332aa253bb2b471c57b73e27'
-
-        self.snapshot_manager = DirSnapshotManager(self.test_share_dir, self.conf_snap_path)
+        self.snapshot_manager = DirSnapshotManager(self.conf_snap_path)
 
     def tearDown(self):
         self.environment.remove()

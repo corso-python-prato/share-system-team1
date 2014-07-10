@@ -3,8 +3,8 @@
 
 import asyncore
 import socket
-import json
 import struct
+import json
 
 """
 Communication system between command manager and client daemon
