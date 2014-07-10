@@ -290,15 +290,17 @@ class UserApi(Resource):
 
         if username in User.users:
             return "This user is already active", HTTP_CONFLICT
-        elif code == UserApi.pending[username]["code"]:
-            User(username, UserApi.pending[username]["password"])
-            del UserApi.pending[username]
-            if UserApi.pending:
-                with open(PENDING_USERS, "w") as p_u:
-                    json.dump(UserApi.pending, p_u)
+        if username in UserApi.pending:
+            if code == UserApi.pending[username]["code"]:
+                User(username, UserApi.pending[username]["password"])
+                del UserApi.pending[username]
+                if UserApi.pending:
+                    with open(PENDING_USERS, "w") as p_u:
+                        json.dump(UserApi.pending, p_u)
+                else:
+                    os.remove(PENDING_USERS)
+                return "user activated", HTTP_CREATED
             else:
-                os.remove(PENDING_USERS)
-            return "user activated", HTTP_CREATED
 
     def get(self, username=None):
         if not username:
