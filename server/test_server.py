@@ -389,35 +389,6 @@ class TestSequenceFunctions(unittest.TestCase):
         rv, client_path, server_path = transfer("mv", False, False)
         self.assertEqual(rv.status_code, 404)
 
-    def test_add_share(self):
-        DEMO_CLIENT.set_fake_usr(True)
-        rv = DEMO_CLIENT.call("post", "shares/dir/usr")
-        self.assertEqual(rv.status_code, 401)
-
-        DEMO_CLIENT.set_fake_usr(False)
-
-        f = open(DEMO_FILE, "r")
-        data = {"file_content": f}
-        rv = DEMO_CLIENT.call("post", "files/" + DEMO_FILE, data)
-        f.close()
-        self.assertEqual(rv.status_code, 201)
-
-        rv = DEMO_CLIENT.call("post",
-                              "shares/{}/{}".format(DEMO_FILE,
-                                                    SHARE_CLIENTS[1].user))
-        self.assertEqual(rv.status_code, 200)
-
-        f = open(DEMO_FILE, "r")
-        data = {"file_content": f}
-        rv = DEMO_CLIENT.call("post", "files/path_to_share/" + DEMO_FILE, data)
-        f.close()
-        self.assertEqual(rv.status_code, 201)
-
-        rv = DEMO_CLIENT.call("post",
-                              "shares/path_to_share/{}".format
-                              (SHARE_CLIENTS[2].user))
-        self.assertEqual(rv.status_code, 200)
-
     def test_files_differences(self):
         client = TestClient(
             user="complex_user@gmail.com",
@@ -546,12 +517,19 @@ class TestSequenceFunctions(unittest.TestCase):
         f.close()
         self.assertEqual(rv.status_code, 201)
 
+        with open("{}{}/{}/{}".format(TEST_DIRECTORY, DEMO_USER,
+                                      "path_to_share", DEMO_FILE)) as f:
+            uploaded_content = f.read()
+            self.assertEqual(DEMO_CONTENT, uploaded_content)
+
         # share the folder
         rv = DEMO_CLIENT.call("post", "shares/path_to_share/{}".format(
             SHARE_CLIENTS[2].user)
         )
         self.assertEqual(rv.status_code, 200)
-        # TODO: check if the file is really shared
+
+        self.assertEqual("shares/{}/path_to_share".format(DEMO_CLIENT.user) in
+                         server.User.users[SHARE_CLIENTS[2].user].paths, True)
 
     def test_can_write(self):
         DEMO_CLIENT.set_fake_usr(True)
@@ -594,6 +572,21 @@ class TestSequenceFunctions(unittest.TestCase):
         data = {"path": "shares/{}/try_to_modify/".format(DEMO_CLIENT.user) +
                 DEMO_FILE}
         rv = SHARE_CLIENTS[3].call("post", "actions/delete", data)
+        self.assertEqual(rv.status_code, 403)
+
+        f = open(DEMO_FILE, "r")
+        data = {"file_content": f}
+        rv = SHARE_CLIENTS[3].call("post", "files/a_path/" + DEMO_FILE, data)
+        f.close()
+        self.assertEqual(rv.status_code, 201)
+
+        data = {"file_src": "a_path/" + DEMO_FILE,
+                "file_dest": "shares/{}/try_to_modify/"
+                .format(DEMO_CLIENT.user)}
+        rv = SHARE_CLIENTS[3].call("post", "actions/copy", data)
+        self.assertEqual(rv.status_code, 403)
+
+        rv = SHARE_CLIENTS[3].call("post", "actions/move", data)
         self.assertEqual(rv.status_code, 403)
 
     def test_remove_beneficiary(self):
@@ -656,7 +649,46 @@ class TestSequenceFunctions(unittest.TestCase):
         self.assertEqual(received.status_code, 200)
         self.assertNotIn(server_path, server.User.shared_resources)
 
-    def test_modifications_in_shared_directory(self):
+    def test_remove_share(self):
+        owner = SHARE_CLIENTS[0].user
+        user1 = SHARE_CLIENTS[1].user
+        user2 = SHARE_CLIENTS[2].user
+
+        # upload a file
+        with open(DEMO_FILE, "r") as f:
+            data = {"file_content": f}
+            rv = SHARE_CLIENTS[0].call("post", "files/shared_file", data)
+            self.assertEqual(rv.status_code, 201)
+
+        # test if aborts when the resource is not shared
+        received = SHARE_CLIENTS[0].call(
+            "delete",
+            "/".join(["shares", "shared_file"])
+        )
+        self.assertEqual(received.status_code, 400)
+
+        # share a file with a couple of users
+        for usern in [user1, user2]:
+            received = SHARE_CLIENTS[0].call(
+                "post",
+                "/".join(["shares", "shared_file", usern])
+            )
+            self.assertEqual(received.status_code, 200)
+
+        # remove the share on the resource and check
+        received = SHARE_CLIENTS[0].call("delete",
+                                         "/".join(["shares", "shared_file"]))
+        self.assertEqual(received.status_code, 200)
+        self.assertNotIn(
+            os.path.join(
+                server.USERS_DIRECTORIES,
+                owner,
+                "shared_file"
+            ),
+            server.User.shared_resources
+        )
+
+    def test_changes_in_shared_directory(self):
         owner = SHARE_CLIENTS[3].user
         beneficiary = SHARE_CLIENTS[4].user
         subdir = "pappalabaisa"
@@ -703,7 +735,7 @@ class TestSequenceFunctions(unittest.TestCase):
             data = {"file_content": f}
             rv = SHARE_CLIENTS[3].call(
                 "post",
-                "".join(["files/", subdir, "/", "new_file"]),
+                "".join(["files/", subdir, "/other_subdir/new_file"]),
                 data
             )
         self.assertEqual(rv.status_code, 201)
@@ -712,7 +744,25 @@ class TestSequenceFunctions(unittest.TestCase):
             server.User.users[beneficiary].timestamp
         )
         self.assertIn(
-            "/".join(["shares", owner, subdir, "new_file"]),
+            "/".join(["shares", owner, subdir, "other_subdir/new_file"]),
+            server.User.users[beneficiary].paths
+        )
+
+        # remove a file and check
+        data = {"path": "".join([subdir, "/other_subdir/new_file"])}
+        rv = SHARE_CLIENTS[3].call("post", "actions/delete", data)
+        self.assertEqual(rv.status_code, 200)
+
+        self.assertEqual(
+            server.User.users[owner].timestamp,
+            server.User.users[beneficiary].timestamp
+        )
+        self.assertNotIn(
+            "/".join(["shares", owner, subdir, "other_subdir"]),
+            server.User.users[beneficiary].paths
+        )
+        self.assertNotIn(
+            "/".join(["shares", owner, subdir, "other_subdir/new_file"]),
             server.User.users[beneficiary].paths
         )
 

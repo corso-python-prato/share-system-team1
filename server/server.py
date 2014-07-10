@@ -192,6 +192,33 @@ class User(object):
 
         return os.path.join(new_server_path, filename)
 
+    def _get_shared_root(self, server_path):
+        """
+        From a server_path, generate a valid shared root.
+        """
+        path_parts = server_path.split("/")
+        # if len(path_parts) > 3:
+        #     # shared resource has to be in owner's root
+        #     return False
+
+        resource_name = path_parts.pop()
+        return os.path.join("shares", self.username, resource_name)
+
+    def _get_ben_path(self, server_path):
+        """
+        Search a shared father for the resource. If it exists, return the
+        shared resource name and the ben_path, else return False.
+        """
+        for shared_server_path, beneficiaries in User.shared_resources.items():
+            if server_path.startswith(shared_server_path):
+                ben_path = server_path.replace(
+                    shared_server_path,
+                    self._get_shared_root(shared_server_path),
+                    1
+                )
+                return shared_server_path, ben_path
+        return False
+
     def push_path(self, client_path, server_path, update_user_data=True,
                   only_modify=False):
         md5 = to_md5(server_path)
@@ -199,38 +226,20 @@ class User(object):
         file_meta = [server_path, md5, now]
         self.paths[client_path] = file_meta
 
-        for share, beneficiaries in User.shared_resources.items():
-            if server_path.startswith(share):
-                # create the new client path
-                ben_path = server_path.replace(
-                    share,
-                    self.create_shared_path(share), 1
-                )
+        is_shared = self._get_ben_path(server_path)
+        if is_shared:
+            share, ben_path = is_shared
 
-                # upgrade every beneficiaries
-                for ben in beneficiaries[1:]:
-                    ben_user = User.users[ben]
-                    if not only_modify:
-                        ben_user.paths[ben_path] = file_meta
-                    ben_user.timestamp = now
-                break
+            # upgrade every beneficiaries
+            for ben_name in User.shared_resources[share][1:]:
+                ben_user = User.get_user(ben_name)
+                if not only_modify:
+                    ben_user.paths[ben_path] = file_meta
+                ben_user.timestamp = now
 
         if update_user_data:
             self.timestamp = now
             User.save_users()
-
-    def _rm_shared_path(self, client_path, now):
-        server_path = self.get_server_path(client_path)
-        if not server_path:
-            return
-
-        shared_path = self.create_shared_path(server_path)
-        if not server_path in User.shared_resources:
-            return
-
-        for ben in User.shared_resources[server_path][1:]:
-            del ben.paths[shared_path]
-            ben.timestamp = now
 
     def rm_path(self, client_path):
         """
@@ -245,24 +254,39 @@ class User(object):
         if directory_path != "":
             dir_list = directory_path.split("/")
 
-            while (len(dir_list) > 0) \
-                    and not (len(dir_list) == 2 and dir_list[0] == "shares"):
+            while len(dir_list) > 0:
                 # stop if dir_list == [] or dir_list == ["shares", "some_user"]
                 client_subdir = os.path.join(*dir_list)
                 server_subdir = self.paths[client_subdir][0]
                 try:
+                    # step 1: remove from filesystem
                     os.rmdir(server_subdir)
                 except OSError:
                     # the directory is not empty
                     break
                 else:
+                    # step 2: remove from shared beneficiary's paths
+                    is_shared = self._get_ben_path(server_subdir)
+                    if is_shared:
+                        share, ben_path = is_shared
+                        for ben_name in User.shared_resources[share][1:]:
+                            ben_user = User.get_user(ben_name)
+                            del ben_user.paths[ben_path]
+                    # step 3: remove from paths
                     del self.paths[client_subdir]
-                    self._rm_shared_path(client_subdir, now)
                     dir_list.pop()
+
+        # remove from shared beneficiary's paths
+        is_shared = self._get_ben_path(self.get_server_path(client_path))
+        if is_shared:
+            share, ben_path = is_shared
+            for ben_name in User.shared_resources[share][1:]:
+                ben_user = User.get_user(ben_name)
+                del ben_user.paths[ben_path]
+                ben_user.timestamp = now
 
         # remove the argument client_path and save
         del self.paths[client_path]
-        self._rm_shared_path(client_path, now)
         User.save_users()
 
     def add_share(self, client_path, beneficiary):
@@ -281,7 +305,7 @@ class User(object):
         else:
             User.shared_resources[server_path].append(beneficiary)
 
-        new_client_path = self.create_shared_path(server_path)
+        new_client_path = self._get_shared_root(server_path)
         ben.paths[new_client_path] = self.paths[client_path]
 
         if os.path.isdir(server_path):
@@ -295,18 +319,6 @@ class User(object):
         ben.timestamp = time.time()
         User.save_users()
         return True
-
-    def create_shared_path(self, server_path):
-        '''
-        Called when a new resourece is shared.
-        '''
-        path_parts = server_path.split("/")
-        if len(path_parts) > 3:
-            # shared resource has to be in owner's root
-            return False
-
-        resource_name = path_parts.pop()
-        return os.path.join("shares", self.username, resource_name)
 
 
 class Resource(Resource):
@@ -490,26 +502,26 @@ class Shares(Resource):
 
     def _remove_beneficiary(self, owner, server_path, client_path,
                             beneficiary):
+        # remove the beneficiary from the shared resources list
         try:
-            ben = User.users[beneficiary]
+            ben_user = User.get_user(beneficiary)
             User.shared_resources[server_path].remove(beneficiary)
         except (KeyError, ValueError):
             abort(HTTP_BAD_REQUEST)
-        else:
-            if len(User.shared_resources[server_path]) == 1:
-                # owner is the first element in the list
-                del User.shared_resources[server_path]
 
-        ben_path = owner.create_shared_path(server_path)
-        ben.rm_path(ben_path)
-        if os.path.isdir(server_path):
-            # remove every path from beneficiary's paths
-            for path, value in owner.paths.items():
-                if path.startswith(client_path):
-                    to_remove = path.replace(client_path, ben_path, 1)
-                    del ben.paths[to_remove]
+        if len(User.shared_resources[server_path]) == 1:
+            # the resource isn't shared with anybody.
+            # (the first element in the list is the owner)
+            del User.shared_resources[server_path]
 
-        ben.timestamp = time.time()
+        # remove every resource which isn't shared anymore
+        ben_path = owner._get_shared_root(server_path)
+        for client_path in ben_user.paths.keys():
+            if client_path.startswith(ben_path):
+                del ben_user.paths[client_path]
+
+        # update timestamp and save
+        ben_user.timestamp = time.time()
         User.save_users()
         return HTTP_OK
 
