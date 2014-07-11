@@ -252,7 +252,6 @@ class FileSystemOperator(object):
                 pass
             with open(abs_path, 'wb') as f:
                 f.write(content)
-            time.sleep(3)
         else:
             print "file not found on server"
 
