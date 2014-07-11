@@ -34,7 +34,7 @@ class RawBoxExecuter(object):
         email_regex = re.compile('[^@]+@[^@]+\.[^@]+')
         while not email_regex.match(username):
             Message('WARNING', 'invalid email')
-            email = take_input('insert your username: ')
+            username = take_input('insert your username: ')
 
         password = take_input('insert your password: ', password = True)
         rpt_password = take_input('Repeat your password: ', password = True)
