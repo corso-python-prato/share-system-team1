@@ -314,8 +314,8 @@ class ServerCommunicator(object):
 
         self.msg["result"] = response.status_code
 
-        if response.status_code == 200:
-            self.msg["details"].append("User created")
+        if response.status_code == 201:
+            self.msg["details"].append("User activated")
         elif response.status_code == 404:
             self.msg["details"].append("User not found")
         else:
