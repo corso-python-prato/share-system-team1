@@ -102,6 +102,23 @@ class TestRawBoxExecuter(unittest.TestCase):
         self.assertNotEquals(TestRawBoxExecuter.username, self.wrong_user3)
         self.assertEquals(TestRawBoxExecuter.username, self.correct_user)
 
+    def test_create_user_wrong_psw(self):
+        mock_input.append(self.correct_pwd)
+        mock_input.append(self.wrong_pwd)
+
+        mock_input.append(self.wrong_pwd)
+        mock_input.append(self.correct_pwd)
+
+        mock_input.append(self.correct_pwd)
+        mock_input.append(self.correct_pwd)
+
+        mock_input.append(self.correct_user)
+
+        self.raw_box_exec._create_user()
+
+        self.assertNotEquals(TestRawBoxExecuter.psw, self.wrong_pwd)
+        self.assertEquals(TestRawBoxExecuter.psw, self.correct_pwd)
+
 
 if __name__ == '__main__':
     unittest.main()
