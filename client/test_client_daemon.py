@@ -138,9 +138,9 @@ class ServerCommunicatorTest(unittest.TestCase):
                 httpretty.Response(body='{}',status=401),
                 httpretty.Response(body='{}',status=400)
             ])
-        httpretty.register_uri(httpretty.PUT, 'http://127.0.0.1:5000/API/v1/user/activate', 
+        httpretty.register_uri(httpretty.PUT, 'http://127.0.0.1:5000/API/v1/user/usernameFarlocco', 
             responses=[ 
-                httpretty.Response(body='{}',status=200),
+                httpretty.Response(body='{}',status=201),
                 httpretty.Response(body='{}',status=404),
                 httpretty.Response(body='{}',status=400)
             ])
@@ -309,8 +309,8 @@ class ServerCommunicatorTest(unittest.TestCase):
     def test_activate_user(self):
         code = "qwerty12345"
         msg1 = self.server_comm.activate_user({"user":self.username, "code":code})
-        self.assertEqual(msg1["result"], 200)
-        self.assertEqual(msg1["details"][0], "User created")
+        self.assertEqual(msg1["result"], 201)
+        self.assertEqual(msg1["details"][0], "User activated")
         msg2 = self.server_comm.activate_user({"user":self.username, "code":code})
         self.assertEqual(msg2["result"], 404)
         self.assertEqual(msg2["details"][0], "User not found")
