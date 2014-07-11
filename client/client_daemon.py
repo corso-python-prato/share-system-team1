@@ -212,7 +212,7 @@ class ServerCommunicator(object):
         error_log = "User creation error"
         success_log = "user created!"
 
-        server_url = "{}/user/{}".format(self.server_url, param["user"])
+        server_url = "{}/Users/{}".format(self.server_url, param["user"])
 
         request = {
             "url": server_url,
@@ -225,7 +225,7 @@ class ServerCommunicator(object):
             requests.post, success_log, error_log, **request)
 
         self.msg["result"] = response.status_code
-        
+
         if response.status_code == 201:
             self.msg["details"].append(
                 "Check your email for the activation code")
@@ -273,7 +273,7 @@ class ServerCommunicator(object):
         error_log = "Cannot delete user"
         success_log = "Usere deleted"
 
-        server_url = "{}/user/{}".format(self.server_url, param["user"])
+        server_url = "{}/Users/{}".format(self.server_url, param["user"])
 
         request = {
             "url": server_url,
@@ -300,7 +300,7 @@ class ServerCommunicator(object):
         error_log = "Cannot activate user"
         success_log = "User activated"
 
-        server_url = "{}/user/{}".format(self.server_url, param["user"])
+        server_url = "{}/Users/{}".format(self.server_url, param["user"])
 
         request = {
             "url": server_url,
