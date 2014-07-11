@@ -12,7 +12,6 @@ from requests.auth import HTTPBasicAuth
 import requests
 import hashlib
 import shutil
-import base64
 import time
 import json
 import os
@@ -824,7 +823,11 @@ def main():
         server_com.create_user({"user":config['username'], "psw":config['password']})
     observer.start()
 
-    client_command = {}
+    client_command = {
+        "create_user": server_com.create_user,
+        "activate_user": server_com.activate_user,
+        "delete_user": server_com.delete_user
+    }
     sock_server = CmdMessageServer(
         config['cmd_host'],
         int(config['cmd_port']),
