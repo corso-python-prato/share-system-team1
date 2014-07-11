@@ -119,6 +119,15 @@ class TestRawBoxExecuter(unittest.TestCase):
         self.assertNotEquals(TestRawBoxExecuter.psw, self.wrong_pwd)
         self.assertEquals(TestRawBoxExecuter.psw, self.correct_pwd)
 
+    def test_activate_user(self):
+        mock_input.append(self.correct_code)
+        mock_input.append(self.correct_user)
+
+        self.raw_box_exec._activate_user()
+
+        self.assertEquals(TestRawBoxExecuter.code, self.correct_code)
+
+    def test_activate_user_invalid_email(self):
 
 if __name__ == '__main__':
     unittest.main()
