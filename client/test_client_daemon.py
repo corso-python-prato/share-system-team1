@@ -2,6 +2,9 @@ from client_daemon import DirSnapshotManager
 from client_daemon import DirectoryEventHandler
 from client_daemon import ServerCommunicator
 from client_daemon import FileSystemOperator
+from client_daemon import get_abspath
+from client_daemon import get_relpath
+from client_daemon import load_config
 
 #Watchdog event import for event_handler test
 from watchdog.events import FileDeletedEvent
@@ -470,15 +473,24 @@ class DirSnapshotManagerTest(unittest.TestCase):
         self.snapshot_manager.last_status['snapshot'] = 'faultmd5'
         self.assertEqual(self.snapshot_manager.local_check(), False)
 
+    def test_is_syncro(self):
+        test_srv_timestamp = '123123'
+        self.assertTrue(self.snapshot_manager.is_syncro(test_srv_timestamp))
+        test_srv_timestamp = '123124'
+        self.assertFalse(self.snapshot_manager.is_syncro(test_srv_timestamp))
+
     def test_load_status(self):
         self.snapshot_manager._load_status()
         self.assertEqual(self.snapshot_manager.last_status, self.conf_snap_gen)
 
     def test_file_snapMd5(self):
-
-        filepath = os.path.join(self.test_share_dir, 'sub_dir_1', 'test_file_1.txt')
+        #Case: file md5
+        filepath = self.test_file_1
         test_md5 = hashlib.md5(open(filepath).read()).hexdigest()
         self.assertEqual(self.snapshot_manager.file_snapMd5(filepath), test_md5)
+
+        #Case: directory
+        self.assertFalse(self.snapshot_manager.file_snapMd5(self.test_folder_1))
 
     def test_global_md5(self):
         self.assertEqual(self.snapshot_manager.global_md5(), self.md5_snapshot)
@@ -498,6 +510,30 @@ class DirSnapshotManagerTest(unittest.TestCase):
         new_conf = json.load(open(self.conf_snap_path))
 
         self.assertEqual(expected_conf, new_conf)
+
+    def test_save_timestamp(self):
+        #Case: timestamp not correct
+        test_timestamp = 123122
+        expected_snap = self.conf_snap_gen
+        self.snapshot_manager.save_timestamp(test_timestamp)
+        new_snap_conf = json.load(open(self.conf_snap_path))
+        self.assertEqual(new_snap_conf, expected_snap)
+        self.assertEqual(
+            self.snapshot_manager.last_status,
+            self.conf_snap_gen)
+
+        #Case: timestamp correct
+        test_timestamp = 123124
+        expected_snap = {
+            "timestamp": 123124,
+            "snapshot": "ab8d6b3c332aa253bb2b471c57b73e27"
+        }
+        self.snapshot_manager.save_timestamp(test_timestamp)
+        new_snap_conf = json.load(open(self.conf_snap_path))
+        self.assertEqual(new_snap_conf, expected_snap)
+        self.assertEqual(
+            self.snapshot_manager.last_status,
+            expected_snap)
 
 
 class DirectoryEventHandlerTest(unittest.TestCase):
@@ -546,14 +582,21 @@ class DirectoryEventHandlerTest(unittest.TestCase):
             self.snapshot_manager)
 
     def test__is_copy(self):
+        #Case: is file not in snapshot
         response = self.event_handler._is_copy('path')
+        self.assertFalse(response)
 
-        self.assertEqual(response, False)
-
+        #Case: is file in snapshot
         self.snapshot_manager.local_full_snapshot = {'MD5': ['path']}
         response = self.event_handler._is_copy('path')
-
         self.assertEqual(response, 'path')
+
+        #Case: is folder
+        def file_snapMd5(self, *args, **kwargs):
+                return False
+        self.snapshot_manager.file_snapMd5 = file_snapMd5
+        response = self.event_handler._is_copy('path')
+        self.assertFalse(response)
 
     def test_on_moved(self):
         move_file_event = FileMovedEvent(self.test_src, self.test_dst)
@@ -672,6 +715,74 @@ class DirectoryEventHandlerTest(unittest.TestCase):
         self.event_handler.on_modified(modify_file_event)
         self.assertFalse(self.server_comm.cmd["upload"])
         self.assertFalse(self.test_src in self.event_handler.paths_ignored)
+
+
+class FunctionTest(unittest.TestCase):
+
+    def setUp(self):
+        client_daemon.CONFIG_DIR_PATH = '/home/user/test_shared_dir'
+
+    def test_get_abspath(self):
+        expected_result = '/home/user/test_shared_dir/folder/file.txt'
+
+        #Case: relative path
+        path = 'folder/file.txt'
+        self.assertEqual(get_abspath(path), expected_result)
+
+        #Case: absolute path
+        path = '/home/user/test_shared_dir/folder/file.txt'
+        self.assertEqual(get_abspath(path), expected_result)
+
+    def test_get_relpath(self):
+        expected_result = 'folder/file.txt'
+
+        #Case: absolute path
+        path = '/home/user/test_shared_dir/folder/file.txt'
+        self.assertEqual(get_relpath(path), expected_result)
+
+        #Case: relarive path
+        path = 'folder/file.txt'
+        self.assertEqual(get_relpath(path), expected_result)
+
+    def test_load_config(self):
+        expected_conf = {
+            'config': 'test configuration'
+        }
+        open('config.json', 'w').write(json.dumps(expected_conf))
+
+        #Case: test config file
+        config, is_new = load_config()
+        self.assertFalse(is_new)
+        self.assertEqual(config, expected_conf)
+
+        #reset
+        os.remove('config.json')
+
+        #Case: IOError
+        expected_conf = {
+            "server_url": "http://{}:{}/{}".format(
+                client_daemon.SERVER_URL,
+                client_daemon.SERVER_PORT,
+                client_daemon.API_PREFIX
+            ),
+            "dir_path": os.path.join(os.path.expanduser("~"), "RawBox"),
+            "snapshot_file_path": 'snapshot_file.json',
+            "cmd_host": "localhost",
+            "cmd_port": "6666",
+            "username": 'username',
+            "password": 'password',
+        }
+        expected_snap = {
+            "timestamp": 0,
+            "snapshot": "",
+        }
+        config, is_new = load_config()
+        self.assertTrue(is_new)
+        self.assertTrue(os.path.exists('config.json'))
+        self.assertEqual(config, expected_conf)
+        self.assertTrue(os.path.exists('snapshot_file.json'))
+        snap = json.loads(open('snapshot_file.json').read())
+        self.assertEqual(snap, expected_snap)
 
 
 if __name__ == '__main__':

@@ -544,12 +544,11 @@ class DirSnapshotManager(object):
             save timestamp to file only if getfile
             timestamp is < than the last timestamp saved
         """
-        with open(self.snapshot_file_path, 'r') as f:
-            last_snap = json.load(f)
-        if float(last_snap['timestamp']) < float(timestamp):
-            last_snap['timestamp'] = timestamp
+
+        if float(self.last_status['timestamp']) < float(timestamp):
+            self.last_status['timestamp'] = timestamp
             with open(self.snapshot_file_path, 'w') as f:
-                f.write(json.dumps(last_snap,f))
+                f.write(json.dumps(self.last_status, f))
 
     def diff_snapshot_paths(self, snap_client, snap_server):
         """
