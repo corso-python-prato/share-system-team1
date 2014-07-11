@@ -227,7 +227,7 @@ class Resource_with_auth(Resource):
     method_decorators = [auth.login_required]
 
 
-class UserApi(Resource):
+class UsersApi(Resource):
     pending = {}
 
     def post(self, username):
@@ -496,7 +496,7 @@ def main():
     User.user_class_init()
     app.run(host="0.0.0.0", debug=True)         # TODO: remove debug=True
 
-api.add_resource(UserApi, "{}user/<string:username>".format(_API_PREFIX))
+api.add_resource(UserApi, "{}Users/<string:username>".format(_API_PREFIX))
 api.add_resource(Files, "{}files/<path:client_path>".format(_API_PREFIX),
                         "{}files/".format(_API_PREFIX))
 api.add_resource(Actions, "{}actions/<string:cmd>".format(_API_PREFIX))
