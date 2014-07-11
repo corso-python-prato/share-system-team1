@@ -28,6 +28,13 @@ DEMO_DEST_MOVE_PATH = "new_mv"
 NO_SERVER_PATH = "marcoRegna"
 
 
+def make_headers(user, psw):
+    return = {
+        "Authorization": "Basic "
+        + b64encode("{0}:{1}".format(user, psw))
+    }
+
+
 def transfer(path, flag=True, test=True):
     client_path, server_path = set_tmp_params(path)
     if flag:
