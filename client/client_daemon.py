@@ -212,12 +212,11 @@ class ServerCommunicator(object):
         error_log = "User creation error"
         success_log = "user created!"
 
-        server_url = "{}/user/create".format(self.server_url)
+        server_url = "{}/user/{}".format(self.server_url, param["user"])
 
         request = {
             "url": server_url,
             "data": {
-                "user": param["user"],
                 "psw": param["psw"]
             }
         }
@@ -274,14 +273,11 @@ class ServerCommunicator(object):
         error_log = "Cannot delete user"
         success_log = "Usere deleted"
 
-        server_url = "{}/user/delete".format(self.server_url)
+        server_url = "{}/user/{}".format(self.server_url, param["user"])
 
         request = {
             "url": server_url,
-            "data": {
-                "user": param["user"],
-                "psw": param["psw"]
-            }
+            "data": {}
         }
 
         response = self._try_request(
@@ -304,12 +300,11 @@ class ServerCommunicator(object):
         error_log = "Cannot activate user"
         success_log = "User activated"
 
-        server_url = "{}/user/activate".format(self.server_url)
+        server_url = "{}/user/{}".format(self.server_url, param["user"])
 
         request = {
             "url": server_url,
             "data": {
-                "user": param["user"],
                 "code": param["code"]
             }
         }
