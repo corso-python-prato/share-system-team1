@@ -656,8 +656,8 @@ class DirSnapshotManager(object):
                                 "/".join(equal_path.split('/')[:-1]),
                                 "".join(equal_path.split('/')[-1])
                             )
+                            command_list.append({'local_copy': [equal_path, conflicted_path]})
                             command_list.append({'remote_upload': [conflicted_path]})
-                            command_list.append({'local_copyAndRename': [equal_path, conflicted_path]})
                     else:
                         print "no action:\t" + equal_path
                 for new_client_path in new_client_paths: # 2) b 3
@@ -695,7 +695,6 @@ class CommandExecuter(object):
                         'copy': self.local.copy_a_file,
                         'download': self.local.write_a_file,
                         'delete': self.local.delete_a_file,
-                        'copyAndRename': self.local.copy_and_rename,
                     }.get(command_type,error)(*(command_row[command]))
 
 
