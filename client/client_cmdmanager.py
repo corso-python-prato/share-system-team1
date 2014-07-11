@@ -192,7 +192,7 @@ class RawBoxCmd(cmd.Cmd):
         """
         if line:
             command = line.split()[0]
-            arguments = line.split()[1:]
+            arguments = line.split()[1]
             {
                 'user': self.executer._create_user,
                 'group': self.executer._create_group,
