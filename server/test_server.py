@@ -194,6 +194,27 @@ class TestUser(unittest.TestCase):
             with self.assertRaises(ConflictError):
                 tc.post(_API_PREFIX + "create_user", data=data)
 
+    def test_to_md5(self):
+        # check if two files with the same content have the same md5
+        first_md5 = server.to_md5(
+            os.path.join(TestUser.root, "demofile1.txt")
+        )
+        first_copy_md5 = server.to_md5(
+            os.path.join(TestUser.root, "demofile1_copy.txt")
+        )
+        self.assertEqual(first_md5, first_copy_md5)
+
+        # check if two different files have different md5
+        second_md5 = server.to_md5(
+            os.path.join(TestUser.root, "demofile2.txt")
+        )
+        self.assertNotEqual(first_md5, second_md5)
+
+        # check if, for a directory, returns False
+        tmp_dir = "aloha"
+        os.mkdir(tmp_dir)
+        self.assertFalse(server.to_md5(tmp_dir))
+        os.rmdir(tmp_dir)
 
 class TestSequenceFunctions(unittest.TestCase):
 
