@@ -386,53 +386,6 @@ class TestSequenceFunctions(unittest.TestCase):
         server.app.config.update(TESTING=True)
         server.app.testing = True
 
-    def test_create_user(self):
-        # check if a new user is correctly created
-        dirs_counter = len(os.listdir(server.USERS_DIRECTORIES))
-
-        user = "Gianni"
-        psw = "IloveJava"
-        client = TestClient(user, psw)
-        rv = client.create_demo_user(True)
-        self.assertEqual(rv.status_code, server.HTTP_BAD_REQUEST)
-
-        rv = client.create_demo_user()
-        self.assertEqual(rv.status_code, server.HTTP_CREATED)
-        # check if a directory is created
-        new_counter = len(os.listdir(server.USERS_DIRECTORIES))
-        self.assertEqual(dirs_counter + 1, new_counter)
-
-        # check if, when the user already exists, 'create_user' returns an
-        # error
-        rv = client.create_demo_user()
-        self.assertEqual(rv.status_code, server.HTTP_CONFLICT)
-
-        user = "Giovanni"
-        psw = "zappa"
-        client = TestClient(user, psw)
-
-        os.mkdir(os.path.join(TEST_DIRECTORY, user))
-        rv = client.create_demo_user()
-        self.assertEqual(rv.status_code, server.HTTP_CONFLICT)
-
-    def test_to_md5(self):
-        # check if two files with the same content have the same md5
-        second_file = "second_file.txt"
-        with open(second_file, "w") as f:
-            f.write(DEMO_CONTENT)
-
-        first_md5 = server.to_md5(DEMO_FILE)
-        second_md5 = server.to_md5(second_file)
-        self.assertEqual(first_md5, second_md5)
-
-        os.remove(second_file)
-
-        # check if, for a directory, returns False
-        tmp_dir = "aloha"
-        os.mkdir(tmp_dir)
-        self.assertFalse(server.to_md5(tmp_dir))
-
-        os.rmdir(tmp_dir)
 
     def test_create_server_path(self):
         # check if aborts when you pass invalid paths:
