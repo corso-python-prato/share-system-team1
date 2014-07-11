@@ -5,19 +5,18 @@ from communication_system import CmdMessageClient
 from client_daemon import load_config
 from colorMessage import Message
 import platform
-import asyncore
 import getpass
 import cmd
-import sys
 import re
 import os
 
 
-def take_input(message, password = False):
-    if not  password:
+def take_input(message, password=False):
+    if not password:
         return raw_input(message)
     else:
         return getpass.getpass(message)
+
 
 class RawBoxExecuter(object):
 
@@ -36,17 +35,17 @@ class RawBoxExecuter(object):
             Message('WARNING', 'invalid email')
             username = take_input('insert your username: ')
 
-        password = take_input('insert your password: ', password = True)
-        rpt_password = take_input('Repeat your password: ', password = True)
+        password = take_input('insert your password: ', password=True)
+        rpt_password = take_input('Repeat your password: ', password=True)
         while password != rpt_password:
             Message('WARNING', 'password not matched')
-            password = take_input('insert your password: ', password = True)
-            rpt_password = take_input('Repeat your password: ', password = True)
+            password = take_input('insert your password: ', password=True)
+            rpt_password = take_input('Repeat your password: ', password=True)
 
         param = {
-                'user': username,
-                'psw': password,
-            }
+            'user': username,
+            'psw': password
+        }
 
         self.comm_sock.send_message(command_type, param)
         self.print_response(self.comm_sock.read_message())
@@ -65,9 +64,13 @@ class RawBoxExecuter(object):
             Message('WARNING', 'invalid email')
             username = take_input('insert your username: ')
         param = {
-                'user': username,
-                'code': code
-            }
+            'user': username,
+            'code': code
+        }
+
+        self.comm_sock.send_message(command_type, param)
+        self.print_response(self.comm_sock.read_message())
+
     def _delete_user(self, username=None):
         """ delete user if is logged """
         command_type = 'delete_user'
@@ -104,7 +107,8 @@ class RawBoxExecuter(object):
             if group.strip() == "":
                 raise IndexError
         except IndexError:
-            Message('WARNING', '\nyou must specify a group for example add user marco luigi group=your_group')
+            Message('WARNING', '\nyou must specify a group for example \
+                add user marco luigi group=your_group')
             return False
 
         for user in users:
@@ -146,22 +150,26 @@ class RawBoxExecuter(object):
 class RawBoxCmd(cmd.Cmd):
     """RawBox command line interface"""
 
-    intro = Message().color('INFO', '##### Hello guy!... or maybe girl, welcome to RawBox ######\ntype ? to see help\n\n')
-    doc_header = Message().color('INFO', "command list, type ? <topic> to see more :)")
+    intro = Message().color('INFO', '##### Hello guy!... or maybe girl, \
+    welcome to RawBox ######\ntype ? to see help\n\n')
+    doc_header = Message().color('INFO', "command list, type ? <topic> \
+        to see more :)")
     prompt = Message().color('HEADER', '(RawBox) ')
     ruler = Message().color('INFO', '~')
 
     def __init__(self, executer):
         cmd.Cmd.__init__(self)
         self.executer = executer
-        
+
     def error(self, *args):
         print "hum... unknown command, please type help"
 
     def do_add(self, line):
         """
-    add user <*user_list> group=<group_name> (add a new RawBox user to the group)
-    add admin <*user_list> group=<group_name> (add a new RawBox user as admin to the group)
+    add a new RawBox user to the group
+    add user <*user_list> group=<group_name>
+    add a new RawBox user as admin to the group
+    add admin <*user_list> group=<group_name>
         """
         if line:
             command = line.split()[0]
@@ -175,9 +183,12 @@ class RawBoxCmd(cmd.Cmd):
 
     def do_create(self, line):
         """
-        create user <username>  (create a new RawBox user)
-        create user <name>  (create a new RawBox user)
-        create group <name> (create a new shareable folder with your friends)
+        create a new RawBox user
+        create user <username>
+        create a new RawBox user
+        create user <name>
+        create a new shareable folder with your friends
+        create group <name>
         """
         if line:
             command = line.split()[0]
@@ -191,7 +202,8 @@ class RawBoxCmd(cmd.Cmd):
 
     def do_activate(self, line):
         """
-        activate <username> code=<code> (activate a new RawBox user previously created)
+        activate a new RawBox user previously created
+        activate <username> code=<code>
         """
         if line:
             user = line.split()[0]
@@ -199,6 +211,7 @@ class RawBoxCmd(cmd.Cmd):
             self.executer._activate_user(user, code)
         else:
             Message('INFO', self.do_activate.__doc__)
+
     def do_q(self, line=None):
         """ exit from RawBox"""
         if take_input('[Exit] are you sure? y/n ') == 'y':
