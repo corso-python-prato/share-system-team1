@@ -87,15 +87,6 @@ class RawBoxExecuter(object):
         self.comm_sock.send_message(command_type, param)
         self.print_response(self.comm_sock.read_message())
 
-    def _create_group(self, *args):
-        """create group/s"""
-
-        command_type = 'create_group'
-        param = {'group': args}
-
-        self.comm_sock.send_message(command_type, param)
-        self.print_response(self.comm_sock.read_message())
-
     def _add_user(self, *args):
         """add user/s to a group """
         command_type = 'add_to_group'
@@ -119,14 +110,6 @@ class RawBoxExecuter(object):
             }
             self.comm_sock.send_message(command_type, param)
             self.print_response(self.comm_sock.read_message())
-
-    def _add_admin(self, *args):
-        """add admin/s to a group """
-        command_type = 'add_admin'
-        param = {'admin': args}
-
-        self.comm_sock.send_message(command_type, param)
-        self.print_response(self.comm_sock.read_message())
 
     def print_response(self, response):
         ''' print response from the daemon.
@@ -163,36 +146,16 @@ class RawBoxCmd(cmd.Cmd):
     def error(self, *args):
         print "hum... unknown command, please type help"
 
-    def do_add(self, line):
-        """
-    add a new RawBox user to the group
-    add user <*user_list> group=<group_name>
-    add a new RawBox user as admin to the group
-    add admin <*user_list> group=<group_name>
-        """
-        if line:
-            command = line.split()[0]
-            arguments = line.split()[1:]
-            {
-                'user': self.executer._add_user,
-                'admin': self.executer._add_admin,
-            }.get(command, self.error)(arguments)
-        else:
-            Message('INFO', self.do_add.__doc__)
-
     def do_create(self, line):
         """
         create a new RawBox user
         create user <username>
-        create a new shareable folder with your friends
-        create group <name>
         """
         if line:
             command = line.split()[0]
             arguments = line.split()[1]
             {
-                'user': self.executer._create_user,
-                'group': self.executer._create_group,
+                'user': self.executer._create_user
             }.get(command, self.error)(arguments)
         else:
             Message('INFO', self.do_create.__doc__)
