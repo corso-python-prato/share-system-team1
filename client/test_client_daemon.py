@@ -481,10 +481,13 @@ class DirSnapshotManagerTest(unittest.TestCase):
         self.assertEqual(self.snapshot_manager.last_status, self.conf_snap_gen)
 
     def test_file_snapMd5(self):
-
-        filepath = os.path.join(self.test_share_dir, 'sub_dir_1', 'test_file_1.txt')
+        #Case: file md5
+        filepath = self.test_file_1
         test_md5 = hashlib.md5(open(filepath).read()).hexdigest()
         self.assertEqual(self.snapshot_manager.file_snapMd5(filepath), test_md5)
+
+        #Case: directory
+        self.assertFalse(self.snapshot_manager.file_snapMd5(self.test_folder_1))
 
     def test_global_md5(self):
         self.assertEqual(self.snapshot_manager.global_md5(), self.md5_snapshot)
