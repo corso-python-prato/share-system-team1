@@ -145,6 +145,50 @@ class NewRootTestExample(unittest.TestCase):
         shutil.rmtree(NewRootTestExample.other_directory)
 
 
+class TestUser(unittest.TestCase):
+    root = "demo_test/test_user"
+
+    def setUp(self):
+        server.SERVER_ROOT = TestUser.root
+        server.server_setup()
+
+    def tearDown(self):
+        shutil.rmtree(TestUser.root)
+
+    def test_create_user(self):
+        # check if a new user is correctly created
+        dirs_counter = len(os.listdir(server.USERS_DIRECTORIES))
+
+        data = {
+            "user": "Gianni",
+            "psw": "IloveJava"
+        }
+        with server.app.test_client() as tc:
+            received = tc.post(_API_PREFIX + "create_user", data=data)
+        self.assertEqual(received.status_code, server.HTTP_CREATED)
+
+        # check if a directory is created
+        new_counter = len(os.listdir(server.USERS_DIRECTORIES))
+        self.assertEqual(dirs_counter + 1, new_counter)
+
+        # check if, when the user already exists, 'create_user' returns an
+        # error
+        with server.app.test_client() as tc:
+            received = tc.post(_API_PREFIX + "create_user", data=data)
+        self.assertEqual(received.status_code, server.HTTP_CONFLICT)
+
+        # check the error raised when the directory for a new user
+        # already exists
+        data = {
+            "user": "Giovanni",
+            "psw": "zappa"
+        }
+        os.mkdir(os.path.join(server.USERS_DIRECTORIES, data["user"]))
+        with server.app.test_client() as tc:
+            with self.assertRaises(ConflictError):
+                tc.post(_API_PREFIX + "create_user", data=data)
+
+
 class TestSequenceFunctions(unittest.TestCase):
 
     @classmethod
