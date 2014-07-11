@@ -44,7 +44,7 @@ def transfer(path, flag=True, test=True):
         new_path = "{}/{}".format(DEMO_DEST_COPY_PATH, path)
     else:
         func = "move"
-        new_path = "{}/{}".format(DEMO_DEST_MOVE_PATH, path)
+        new_path = "{}/{}".format(DEMO_DEST_MOVE_PATH, path)\
 
     if test:
         data = {
@@ -216,6 +216,7 @@ class TestUser(unittest.TestCase):
         self.assertFalse(server.to_md5(tmp_dir))
         os.rmdir(tmp_dir)
 
+
 class TestSequenceFunctions(unittest.TestCase):
 
     @classmethod
@@ -261,7 +262,6 @@ class TestSequenceFunctions(unittest.TestCase):
     def setUp(self):
         server.app.config.update(TESTING=True)
         server.app.testing = True
-
 
     def test_create_server_path(self):
         # check if aborts when you pass invalid paths:
