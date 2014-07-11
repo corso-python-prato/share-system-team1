@@ -147,7 +147,6 @@ class RawBoxCmd(cmd.Cmd):
     def error(self, *args):
         print "hum... unknown command, please type help"
 
-
     def do_create(self, line):
         """
         create a new RawBox user
