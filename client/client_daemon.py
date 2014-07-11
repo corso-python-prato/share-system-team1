@@ -313,6 +313,7 @@ class FileSystemOperator(object):
         """ copy a file with extension .conflicted """
         pass
 
+
 def load_config():
     try:
         with open('config.json', 'r') as config_file:
@@ -603,6 +604,7 @@ class DirSnapshotManager(object):
                     client_md5 = self.find_file_md5(self.local_full_snapshot, equal_path, False)
                     if client_md5 != self.find_file_md5(server_snapshot, equal_path):
                         print "update download:\t" + equal_path
+                        #in this case i have a simple download because the update is a overwritten
                         command_list.append({'local_download': [equal_path]})
                     else:
                         print "no action:\t" + equal_path
