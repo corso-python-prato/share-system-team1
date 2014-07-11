@@ -185,8 +185,6 @@ class RawBoxCmd(cmd.Cmd):
         """
         create a new RawBox user
         create user <username>
-        create a new RawBox user
-        create user <name>
         create a new shareable folder with your friends
         create group <name>
         """
