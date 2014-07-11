@@ -124,10 +124,10 @@ class TestClient(object):
 
 
 class TestFilesAPI(unittest.TestCase):
-    test_path = "demo_test/file_test/"
-    test_file_name = "some_text.txt"
+    test_path = "demo_test/test_file"
+    test_file_name = "a_file.txt"
     test_file = os.path.join(test_path, test_file_name)
-    user_test = "file_user"
+    user_test = "user"
     password_test = "password"
     url_radix = "files/"
 
@@ -147,6 +147,7 @@ class TestFilesAPI(unittest.TestCase):
         ''' Add a file in user's directory, in the path passed in argument
         Please, use path here with only a word (not "dir/subdir") '''
         client_path = os.path.join(father_dir, TestFilesAPI.test_file_name)
+
         server_path = os.path.join(TestFilesAPI.test_path,
                                    TestFilesAPI.user_test, client_path)
         os.makedirs(os.path.dirname(server_path))
@@ -154,6 +155,16 @@ class TestFilesAPI(unittest.TestCase):
 
         server_father_path = os.path.join(TestFilesAPI.test_path,
                                           TestFilesAPI.user_test, father_dir)
+
+        server_path = os.path.join(TestFilesAPI.test_path, "user_dirs",
+                                   TestFilesAPI.user_test, client_path)
+        if not os.path.isdir(os.path.dirname(server_path)):
+            os.makedirs(os.path.dirname(server_path))
+        shutil.copy(TestFilesAPI.test_file, server_path)
+
+        server_father_path = os.path.join(TestFilesAPI.test_path, "user_dirs",
+                                          TestFilesAPI.user_test, father_dir)
+
         u = server.User.users[TestFilesAPI.user_test]
         u.paths[father_dir] = [server_father_path, 0, False]
         u.paths[client_path] = [server_path, 0, 0]
@@ -163,7 +174,8 @@ class TestFilesAPI(unittest.TestCase):
     def setUp(self):
         server.SERVER_ROOT = TestFilesAPI.test_path
         server.server_setup()
-        server.User(TestFilesAPI.user_test, TestFilesAPI.password_test)
+        if TestFilesAPI.user_test not in server.User.users:
+            server.User(TestFilesAPI.user_test, TestFilesAPI.password_test)
 
     def test_post(self):
         with server.app.test_client() as tc:
@@ -189,13 +201,18 @@ class TestFilesAPI(unittest.TestCase):
                                               TestFilesAPI.password_test))
             f.close()
             self.assertEqual(rv.status_code, 201)
+
         with open("{}{}/{}/{}".format(TestFilesAPI.test_path, "user_dirs",
                                       TestFilesAPI.user_test,
                                       TestFilesAPI.test_file_name)) as f:
-            uploaded_content = f.read()
-            f = open(TestFilesAPI.test_file, "r")
-            self.assertEqual(f.read(), uploaded_content)
-            f.close()
+            with open("{}{}/{}/{}".format(TestFilesAPI.test_path, "/user_dirs",
+                                          TestFilesAPI.user_test,
+                                          TestFilesAPI.test_file_name)) as f:
+
+                uploaded_content = f.read()
+                f = open(TestFilesAPI.test_file, "r")
+                self.assertEqual(f.read(), uploaded_content)
+                f.close()
 
         with server.app.test_client() as tc:
             f = open(TestFilesAPI.test_file, "r")
@@ -210,7 +227,7 @@ class TestFilesAPI(unittest.TestCase):
             self.assertEqual(rv.status_code, 409)
 
     def test_get(self):
-        client_path, server_path = set_tmp_params("dwn")
+        client_path, server_path = self.set_tmp_params("to_download")
         with server.app.test_client() as tc:
             f = open(TestFilesAPI.test_file, "r")
             data = {"file_content": f}
@@ -230,12 +247,10 @@ class TestFilesAPI(unittest.TestCase):
                                              TestFilesAPI.password_test))
             f.close()
             self.assertEqual(rv.status_code, 200)
-
-        with open(server_path) as f:
-            got_content = f.read()
-            fr = open(TestFilesAPI.test_file, "r")
-            self.assertEqual(fr.read(), got_content)
-            fr.close()
+            with open(server_path, "r") as f:
+                got_content = f.read()
+                with open(TestFilesAPI.test_file, "r") as fp:
+                    self.assertEqual(fp.read(), got_content)
 
         with server.app.test_client() as tc:
             f = open(TestFilesAPI.test_file, "r")
@@ -257,6 +272,53 @@ class TestFilesAPI(unittest.TestCase):
                                              TestFilesAPI.password_test))
             f.close()
             self.assertEqual(rv.status_code, 410)
+
+    def test_put(self):
+
+        client_path, server_path = self.set_tmp_params("modify")
+        if not server_path in server.User.users[TestFilesAPI.user_test
+                                                ].paths[client_path]:
+            return
+
+        with server.app.test_client() as tc:
+            f = open(TestFilesAPI.test_file, "r")
+            data = {"file_content": f}
+            url = "{}{}".format(TestFilesAPI.url_radix,
+                                TestFilesAPI.test_file_name)
+            rv = tc.put(server._API_PREFIX + url,
+                        data=data,
+                        headers=make_headers("fake_user",
+                                             TestFilesAPI.password_test))
+            f.close()
+            self.assertEqual(rv.status_code, 401)
+
+        with server.app.test_client() as tc:
+            f = open(TestFilesAPI.test_file, "r")
+            data = {"file_content": f}
+            url = "{}{}".format(TestFilesAPI.url_radix,
+                                TestFilesAPI.test_file_name)
+            rv = tc.put(server._API_PREFIX + url,
+                        data=data,
+                        headers=make_headers(TestFilesAPI.user_test,
+                                             TestFilesAPI.password_test))
+            f.close()
+            self.assertEqual(rv.status_code, 201)
+
+        with open(server_path, "r") as f:
+                got_content = f.read()
+                with open(TestFilesAPI.test_file, "r") as fp:
+                    self.assertEqual(fp.read(), got_content)
+
+        with server.app.test_client() as tc:
+            f = open(TestFilesAPI.test_file, "r")
+            data = {"file_content": f}
+            url = "{}{}".format(TestFilesAPI.url_radix, "NO_SERVER_PATH")
+            rv = tc.put(server._API_PREFIX + url,
+                        data=data,
+                        headers=make_headers(TestFilesAPI.user_test,
+                                             TestFilesAPI.password_test))
+            f.close()
+            self.assertEqual(rv.status_code, 404)
 
 
 class TestActionsAPI(unittest.TestCase):
