@@ -309,8 +309,9 @@ class UserApi(Resource):
     def delete(self, username):
         """Delete the user who is making the request
         """
-        current_user = User.get_user(auth.username())
-        if current_user == username:
+        current_username = auth.username()
+        current_user = User.get_user(current_username)
+        if current_username == username:
             current_user.delete_user(username)
             return "user deleted", HTTP_OK
         else:
