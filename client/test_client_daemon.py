@@ -132,10 +132,10 @@ class ServerCommunicatorTest(unittest.TestCase):
                 httpretty.Response(body='{}', status=404),
                 httpretty.Response(body='{"something wrong"}', status=400)
             ])
-        httpretty.register_uri(httpretty.GET, 'http://127.0.0.1:5000/API/v1/user/delete', 
+        httpretty.register_uri(httpretty.DELETE, 'http://127.0.0.1:5000/API/v1/user/usernameFarlocco', 
             responses=[ 
                 httpretty.Response(body='{}',status=200),
-                httpretty.Response(body='{}',status=404),
+                httpretty.Response(body='{}',status=401),
                 httpretty.Response(body='{}',status=400)
             ])
         httpretty.register_uri(httpretty.PUT, 'http://127.0.0.1:5000/API/v1/user/activate', 
