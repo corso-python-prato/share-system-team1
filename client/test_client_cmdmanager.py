@@ -17,11 +17,26 @@ RawBoxExecuter.print_response = mock_print_response
 
 class MockCmdMessageClient(object):
 
-    def send_message(self, command_type, param):
-        return command_type, param
+    def send_message(self, _, param):
+        """override comm_sock.send_message to intercept data sended
+        to the socket
+        param {
+            'user': <username>
+            'psw': <password>
+            'code': <32 character alfanumeric code>
+        }
+        code and psw are used only respectively in
+        activate_user and create_user
+        """
+        TestRawBoxExecuter.username = param['user']
+        TestRawBoxExecuter.psw = param.get('psw', "empty")
+        TestRawBoxExecuter.code = param.get('code', "empty")
 
     def read_message(self):
+        """override comm_sock.read_message
+        it's useless for testing"""
         pass
+
 
 class MockExecuter(object):
 
