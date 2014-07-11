@@ -28,8 +28,7 @@ class RawBoxExecuter(object):
         command_type = 'create_user'
 
         if not username:
-            username = take_input('insert your username: ')
-
+            username = take_input('insert your username: ')      
         email_regex = re.compile('[^@]+@[^@]+\.[^@]+')
         while not email_regex.match(username):
             Message('WARNING', 'invalid email')
