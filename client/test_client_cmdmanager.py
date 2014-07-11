@@ -4,14 +4,16 @@ import unittest
 
 mock_input = []
 
+
 def mock_take_input(message, password=False):
-    #print message
+    """override client_cmdmanager.take_input
+    to bypass the raw input in client_cmdmanager"""
     return mock_input.pop()
+client_cmdmanager.take_input = mock_take_input
+
 
 def mock_print_response(a, b):
         pass
-
-client_cmdmanager.take_input = mock_take_input
 RawBoxExecuter.print_response = mock_print_response
 
 
