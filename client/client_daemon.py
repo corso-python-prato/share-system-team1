@@ -129,7 +129,10 @@ class ServerCommunicator(object):
         if r.status_code == 409:
             print "already exists"
         elif r.status_code == 201:
-            self.snapshot_manager.update_snapshot(action = "upload" , body = {"src_path": dst_path})
+            if put_file:
+                self.snapshot_manager.update_snapshot_update({"src_path": dst_path})
+            else:
+                self.snapshot_manager.update_snapshot_upload({"src_path": dst_path})
             self.snapshot_manager.save_snapshot(r.text)
 
     def delete_file(self, dst_path):
@@ -147,7 +150,7 @@ class ServerCommunicator(object):
         if r.status_code == 404:
             print "file not found on server"
         elif r.status_code == 200:
-            self.snapshot_manager.update_snapshot(action = "delete" , body = {"src_path": dst_path})
+            self.snapshot_manager.update_snapshot_delete({"src_path": dst_path})
             self.snapshot_manager.save_snapshot(r.text)
 
     def move_file(self, src_path, dst_path):
@@ -169,10 +172,7 @@ class ServerCommunicator(object):
         if r.status_code == 404:
             print "file not found on server"
         elif r.status_code == 201:
-            self.snapshot_manager.update_snapshot(
-                action = "move",
-                body = {"src_path": src_path, "dst_path": dst_path}
-            )
+            self.snapshot_manager.update_snapshot_move({"src_path": src_path, "dst_path": dst_path})
             self.snapshot_manager.save_snapshot(r.text)
 
     def copy_file(self, src_path, dst_path):
@@ -193,10 +193,7 @@ class ServerCommunicator(object):
         if r.status_code == 404:
             print "file not found on server"
         elif r.status_code == 201:
-            self.snapshot_manager.update_snapshot(
-                action = "copy",
-                body = {"src_path": src_path, "dst_path": dst_path}
-            )
+            self.snapshot_manager.update_snapshot_copy({"src_path": src_path, "dst_path": dst_path})
             self.snapshot_manager.save_snapshot(r.text)
 
     def create_user(self, username, password):
@@ -252,6 +249,7 @@ class FileSystemOperator(object):
                 pass
             with open(abs_path, 'wb') as f:
                 f.write(content)
+            self.snapshot_manager.update_snapshot_upload({"src_path": get_abspath(abs_path)})
         else:
             print "file not found on server"
 
@@ -271,6 +269,7 @@ class FileSystemOperator(object):
         except OSError:
             pass
         shutil.move(origin_path, dst_path)
+        self.snapshot_manager.update_snapshot_move({"src_path": get_abspath(origin_path), "dst_path": get_abspath(dst_path)})
 
     def copy_a_file(self, origin_path, dst_path):
         """
@@ -289,24 +288,26 @@ class FileSystemOperator(object):
         except OSError:
             pass
         shutil.copyfile(origin_path, dst_path)
+        self.snapshot_manager.update_snapshot_copy({"src_path": get_abspath(origin_path), "dst_path": get_abspath(dst_path)})
 
-    def delete_a_file(self, path):
+    def delete_a_file(self, dst_path):
         """
         delete a file
 
-            send a path to ignore to watchdog
+            send a dst_path to ignore to watchdog
             delete file
-            when watchdog see the first event on this path ignore it
+            when watchdog see the first event on this dst_path ignore it
         """
-        self.add_event_to_ignore(get_abspath(path))
-        path = get_abspath(path)
-        if os.path.isdir(path):
+        self.add_event_to_ignore(get_abspath(dst_path))
+        dst_path = get_abspath(dst_path)
+        if os.path.isdir(dst_path):
             try:
-                shutil.rmtree(path)
+                shutil.rmtree(dst_path)
             except IOError:
                 pass
         else:
-            os.remove(path)
+            os.remove(dst_path)
+        self.snapshot_manager.update_snapshot_delete({"src_path": get_abspath(dst_path)})
 
     def copy_and_rename(self, src_path, dst_path):
         """ copy a file with extension .conflicted """
@@ -500,23 +501,41 @@ class DirSnapshotManager(object):
         with open(self.snapshot_file_path, 'w') as f:
             f.write(json.dumps({"timestamp": timestamp, "snapshot": self.last_status['snapshot']}))
 
-    def update_snapshot(self, action, body):
-        """ update local snapshot with a new md5 and relative path """
-        if action == "upload":
-            self.local_full_snapshot[self.file_snapMd5(body['src_path'])] = [get_relpath(body["src_path"])]
-        elif action == "copy":
-            self.local_full_snapshot[self.file_snapMd5(body['src_path'])].append(dst_path)
-        elif action == "delete":
-            md5_file = self.local_full_snapshot[self.file_snapMd5(body['src_path'])]
-            for path in md5_file:
-                if path == get_relpath(src_path):
-                    md5_file.remove(path)
-        elif action == "move":
-            md5_file = self.local_full_snapshot[self.file_snapMd5(body['src_path'])]
-            for path in md5_file:
-                if path == get_relpath(src_path):
-                    md5_file.remove(path)
-                    md5_file.append(get_relpath(dst_path))
+    def update_snapshot_upload(self, body):
+        """ update of local full snapshot by upload request"""
+        self.local_full_snapshot[self.file_snapMd5(body['src_path'])] = [get_relpath(body["src_path"])]
+
+    def update_snapshot_update(self, body):
+        """ update of local full snapshot by update request"""
+        #delete the old path from full snapshot
+        self.update_snapshot_delete(body)
+        new_file_md5 = self.file_snapMd5(body['src_path'])
+        if new_file_md5 in  self.local_full_snapshot:
+            #is a copy of another file
+            self.local_full_snapshot[new_file_md5].append(get_relpath(body['src_path']))
+        else:
+            #else create a new md5
+            self.local_full_snapshot[new_file_md5] = [get_relpath(body['src_path'])]
+
+    def update_snapshot_copy(self, body):
+        """ update of local full snapshot by copy request"""
+        self.local_full_snapshot[self.file_snapMd5(body['src_path'])].append(body["dst_path"])
+
+    def update_snapshot_move(self, body):
+        """ update of local full snapshot by move request"""
+        paths_of_file = self.local_full_snapshot[self.file_snapMd5(get_abspath(body["dst_path"]))]
+        paths_of_file.remove(get_relpath(body["src_path"]))
+        paths_of_file.append(get_relpath(body["dst_path"]))
+
+    def update_snapshot_delete(self, body):
+        """ update of local full snapshot by delete request"""
+        md5_file = self.find_file_md5(self.local_full_snapshot, get_relpath(body['src_path']), False)
+        print "find md5: ", md5_file
+        if len(self.local_full_snapshot[md5_file]) == 1:
+            del self.local_full_snapshot[md5_file]
+        else:
+            self.local_full_snapshot[md5_file].remove(get_relpath(body['src_path']))
+        print "path deleted: ", get_relpath(body['src_path'])
 
     def save_timestamp(self, timestamp):
         """
