@@ -1,5 +1,6 @@
-from client_cmdmanager import RawBoxCmd
 from client_cmdmanager import RawBoxExecuter
+from client_cmdmanager import RawBoxCmd
+import client_cmdmanager
 import unittest
 
 mock_input = []
@@ -101,6 +102,7 @@ class TestRawBoxExecuter(unittest.TestCase):
 
         self.assertEquals(TestRawBoxExecuter.username, self.correct_user)
         self.assertEquals(TestRawBoxExecuter.psw, self.correct_pwd)
+
     def test_create_user_invalid_email(self):
         mock_input.append(self.correct_pwd)
         mock_input.append(self.correct_pwd)
@@ -198,4 +200,3 @@ class TestRawBoxExecuter(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-    
