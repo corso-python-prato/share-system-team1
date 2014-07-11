@@ -60,7 +60,10 @@ class TestRawBoxExecuter(unittest.TestCase):
     def setUp(self):
         self.comm_sock = MockCmdMessageClient()
         self.correct_user = "user@server.it"
-        self.wrong_user = "user"
+        self.wrong_user0 = "user"       # no "@" and no final ".something"
+        self.wrong_user1 = "@ceoijeo"   # nothing before "@" and no final ".something"
+        self.wrong_user2 = ".user"      # nothing before "@" no "@" nothing after "@"
+        self.wrong_user3 = "user.it"    # nothing before "@" and no "@"
         self.correct_pwd = "password"
         self.wrong_pwd = "pawssworowd"
         self.raw_box_exec = RawBoxExecuter(self.comm_sock)
