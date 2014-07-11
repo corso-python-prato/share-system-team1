@@ -14,6 +14,18 @@ class MockInput(object):
         return self.list.pop()
 
 
+class MockExecuter(object):
+
+    def _create_user(self, username):
+        RawBoxCmdTest.called = True
+
+    def _activate_user(self, username, code):
+        RawBoxCmdTest.called = True
+
+    def _delete_user(self, username):
+        RawBoxCmdTest.called = True
+
+
 class CmdManagerTest(unittest.TestCase):
 
     def setUp(self):
