@@ -555,14 +555,21 @@ class DirectoryEventHandlerTest(unittest.TestCase):
             self.snapshot_manager)
 
     def test__is_copy(self):
+        #Case: is file not in snapshot
         response = self.event_handler._is_copy('path')
+        self.assertFalse(response)
 
-        self.assertEqual(response, False)
-
+        #Case: is file in snapshot
         self.snapshot_manager.local_full_snapshot = {'MD5': ['path']}
         response = self.event_handler._is_copy('path')
-
         self.assertEqual(response, 'path')
+
+        #Case: is folder
+        def file_snapMd5(self, *args, **kwargs):
+                return False
+        self.snapshot_manager.file_snapMd5 = file_snapMd5
+        response = self.event_handler._is_copy('path')
+        self.assertFalse(response)
 
     def test_on_moved(self):
         move_file_event = FileMovedEvent(self.test_src, self.test_dst)
