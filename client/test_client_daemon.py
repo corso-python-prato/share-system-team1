@@ -107,7 +107,7 @@ class ServerCommunicatorTest(unittest.TestCase):
             'http://127.0.0.1:5000/API/v1/actions/copy')
         httpretty.register_uri(
             httpretty.POST,
-            'http://127.0.0.1:5000/API/v1/user/create',
+            'http://127.0.0.1:5000/API/v1/user/usernameFarlocco',
             responses=[ 
                 httpretty.Response(body='{}', status=201),
                 httpretty.Response(body='{}', status=409),
