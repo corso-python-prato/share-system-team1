@@ -10,6 +10,8 @@ import random
 import json
 import os
 
+from server import _API_PREFIX
+from server_errors import *
 
 TEST_DIRECTORY = "test_users_dirs/"
 TEST_USER_DATA = "test_user_data.json"
@@ -26,6 +28,13 @@ DEMO_CONTENT = "Hello my dear,\nit's a beautiful day here in Compiobbi."
 DEMO_DEST_COPY_PATH = "new_cp"
 DEMO_DEST_MOVE_PATH = "new_mv"
 NO_SERVER_PATH = "marcoRegna"
+
+
+def make_headers(user, psw):
+    return {
+        "Authorization": "Basic "
+        + b64encode("{0}:{1}".format(user, psw))
+    }
 
 
 def transfer(path, flag=True, test=True):
@@ -217,6 +226,75 @@ class NewRootTestExample(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(NewRootTestExample.other_directory)
 
+
+class TestUser(unittest.TestCase):
+    root = "demo_test/test_user"
+
+    def setUp(self):
+        server.SERVER_ROOT = TestUser.root
+        server.server_setup()
+
+    def tearDown(self):
+        try:
+            os.remove(server.USERS_DATA)
+        except OSError:
+            pass
+        shutil.rmtree(server.USERS_DIRECTORIES)
+
+    def test_create_user(self):
+        # check if a new user is correctly created
+        dirs_counter = len(os.listdir(server.USERS_DIRECTORIES))
+
+        data = {
+            "user": "Gianni",
+            "psw": "IloveJava"
+        }
+        with server.app.test_client() as tc:
+            received = tc.post(_API_PREFIX + "create_user", data=data)
+        self.assertEqual(received.status_code, server.HTTP_CREATED)
+
+        # check if a directory is created
+        new_counter = len(os.listdir(server.USERS_DIRECTORIES))
+        self.assertEqual(dirs_counter + 1, new_counter)
+
+        # check if, when the user already exists, 'create_user' returns an
+        # error
+        with server.app.test_client() as tc:
+            received = tc.post(_API_PREFIX + "create_user", data=data)
+        self.assertEqual(received.status_code, server.HTTP_CONFLICT)
+
+        # check the error raised when the directory for a new user
+        # already exists
+        data = {
+            "user": "Giovanni",
+            "psw": "zappa"
+        }
+        os.mkdir(os.path.join(server.USERS_DIRECTORIES, data["user"]))
+        with server.app.test_client() as tc:
+            with self.assertRaises(ConflictError):
+                tc.post(_API_PREFIX + "create_user", data=data)
+
+    def test_to_md5(self):
+        # check if two files with the same content have the same md5
+        first_md5 = server.to_md5(
+            os.path.join(TestUser.root, "demofile1.txt")
+        )
+        first_copy_md5 = server.to_md5(
+            os.path.join(TestUser.root, "demofile1_copy.txt")
+        )
+        self.assertEqual(first_md5, first_copy_md5)
+
+        # check if two different files have different md5
+        second_md5 = server.to_md5(
+            os.path.join(TestUser.root, "demofile2.txt")
+        )
+        self.assertNotEqual(first_md5, second_md5)
+
+        # check if, for a directory, returns False
+        tmp_dir = "aloha"
+        os.mkdir(tmp_dir)
+        self.assertFalse(server.to_md5(tmp_dir))
+        os.rmdir(tmp_dir)
 
 class TestSequenceFunctions(unittest.TestCase):
 
