@@ -70,6 +70,9 @@ class TestRawBoxExecuter(unittest.TestCase):
         self.tooshort_code = "123tinycode123"
         self.toolong_code = "questocodiceeveramentelunghissimo111109091230191209"
         self.raw_box_exec = RawBoxExecuter(self.comm_sock)
+        TestRawBoxExecuter.username = "empty"
+        TestRawBoxExecuter.psw = "empty"
+        TestRawBoxExecuter.code = "empty"
 
     def test_create_user(self):
         mock_input.append(self.correct_pwd)
