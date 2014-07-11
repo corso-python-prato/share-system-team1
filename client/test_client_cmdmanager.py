@@ -157,6 +157,13 @@ class TestRawBoxExecuter(unittest.TestCase):
         self.assertNotEquals(TestRawBoxExecuter.code, self.tooshort_code)
         self.assertEquals(TestRawBoxExecuter.code, self.correct_code)
 
+    def test_delete_user(self):
+        mock_input.append(self.correct_user)
+
+        self.raw_box_exec._delete_user()
+
+        self.assertEquals(TestRawBoxExecuter.username, self.correct_user)
+
 
 if __name__ == '__main__':
     unittest.main()
