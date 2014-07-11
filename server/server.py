@@ -241,10 +241,10 @@ class UsersApi(Resource):
             "timestamp": <timestamp>
             }
         }"""
-        if (os.path.isfile(PENDING_USERS)):
+        if os.path.isfile(PENDING_USERS):
             try:
                 with open(PENDING_USERS, "r") as p_u:
-                    UserApi.pending = json.load(p_u)
+                    UsersApi.pending = json.load(p_u)
             except ValueError:  # the file exists but is not a json
                 os.remove(PENDING_USERS)
         try:
@@ -252,20 +252,20 @@ class UsersApi(Resource):
         except KeyError:
             abort(HTTP_BAD_REQUEST)
 
-        if username in UserApi.pending:
+        if username in UsersApi.pending:
             return "This user have arleady a pending request", HTTP_CONFLICT
         elif username in User.users:
             return "This user already exists", HTTP_CONFLICT
         else:
             psw_hash = sha256_crypt.encrypt(psw)
             code = os.urandom(16).encode('hex')
-            UserApi.pending[username] = \
+            UsersApi.pending[username] = \
                 {"password": psw_hash,
                  "code": code,
                  "timestamp": time.time()}
 
             with open(PENDING_USERS, "w") as p_u:
-                json.dump(UserApi.pending, p_u)
+                json.dump(UsersApi.pending, p_u)
             content = code
             send_mail(username, "RawBox activation code", content)
             return "user added to pending users", HTTP_CREATED
@@ -282,19 +282,19 @@ class UsersApi(Resource):
         if (os.path.isfile(PENDING_USERS)):
             try:
                 with open(PENDING_USERS, "r") as p_u:
-                    UserApi.pending = json.load(p_u)
+                    UsersApi.pending = json.load(p_u)
             except ValueError:  # the file exists but is not a json
                 os.remove(PENDING_USERS)
 
         if username in User.users:
             return "This user is already active", HTTP_CONFLICT
-        if username in UserApi.pending:
-            if code == UserApi.pending[username]["code"]:
-                User(username, UserApi.pending[username]["password"])
-                del UserApi.pending[username]
-                if UserApi.pending:
+        if username in UsersApi.pending:
+            if code == UsersApi.pending[username]["code"]:
+                User(username, UsersApi.pending[username]["password"])
+                del UsersApi.pending[username]
+                if UsersApi.pending:
                     with open(PENDING_USERS, "w") as p_u:
-                        json.dump(UserApi.pending, p_u)
+                        json.dump(UsersApi.pending, p_u)
                 else:
                     os.remove(PENDING_USERS)
                 return "user activated", HTTP_CREATED
@@ -496,7 +496,7 @@ def main():
     User.user_class_init()
     app.run(host="0.0.0.0", debug=True)         # TODO: remove debug=True
 
-api.add_resource(UserApi, "{}Users/<string:username>".format(_API_PREFIX))
+api.add_resource(UsersApi, "{}Users/<string:username>".format(_API_PREFIX))
 api.add_resource(Files, "{}files/<path:client_path>".format(_API_PREFIX),
                         "{}files/".format(_API_PREFIX))
 api.add_resource(Actions, "{}actions/<string:cmd>".format(_API_PREFIX))
