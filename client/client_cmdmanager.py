@@ -68,7 +68,20 @@ class RawBoxExecuter(object):
                 'user': username,
                 'code': code
             }
+    def _delete_user(self, username=None):
+        """ delete user if is logged """
+        command_type = 'delete_user'
 
+        if not username:
+            username = take_input('insert your username: ')
+
+        email_regex = re.compile('[^@]+@[^@]+\.[^@]+')
+        while not email_regex.match(username):
+            Message('WARNING', 'invalid email')
+            username = take_input('insert your username: ')
+        param = {
+            'user': username
+        }
         self.comm_sock.send_message(command_type, param)
         self.print_response(self.comm_sock.read_message())
 
