@@ -3,9 +3,14 @@
         "Ben1@me.too": {
             "paths": {
                 "": [
-                    "./user_dirs/Ben1@me.too",
+                    "demo_test/test_share/user_dirs/Ben1@me.too",
                     false,
                     1405081776.030658
+                ],
+                "my_file.txt": [
+                    "demo_test/test_share/user_dirs/Ben1@me.too/my_file.txt",
+                    "63ddb04460aab66acdd6101db6cd6ce7",
+                    1405076398.984682
                 ]
             },
             "psw": "$5$rounds=110000$7a1FtXsfwrFISw92$wJKPhrQA1MpO3FvAGEY9SrVE2ltDjt96zP/1CARXwS7",
@@ -14,7 +19,7 @@
         "Ben2@me.too": {
             "paths": {
                 "": [
-                    "./user_dirs/Ben2@me.too",
+                    "demo_test/test_share/user_dirs/Ben2@me.too",
                     false,
                     1405081778.432248
                 ]
@@ -25,7 +30,7 @@
         "NotAllowedUser@not.it": {
             "paths": {
                 "": [
-                    "./user_dirs/NotAllowedUser@not.it",
+                    "demo_test/test_share/user_dirs/NotAllowedUser@not.it",
                     false,
                     1405076852.871647
                 ]
@@ -36,32 +41,32 @@
         "Emilio@me.it": {
             "paths": {
                 "": [
-                    "./user_dirs/Emilio@me.it",
+                    "demo_test/test_share/user_dirs/Emilio@me.it",
                     false,
                     1405076390.847102
                 ],
                 "can_write/parole.txt": [
-                    "./user_dirs/Emilio@me.it/can_write/parole.txt",
+                    "demo_test/test_share/user_dirs/Emilio@me.it/can_write/parole.txt",
                     "7e472e7ebe19872a2e241efe3e2b0848",
                     1405081550.915353
                 ],
                 "ciao.txt": [
-                    "./user_dirs/Emilio@me.it/ciao.txt",
+                    "demo_test/test_share/user_dirs/Emilio@me.it/ciao.txt",
                     "6186badadb5fbb0416cd29a04e2d92d7",
                     1405076398.984682
                 ],
                 "shared_directory": [
-                    "./user_dirs/Emilio@me.it/shared_directory",
+                    "demo_test/test_share/user_dirs/Emilio@me.it/shared_directory",
                     false,
                     1405082012.752381
                 ],
                 "can_write": [
-                    "./user_dirs/Emilio@me.it/can_write",
+                    "demo_test/test_share/user_dirs/Emilio@me.it/can_write",
                     false,
                     1405081550.914278
                 ],
                 "shared_directory/interesting_file.txt": [
-                    "./user_dirs/Emilio@me.it/shared_directory/interesting_file.txt",
+                    "demo_test/test_share/user_dirs/Emilio@me.it/shared_directory/interesting_file.txt",
                     "c887ee892f5c3f7e01d876c3b7778818",
                     1405082012.753577
                 ]

@@ -563,7 +563,7 @@ class TestShare(unittest.TestCase):
         self.owner = "Emilio@me.it"
         self.owner_headers = make_headers(self.owner, "password")
         self.ben1 = "Ben1@me.too"
-        # self.ben1_headers = make_headers(self.ben1, "password")
+        self.ben1_headers = make_headers(self.ben1, "password")
         self.ben2 = "Ben2@me.too"
         # self.ben2_headers = make_headers(self.ben2, "password")
 
@@ -598,9 +598,76 @@ class TestShare(unittest.TestCase):
             "shares/{}/shared_directory".format(self.owner),
             server.User.users[self.ben1].paths
         )
+        self.assertIn(
+            "shares/{}/shared_directory/interesting_file.txt".format(
+                self.owner
+            ),
+            server.User.users[self.ben1].paths
+        )
 
+    def test_can_write(self):
+        # DEMO_CLIENT.set_fake_usr(True)
+        # rv = DEMO_CLIENT.call("post", "shares/dir/usr")
+        # self.assertEqual(rv.status_code, 401)
+        # DEMO_CLIENT.set_fake_usr(False)
+
+        # share a file with an user (create a share)
+        # TODO: load this from json when the shares will be saved on file
+        with server.app.test_client() as tc:
+            received = tc.post(
+                "{}shares/{}/{}".format(
+                    _API_PREFIX, "can_write", self.ben1
+                ),
+                headers=self.owner_headers
+            )
+        self.assertEqual(received.status_code, 200)
+
+        # a beneficiary tries to add a file to a shared directory, but the
+        # share is read-only.
+        # case Files POST and PUT
+        destination = os.path.join(
+            "shares", self.owner, "can_write", "parole.txt"
+        )
+        for verb in [tc.post, tc.put]:
+            with open(os.path.join(TestShare.root, "demofile1.txt"), "r") as f:
+                data = {"file_content": f}
+                with server.app.test_client() as tc:
+                    received = verb(
+                        "{}files/{}".format(_API_PREFIX, destination),
+                        data=data,
+                        headers=self.ben1_headers
+                    )
+                    self.assertEqual(received.status_code, 403)
+
+        # case Action delete
+        data = {"path": destination}
+        with server.app.test_client() as tc:
+            received = tc.post(
+                "{}actions/delete".format(_API_PREFIX),
+                data=data,
+                headers=self.ben1_headers
+            )
+        self.assertEqual(received.status_code, 403)
+
+        # case copy or move into a shared directory (not owned)
+        data = {
+            "file_src": "my_file.txt",
+            "file_dest": os.path.join("shares", self.owner, "can_write/")
+        }
+        with server.app.test_client() as tc:
+            # for act in ["copy", "move"]:
+            for act in ["move"]:
+                received = tc.post(
+                    "{}actions/{}".format(_API_PREFIX, act),
+                    data=data,
+                    headers=self.ben1_headers
+                )
+                self.assertEqual(received.status_code, 403)
 
 
 if __name__ == '__main__':
+    server.app.config.update(TESTING=True)
+    server.app.testing = True
+
     # make tests!
     unittest.main()
