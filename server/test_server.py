@@ -142,7 +142,20 @@ class TestFilesAPI(unittest.TestCase):
         with open(TestFilesAPI.test_file, "wb") as fp:
             fp.write("some random text")
 
-        
+    def set_tmp_params(self, father_dir):
+        ''' Add a file in user's directory, in the path passed in argument
+        Please, use path here with only a word (not "dir/subdir") '''
+        client_path = os.path.join(father_dir, TestFilesAPI.test_file_name)
+        server_path = os.path.join(TestFilesAPI.test_path, TestFilesAPI.user_test, client_path)
+        os.makedirs(os.path.dirname(server_path))
+        shutil.copy(TestFilesAPI.test_file_name, server_path)
+
+        server_father_path = os.path.join(TestFilesAPI.test_path, TestFilesAPI.user_test, father_dir)
+        u = server.User.users[TestFilesAPI.user_test]
+        u.paths[father_dir] = [server_father_path, 0, False]
+        u.paths[client_path] = [server_path, 0, 0]
+
+        return client_path, server_path
 
     def setUp(self):
         server.SERVER_ROOT = TestFilesAPI.test_path
@@ -153,28 +166,20 @@ class TestFilesAPI(unittest.TestCase):
         with server.app.test_client() as tc:
             f = open(TestFilesAPI.test_file, "r")
             data = {"file_content": f}
-            headers = {
-            "Authorization": "Basic "
-            + b64encode("{0}:{1}".format("not_existing_user", TestFilesAPI.password_test))
-            }
             url = "{}{}".format(TestFilesAPI.url_radix, TestFilesAPI.test_file_name)
             rv = tc.post(server._API_PREFIX + url,
                                      data=data,
-                                     headers=headers)
+                                     headers=make_headers("fake_user", TestFilesAPI.password_test))
             f.close()
             self.assertEqual(rv.status_code, 401)
 
         with server.app.test_client() as tc:
             f = open(TestFilesAPI.test_file, "r")
             data = {"file_content": f}
-            headers = {
-            "Authorization": "Basic "
-            + b64encode("{0}:{1}".format(TestFilesAPI.user_test, TestFilesAPI.password_test))
-            }
             url = "{}{}".format(TestFilesAPI.url_radix, TestFilesAPI.test_file_name)
             rv = tc.post(server._API_PREFIX + url,
                                      data=data,
-                                     headers=headers)
+                                     headers=make_headers(TestFilesAPI.user_test, TestFilesAPI.password_test))
             f.close()
             self.assertEqual(rv.status_code, 201)
 
@@ -188,19 +193,58 @@ class TestFilesAPI(unittest.TestCase):
         with server.app.test_client() as tc:
             f = open(TestFilesAPI.test_file, "r")
             data = {"file_content": f}
-            headers = {
-            "Authorization": "Basic "
-            + b64encode("{0}:{1}".format(TestFilesAPI.user_test, TestFilesAPI.password_test))
-            }
             url = "{}{}".format(TestFilesAPI.url_radix, TestFilesAPI.test_file_name)
             rv = tc.post(server._API_PREFIX + url,
                                      data=data,
-                                     headers=headers)
+                                     headers=make_headers(TestFilesAPI.user_test, TestFilesAPI.password_test))
             f.close()
             self.assertEqual(rv.status_code, 409)
 
     def test_get(self):
-        pass
+        client_path, server_path = set_tmp_params("dwn")
+        with server.app.test_client() as tc:
+            f = open(TestFilesAPI.test_file, "r")
+            data = {"file_content": f}
+            url = "{}{}".format(TestFilesAPI.url_radix, client_path)
+            rv = tc.get(server._API_PREFIX + url,
+                                     headers=make_headers("fake_user", TestFilesAPI.password_test))
+            f.close()
+            self.assertEqual(rv.status_code, 401)
+
+
+        with server.app.test_client() as tc:
+            f = open(TestFilesAPI.test_file, "r")
+            data = {"file_content": f}
+            url = "{}{}".format(TestFilesAPI.url_radix, client_path)
+            rv = tc.get(server._API_PREFIX + url,
+                                     headers=make_headers(TestFilesAPI.user_test, TestFilesAPI.password_test))
+            f.close()
+            self.assertEqual(rv.status_code, 200)
+
+        with open(server_path) as f:
+            got_content = f.read()
+            fr = open(TestFilesAPI.test_file, "r")
+            self.assertEqual(fr.read(), got_content)
+            fr.close()
+
+        with server.app.test_client() as tc:
+            f = open(TestFilesAPI.test_file, "r")
+            data = {"file_content": f}
+            url = "{}{}".format(TestFilesAPI.url_radix, "NO_SERVER_PATH")
+            rv = tc.get(server._API_PREFIX + url,
+                                     headers=make_headers(TestFilesAPI.user_test, TestFilesAPI.password_test))
+            f.close()
+            self.assertEqual(rv.status_code, 404)
+
+        os.remove(server_path)
+        with server.app.test_client() as tc:
+            f = open(TestFilesAPI.test_file, "r")
+            data = {"file_content": f}
+            url = "{}{}".format(TestFilesAPI.url_radix, client_path)
+            rv = tc.get(server._API_PREFIX + url,
+                                     headers=make_headers(TestFilesAPI.user_test, TestFilesAPI.password_test))
+            f.close()
+            self.assertEqual(rv.status_code, 410)
 
 
 class NewRootTestExample(unittest.TestCase):
