@@ -470,6 +470,12 @@ class DirSnapshotManagerTest(unittest.TestCase):
         self.snapshot_manager.last_status['snapshot'] = 'faultmd5'
         self.assertEqual(self.snapshot_manager.local_check(), False)
 
+    def test_is_syncro(self):
+        test_srv_timestamp = '123123'
+        self.assertTrue(self.snapshot_manager.is_syncro(test_srv_timestamp))
+        test_srv_timestamp = '123124'
+        self.assertFalse(self.snapshot_manager.is_syncro(test_srv_timestamp))
+
     def test_load_status(self):
         self.snapshot_manager._load_status()
         self.assertEqual(self.snapshot_manager.last_status, self.conf_snap_gen)
