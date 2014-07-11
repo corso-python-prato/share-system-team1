@@ -8,12 +8,10 @@ from flask.ext.mail import Mail, Message
 from passlib.hash import sha256_crypt
 import ConfigParser
 import time
-import datetime
 import json
 import os
 import shutil
 import hashlib
-import base64
 
 from server_errors import *
 
@@ -45,7 +43,7 @@ parser = reqparse.RequestParser()
 parser.add_argument("task", type=str)
 
 
-def to_md5(path, block_size=2**20):
+def to_md5(path, block_size=2 ** 20):
     """ if path is a file, return a md5;
     if path is a directory, return False """
     if os.path.isdir(path):
@@ -470,7 +468,6 @@ class Actions(Resource_with_auth):
             return abort(HTTP_NOT_FOUND)
 
 
-@app.route('/minfo')
 def send_mail(receiver, obj, content):
     """ Send an email to the 'receiver', with the
     specified object ('obj') and the specified 'content' """
@@ -501,7 +498,7 @@ def main():
 
 api.add_resource(UserApi, "{}user/<string:username>".format(_API_PREFIX))
 api.add_resource(Files, "{}files/<path:client_path>".format(_API_PREFIX),
-    "{}files/".format(_API_PREFIX))
+                        "{}files/".format(_API_PREFIX))
 api.add_resource(Actions, "{}actions/<string:cmd>".format(_API_PREFIX))
 
 if __name__ == "__main__":
