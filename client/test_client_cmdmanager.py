@@ -144,6 +144,19 @@ class TestRawBoxExecuter(unittest.TestCase):
         self.assertNotEquals(TestRawBoxExecuter.username, self.wrong_user3)
         self.assertEquals(TestRawBoxExecuter.username, self.correct_user)
 
+    def test_activate_user_invalid_code(self):
+        mock_input.append(self.correct_code)
+        mock_input.append(self.tooshort_code)
+        mock_input.append(self.toolong_code)
+
+        mock_input.append(self.correct_user)
+
+        self.raw_box_exec._activate_user()
+
+        self.assertNotEquals(TestRawBoxExecuter.code, self.toolong_code)
+        self.assertNotEquals(TestRawBoxExecuter.code, self.tooshort_code)
+        self.assertEquals(TestRawBoxExecuter.code, self.correct_code)
+
 
 if __name__ == '__main__':
     unittest.main()
