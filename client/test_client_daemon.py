@@ -511,6 +511,30 @@ class DirSnapshotManagerTest(unittest.TestCase):
 
         self.assertEqual(expected_conf, new_conf)
 
+    def test_save_timestamp(self):
+        #Case: timestamp not correct
+        test_timestamp = 123122
+        expected_snap = self.conf_snap_gen
+        self.snapshot_manager.save_timestamp(test_timestamp)
+        new_snap_conf = json.load(open(self.conf_snap_path))
+        self.assertEqual(new_snap_conf, expected_snap)
+        self.assertEqual(
+            self.snapshot_manager.last_status,
+            self.conf_snap_gen)
+
+        #Case: timestamp correct
+        test_timestamp = 123124
+        expected_snap = {
+            "timestamp": 123124,
+            "snapshot": "ab8d6b3c332aa253bb2b471c57b73e27"
+        }
+        self.snapshot_manager.save_timestamp(test_timestamp)
+        new_snap_conf = json.load(open(self.conf_snap_path))
+        self.assertEqual(new_snap_conf, expected_snap)
+        self.assertEqual(
+            self.snapshot_manager.last_status,
+            expected_snap)
+
 
 class DirectoryEventHandlerTest(unittest.TestCase):
 
