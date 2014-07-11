@@ -77,6 +77,13 @@ class TestRawBoxExecuter(unittest.TestCase):
     def test_create_user(self):
         mock_input.append(self.correct_pwd)
         mock_input.append(self.correct_pwd)
+
+        mock_input.append(self.correct_user)
+
+        self.raw_box_exec._create_user()
+
+        self.assertEquals(TestRawBoxExecuter.username, self.correct_user)
+        self.assertEquals(TestRawBoxExecuter.psw, self.correct_pwd)
         mock_input.append(self.correct_user)
         username, password = self.raw_box_exec._create_user()
         self.assertEquals(username, self.correct_user)
