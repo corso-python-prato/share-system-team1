@@ -10,6 +10,8 @@ import random
 import json
 import os
 
+from server import _API_PREFIX
+from server_errors import *
 
 TEST_DIRECTORY = "test_users_dirs/"
 TEST_USER_DATA = "test_user_data.json"
@@ -153,7 +155,11 @@ class TestUser(unittest.TestCase):
         server.server_setup()
 
     def tearDown(self):
-        shutil.rmtree(TestUser.root)
+        try:
+            os.remove(server.USERS_DATA)
+        except OSError:
+            pass
+        shutil.rmtree(server.USERS_DIRECTORIES)
 
     def test_create_user(self):
         # check if a new user is correctly created
