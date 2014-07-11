@@ -12,7 +12,6 @@ from requests.auth import HTTPBasicAuth
 import requests
 import hashlib
 import shutil
-import base64
 import time
 import json
 import os
