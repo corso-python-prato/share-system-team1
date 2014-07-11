@@ -281,7 +281,7 @@ class ServerCommunicator(object):
         }
 
         response = self._try_request(
-            requests.get, success_log, error_log, **request)
+            requests.delete, success_log, error_log, **request)
 
         self.msg["result"] = response.status_code
 
