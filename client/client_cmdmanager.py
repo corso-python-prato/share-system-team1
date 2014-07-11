@@ -212,6 +212,16 @@ class RawBoxCmd(cmd.Cmd):
         else:
             Message('INFO', self.do_activate.__doc__)
 
+    def do_delete(self, line):
+        """
+        delete a RawBox user if He is logged
+        """
+        if line:
+            user = line.split()[0]
+            self.executer._delete_user(user)
+        else:
+            Message('INFO', self.do_delete.__doc__)
+
     def do_q(self, line=None):
         """ exit from RawBox"""
         if take_input('[Exit] are you sure? y/n ') == 'y':
