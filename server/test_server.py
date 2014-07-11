@@ -29,7 +29,7 @@ NO_SERVER_PATH = "marcoRegna"
 
 
 def make_headers(user, psw):
-    return = {
+    return {
         "Authorization": "Basic "
         + b64encode("{0}:{1}".format(user, psw))
     }
