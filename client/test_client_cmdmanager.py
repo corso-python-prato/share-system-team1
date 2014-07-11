@@ -26,11 +26,26 @@ class MockExecuter(object):
         RawBoxCmdTest.called = True
 
 
-class CmdManagerTest(unittest.TestCase):
+class RawBoxCmdTest(unittest.TestCase):
 
     def setUp(self):
-        self.command_user = "user"
-        self.username = "marco"
+        self.executer = MockExecuter()
+        self.rawbox_cmd = RawBoxCmd(self.executer)
+        RawBoxCmdTest.called = False
+
+    def test_do_create(self):
+        self.rawbox_cmd.onecmd('create user pippo@pippa.it')
+        self.assertTrue(RawBoxCmdTest.called)
+
+    def test_do_activate(self):
+        self.rawbox_cmd.onecmd('activate pippo@pippa.it code=codice')
+        self.assertTrue(RawBoxCmdTest.called)
+
+    def test_do_delete(self):
+        self.rawbox_cmd.onecmd('delete pippo@pippa.it')
+        self.assertTrue(RawBoxCmdTest.called)
+
+
 
     # def test_do_create_no_user(self):
     #     mock_input = MockInput('marco', 'psw', 'psw', "prova@gmail.com")
