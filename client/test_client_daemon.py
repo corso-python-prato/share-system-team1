@@ -2,6 +2,9 @@ from client_daemon import DirSnapshotManager
 from client_daemon import DirectoryEventHandler
 from client_daemon import ServerCommunicator
 from client_daemon import FileSystemOperator
+from client_daemon import get_abspath
+from client_daemon import get_relpath
+from client_daemon import load_config
 
 #Watchdog event import for event_handler test
 from watchdog.events import FileDeletedEvent
@@ -688,6 +691,74 @@ class DirectoryEventHandlerTest(unittest.TestCase):
         self.event_handler.on_modified(modify_file_event)
         self.assertFalse(self.server_comm.cmd["upload"])
         self.assertFalse(self.test_src in self.event_handler.paths_ignored)
+
+
+class FunctionTest(unittest.TestCase):
+
+    def setUp(self):
+        client_daemon.CONFIG_DIR_PATH = '/home/user/test_shared_dir'
+
+    def test_get_abspath(self):
+        expected_result = '/home/user/test_shared_dir/folder/file.txt'
+
+        #Case: relative path
+        path = 'folder/file.txt'
+        self.assertEqual(get_abspath(path), expected_result)
+
+        #Case: absolute path
+        path = '/home/user/test_shared_dir/folder/file.txt'
+        self.assertEqual(get_abspath(path), expected_result)
+
+    def test_get_relpath(self):
+        expected_result = 'folder/file.txt'
+
+        #Case: absolute path
+        path = '/home/user/test_shared_dir/folder/file.txt'
+        self.assertEqual(get_relpath(path), expected_result)
+
+        #Case: relarive path
+        path = 'folder/file.txt'
+        self.assertEqual(get_relpath(path), expected_result)
+
+    def test_load_config(self):
+        expected_conf = {
+            'config': 'test configuration'
+        }
+        open('config.json', 'w').write(json.dumps(expected_conf))
+
+        #Case: test config file
+        config, is_new = load_config()
+        self.assertFalse(is_new)
+        self.assertEqual(config, expected_conf)
+
+        #reset
+        os.remove('config.json')
+
+        #Case: IOError
+        expected_conf = {
+            "server_url": "http://{}:{}/{}".format(
+                client_daemon.SERVER_URL,
+                client_daemon.SERVER_PORT,
+                client_daemon.API_PREFIX
+            ),
+            "dir_path": os.path.join(os.path.expanduser("~"), "RawBox"),
+            "snapshot_file_path": 'snapshot_file.json',
+            "cmd_host": "localhost",
+            "cmd_port": "6666",
+            "username": 'username',
+            "password": 'password',
+        }
+        expected_snap = {
+            "timestamp": 0,
+            "snapshot": "",
+        }
+        config, is_new = load_config()
+        self.assertTrue(is_new)
+        self.assertTrue(os.path.exists('config.json'))
+        self.assertEqual(config, expected_conf)
+        self.assertTrue(os.path.exists('snapshot_file.json'))
+        snap = json.loads(open('snapshot_file.json').read())
+        self.assertEqual(snap, expected_snap)
 
 
 if __name__ == '__main__':
