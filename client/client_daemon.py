@@ -473,7 +473,7 @@ class DirSnapshotManager(object):
                 buf = afile.read(2048)
         return file_md5.hexdigest()
 
-    def global_md5(self, server_snapshot = False):
+    def global_md5(self):
         """ calculate the global md5 of local_full_snapshot """
         snap_list = sorted(list(self.local_full_snapshot))
         return hashlib.md5(str(snap_list)).hexdigest()
