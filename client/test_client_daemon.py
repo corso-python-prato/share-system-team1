@@ -401,12 +401,23 @@ class FileSystemOperatorTest(unittest.TestCase):
         #check if source isadded by write_a_file
         self.assertEqual([source_path], self.event_handler.paths_ignored)
 
+        #reset variable
+        self.snapshot_manager.upload = False
+        self.event_handler.paths_ignored = []
+
+        #Case: file not found on server
+        def download_file(path):
+            return None, None
+        self.server_com.download_file = download_file
+        self.file_system_op.write_a_file(source_path)
+        self.assertFalse(self.snapshot_manager.upload)
+        self.assertEqual(self.event_handler.paths_ignored, [])
     def test_move_a_file(self):
         f_name = 'file_to_move.txt'
         file_to_move = open('{}/{}'.format(self.client_path, f_name), 'w')
         file_to_move.write('this is a test')
         source_path = file_to_move.name
-        dest_path = '{}/dir1/{}'.format(self.client_path, f_name)
+        dest_path = '{}/{}.moved'.format(self.client_path, f_name)
         file_to_move.close()
         self.file_system_op.move_a_file(source_path, dest_path)
         written_file = open(dest_path, 'rb').read()
@@ -422,7 +433,7 @@ class FileSystemOperatorTest(unittest.TestCase):
         file_to_copy = open('{}/{}'.format(self.client_path, f_name), 'w')
         file_to_copy.write('this is a test')
         source_path = file_to_copy.name
-        dest_path = '{}/copy_dir/{}'.format(self.client_path, f_name)
+        dest_path = '{}/{}.copy'.format(self.client_path, f_name)
         file_to_copy.close()
         self.file_system_op.copy_a_file(source_path, dest_path)
         copied_file = open(dest_path, 'rb').read()
