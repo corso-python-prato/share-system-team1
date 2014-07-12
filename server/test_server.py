@@ -941,6 +941,7 @@ class TestShare(unittest.TestCase):
         self.ben1_headers = make_headers(self.ben1, "password")
         self.ben2 = "Ben2@me.too"
         # self.ben2_headers = make_headers(self.ben2, "password")
+        self.tc = server.app.test_client()
 
     def tearDown(self):
         os.remove(server.USERS_DATA)
@@ -953,21 +954,19 @@ class TestShare(unittest.TestCase):
         # DEMO_CLIENT.set_fake_usr(False)
 
         # share a file
-        with server.app.test_client() as tc:
-            received = tc.post(
-                "{}shares/{}/{}".format(_API_PREFIX, "ciao.txt", self.ben1),
-                headers=self.owner_headers
-            )
+        received = self.tc.post(
+            "{}shares/{}/{}".format(_API_PREFIX, "ciao.txt", self.ben1),
+            headers=self.owner_headers
+        )
         self.assertEqual(received.status_code, 200)
 
         # share the subdir
-        with server.app.test_client() as tc:
-            received = tc.post(
-                "{}shares/{}/{}".format(
-                    _API_PREFIX, "shared_directory", self.ben1
-                ),
-                headers=self.owner_headers
-            )
+        received = self.tc.post(
+            "{}shares/{}/{}".format(
+                _API_PREFIX, "shared_directory", self.ben1
+            ),
+            headers=self.owner_headers
+        )
         self.assertEqual(received.status_code, 200)
         self.assertIn(
             "shares/{}/shared_directory".format(self.owner),
@@ -988,13 +987,12 @@ class TestShare(unittest.TestCase):
 
         # share a file with an user (create a share)
         # TODO: load this from json when the shares will be saved on file
-        with server.app.test_client() as tc:
-            received = tc.post(
-                "{}shares/{}/{}".format(
-                    _API_PREFIX, "can_write", self.ben1
-                ),
-                headers=self.owner_headers
-            )
+        received = self.tc.post(
+            "{}shares/{}/{}".format(
+                _API_PREFIX, "can_write", self.ben1
+            ),
+            headers=self.owner_headers
+        )
         self.assertEqual(received.status_code, 200)
 
         # a beneficiary tries to add a file to a shared directory, but the
@@ -1003,25 +1001,23 @@ class TestShare(unittest.TestCase):
         destination = os.path.join(
             "shares", self.owner, "can_write", "parole.txt"
         )
-        for verb in [tc.post, tc.put]:
+        for verb in [self.tc.post, self.tc.put]:
             with open(os.path.join(TestShare.root, "demofile1.txt"), "r") as f:
                 data = {"file_content": f}
-                with server.app.test_client() as tc:
-                    received = verb(
-                        "{}files/{}".format(_API_PREFIX, destination),
-                        data=data,
-                        headers=self.ben1_headers
-                    )
-                    self.assertEqual(received.status_code, 403)
+                received = verb(
+                    "{}files/{}".format(_API_PREFIX, destination),
+                    data=data,
+                    headers=self.ben1_headers
+                )
+                self.assertEqual(received.status_code, 403)
 
         # case Action delete
         data = {"path": destination}
-        with server.app.test_client() as tc:
-            received = tc.post(
-                "{}actions/delete".format(_API_PREFIX),
-                data=data,
-                headers=self.ben1_headers
-            )
+        received = self.tc.post(
+            "{}actions/delete".format(_API_PREFIX),
+            data=data,
+            headers=self.ben1_headers
+        )
         self.assertEqual(received.status_code, 403)
 
         # case copy or move into a shared directory (not owned)
@@ -1029,20 +1025,18 @@ class TestShare(unittest.TestCase):
             "file_src": "my_file.txt",
             "file_dest": os.path.join("shares", self.owner, "can_write/")
         }
-        with server.app.test_client() as tc:
-            for act in ["move", "copy"]:
-                received = tc.post(
-                    "{}actions/{}".format(_API_PREFIX, act),
-                    data=data,
-                    headers=self.ben1_headers
-                )
-                self.assertEqual(received.status_code, 403)
+        for act in ["move", "copy"]:
+            received = self.tc.post(
+                "{}actions/{}".format(_API_PREFIX, act),
+                data=data,
+                headers=self.ben1_headers
+            )
+            self.assertEqual(received.status_code, 403)
+
 
     def test_remove_beneficiary(self):
-        tc = server.app.test_client()
-
         # test if aborts when the resource is not on the server
-        received = tc.delete(
+        received = self.tc.delete(
             "{}shares/{}/{}".format(
                 _API_PREFIX, "file_not_present.txt", self.ben1
             ),
@@ -1055,7 +1049,7 @@ class TestShare(unittest.TestCase):
         )
 
         # test if aborts when the resource is not shared with the beneficiary
-        received = tc.delete(
+        received = self.tc.delete(
             "{}shares/{}/{}".format(
                 _API_PREFIX, "shared_with_two_bens.txt", self.ben1
             ),
@@ -1065,7 +1059,7 @@ class TestShare(unittest.TestCase):
 
         # share a file with a couple of users
         for beneficiary in [self.ben1, self.ben2]:
-            received = tc.post(
+            received = self.tc.post(
                 "{}shares/{}/{}".format(
                     _API_PREFIX, "shared_with_two_bens.txt", beneficiary
                 ),
@@ -1074,7 +1068,7 @@ class TestShare(unittest.TestCase):
             self.assertEqual(received.status_code, 200)
 
         # remove the first user from the share
-        received = tc.delete(
+        received = self.tc.delete(
             "{}shares/{}/{}".format(
                 _API_PREFIX, "shared_with_two_bens.txt", self.ben1
             ),
@@ -1094,7 +1088,7 @@ class TestShare(unittest.TestCase):
         )
 
         # remove the second user
-        received = tc.delete(
+        received = self.tc.delete(
             "{}shares/{}/{}".format(
                 _API_PREFIX, "shared_with_two_bens.txt", self.ben2
             ),
