@@ -45,8 +45,23 @@
                     false,
                     1405076390.847102
                 ],
+                "can_write": [
+                    "demo_test/test_share/user_dirs/Emilio@me.it/can_write",
+                    false,
+                    1405081550.914278
+                ],
                 "can_write/parole.txt": [
                     "demo_test/test_share/user_dirs/Emilio@me.it/can_write/parole.txt",
+                    "7e472e7ebe19872a2e241efe3e2b0848",
+                    1405081550.915353
+                ],
+                "changing": [
+                    "demo_test/test_share/user_dirs/Emilio@me.it/changing",
+                    false,
+                    1405081550.914278
+                ],
+                "changing/changing_file.txt": [
+                    "demo_test/test_share/user_dirs/Emilio@me.it/changing/changing_file.txt",
                     "7e472e7ebe19872a2e241efe3e2b0848",
                     1405081550.915353
                 ],
@@ -64,11 +79,6 @@
                     "demo_test/test_share/user_dirs/Emilio@me.it/shared_directory",
                     false,
                     1405082012.752381
-                ],
-                "can_write": [
-                    "demo_test/test_share/user_dirs/Emilio@me.it/can_write",
-                    false,
-                    1405081550.914278
                 ],
                 "shared_directory/interesting_file.txt": [
                     "demo_test/test_share/user_dirs/Emilio@me.it/shared_directory/interesting_file.txt",

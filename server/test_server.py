@@ -1129,6 +1129,106 @@ class TestShare(unittest.TestCase):
             ),
             server.User.shared_resources
         )
+
+    def test_changes_in_shared_directory(self):
+        subdir = "changing"
+        filename = "changing_file.txt"
+        demo_file1 = os.path.join(TestShare.root, "demofile1.txt")
+        demo_file2 = os.path.join(TestShare.root, "demofile2.txt")
+
+        # setup
+        sub_path = os.path.join(server.USERS_DIRECTORIES, self.owner, subdir)
+        os.mkdir(sub_path)
+        shutil.copy2(demo_file1, os.path.join(sub_path, filename))
+
+        # share subdir with beneficiary
+        # TODO: load this from json when the shares will be saved on file
+        received = self.tc.post(
+            "{}shares/{}/{}".format(
+                _API_PREFIX, subdir, self.ben1
+            ),
+            headers=self.owner_headers
+        )
+        self.assertEqual(received.status_code, 200)
+
+        # update a shared file and check if it's ok
+        owner_timestamp = server.User.users[self.owner].timestamp
+        with open(demo_file2, "r") as f:
+            received = self.tc.put(
+                "{}files/{}/{}".format(
+                    _API_PREFIX, subdir, filename
+                ),
+                data={"file_content": f},
+                headers=self.owner_headers
+            )
+        self.assertEqual(received.status_code, 201)
+        owner_new_timestamp = server.User.users[self.owner].timestamp
+        self.assertGreater(owner_new_timestamp, owner_timestamp)
+
+        ben_timestamp = server.User.users[self.ben1].timestamp
+        self.assertEqual(owner_new_timestamp, ben_timestamp)
+
+        # upload a new file in shared directory and check
+        with open(demo_file1, "r") as f:
+            received = self.tc.post(
+                "{}files/{}/{}".format(
+                    _API_PREFIX, subdir, "other_subdir/new_file"
+                ),
+                data={"file_content": f},
+                headers=self.owner_headers
+            )
+        self.assertEqual(received.status_code, 201)
+        self.assertEqual(
+            server.User.users[self.owner].timestamp,
+            server.User.users[self.ben1].timestamp
+        )
+        self.assertIn(
+            os.path.join("shares", self.owner, subdir, "other_subdir"),
+            server.User.users[self.ben1].paths
+        )
+        self.assertIn(
+            os.path.join(
+                "shares", self.owner, subdir, "other_subdir/new_file"
+            ),
+            server.User.users[self.ben1].paths
+        )
+
+        # remove a file and check
+        received = self.tc.post(
+            "{}actions/delete".format(_API_PREFIX),
+            data={"path": os.path.join(subdir, "other_subdir/new_file")},
+            headers=self.owner_headers
+        )
+        self.assertEqual(received.status_code, 200)
+
+        self.assertEqual(
+            server.User.users[self.owner].timestamp,
+            server.User.users[self.ben1].timestamp
+        )
+        self.assertNotIn(
+            "/".join(["shares", self.owner, subdir, "other_subdir"]),
+            server.User.users[self.ben1].paths
+        )
+        self.assertNotIn(
+            "/".join(["shares", self.owner, subdir, "other_subdir/new_file"]),
+            server.User.users[self.ben1].paths
+        )
+
+        # remove every file in shared subdir and check if the shared_resource
+        # has been removed
+        received = self.tc.post(
+            "{}actions/delete".format(_API_PREFIX),
+            data={"path": "/".join([subdir, filename])},
+            headers=self.owner_headers
+        )
+        self.assertEqual(received.status_code, 200)
+
+        self.assertNotIn(
+            os.path.join(
+                server.USERS_DIRECTORIES, self.owner, subdir
+            ),
+            server.User.shared_resources
+        )
 if __name__ == '__main__':
     server.app.config.update(TESTING=True)
     server.app.testing = True
