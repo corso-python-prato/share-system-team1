@@ -663,6 +663,70 @@ class TestShare(unittest.TestCase):
                 )
                 self.assertEqual(received.status_code, 403)
 
+    def test_remove_beneficiary(self):
+        tc = server.app.test_client()
+
+        # test if aborts when the resource is not on the server
+        received = tc.delete(
+            "{}shares/{}/{}".format(
+                _API_PREFIX, "file_not_present.txt", self.ben1
+            ),
+            headers=self.owner_headers
+        )
+        self.assertEqual(received.status_code, 400)
+        self.assertEqual(
+            received.data,
+            '"The specified file or directory is not present"'
+        )
+
+        # test if aborts when the resource is not shared with the beneficiary
+        received = tc.delete(
+            "{}shares/{}/{}".format(
+                _API_PREFIX, "shared_with_two_bens.txt", self.ben1
+            ),
+            headers=self.owner_headers
+        )
+        self.assertEqual(received.status_code, 400)
+
+        # share a file with a couple of users
+        for beneficiary in [self.ben1, self.ben2]:
+            received = tc.post(
+                "{}shares/{}/{}".format(
+                    _API_PREFIX, "shared_with_two_bens.txt", beneficiary
+                ),
+                headers=self.owner_headers
+            )
+            self.assertEqual(received.status_code, 200)
+
+        # remove the first user from the share
+        received = tc.delete(
+            "{}shares/{}/{}".format(
+                _API_PREFIX, "shared_with_two_bens.txt", self.ben1
+            ),
+            headers=self.owner_headers
+        )
+        self.assertEqual(received.status_code, 200)
+
+        server_path = os.path.join(
+            server.USERS_DIRECTORIES,
+            self.owner,
+            "shared_with_two_bens.txt"
+        )
+        self.assertIn(server_path, server.User.shared_resources)
+        self.assertEqual(
+            server.User.shared_resources[server_path],
+            [self.owner, self.ben2]
+        )
+
+        # remove the second user
+        received = tc.delete(
+            "{}shares/{}/{}".format(
+                _API_PREFIX, "shared_with_two_bens.txt", self.ben2
+            ),
+            headers=self.owner_headers
+        )
+        self.assertEqual(received.status_code, 200)
+        self.assertNotIn(server_path, server.User.shared_resources)
 
 if __name__ == '__main__':
     server.app.config.update(TESTING=True)
