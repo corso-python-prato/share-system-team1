@@ -10,6 +10,7 @@ from watchdog.observers.polling import PollingObserver as Observer
 from watchdog.events import FileSystemEventHandler
 from requests.auth import HTTPBasicAuth
 import requests
+import argparse
 import hashlib
 import logging
 import shutil
@@ -25,7 +26,6 @@ SERVER_URL = "localhost"
 SERVER_PORT = "5000"
 API_PREFIX = "API/v1"
 CONFIG_DIR_PATH = ""
-LOGGER = None
 
 def get_relpath(abs_path):
     """form absolute path return relative path """
@@ -45,6 +45,7 @@ class ServerCommunicator(object):
         self.auth = HTTPBasicAuth(username, password)
         self.server_url = server_url
         self.snapshot_manager = snapshot_manager
+        self.logger = logging.getLogger("RawBox.serverCom")
 
     def setExecuter(self, executer):
         self.executer = executer
@@ -57,13 +58,13 @@ class ServerCommunicator(object):
                     auth=self.auth,
                     *args, **kwargs)
                 if request_result.status_code == 401:
-                    LOGGER.error("user not logged")
+                    self.logger.error("user not logged")
                 else:
-                    LOGGER.info(success)
+                    self.logger.info(success)
                 return request_result
             except requests.exceptions.RequestException:
                 time.sleep(retry_delay)
-                LOGGER.warning(error)
+                self.logger.warning(error)
 
     def synchronize(self, operation_handler):
         """Synchronize client and server"""
@@ -75,7 +76,7 @@ class ServerCommunicator(object):
         if sync.status_code != 401:
             server_snapshot = sync.json()['snapshot']
             server_timestamp = sync.json()['timestamp']
-            LOGGER.debug("".format("SERVER SAY: ", server_snapshot, server_timestamp ,"\n"))
+            self.logger.debug("".format("SERVER SAY: ", server_snapshot, server_timestamp ,"\n"))
             command_list = self.snapshot_manager.syncronize_dispatcher(server_timestamp, server_snapshot)
             self.executer.syncronize_executer(command_list)
             self.snapshot_manager.save_timestamp(server_timestamp)
@@ -129,7 +130,7 @@ class ServerCommunicator(object):
         else:
             r = self._try_request(requests.post, success_log, error_log, **request)
         if r.status_code == 409:
-            LOGGER.error("file {} already exists on server".format(dst_path))
+            self.logger.error("file {} already exists on server".format(dst_path))
         elif r.status_code == 201:
             self.snapshot_manager.update_snapshot(action = "upload" , body = {"src_path": dst_path})
             self.snapshot_manager.save_snapshot(r.text)
@@ -147,7 +148,7 @@ class ServerCommunicator(object):
         }
         r = self._try_request(requests.post, success_log, error_log, **request)
         if r.status_code == 404:
-            LOGGER.error("DELETE REQUEST file {} not found on server".format(dst_path))
+            self.logger.error("DELETE REQUEST file {} not found on server".format(dst_path))
         elif r.status_code == 200:
             self.snapshot_manager.update_snapshot(action = "delete" , body = {"src_path": dst_path})
             self.snapshot_manager.save_snapshot(r.text)
@@ -169,7 +170,7 @@ class ServerCommunicator(object):
         
         r = self._try_request(requests.post, success_log, error_log, **request)
         if r.status_code == 404:
-            LOGGER.error("MOVE REQUEST file {} not found on server".format(src_path))
+            self.logger.error("MOVE REQUEST file {} not found on server".format(src_path))
         elif r.status_code == 201:
             self.snapshot_manager.update_snapshot(
                 action = "move",
@@ -193,7 +194,7 @@ class ServerCommunicator(object):
         }
         r = self._try_request(requests.post, success_log, error_log, **request)
         if r.status_code == 404:
-            LOGGER.error("COPY REQUEST file {} not found on server".format(src_path))
+            self.logger.error("COPY REQUEST file {} not found on server".format(src_path))
         elif r.status_code == 201:
             self.snapshot_manager.update_snapshot(
                 action = "copy",
@@ -218,12 +219,12 @@ class ServerCommunicator(object):
 
         response = self._try_request(requests.post, success_log, error_log, **request)
         if response.status_code == 201:
-            LOGGER.info("user: {} psw: {} created!".format(username, password))
+            self.logger.info("user: {} psw: {} created!".format(username, password))
         elif response.status_code == 409:
-            LOGGER.warning("user: {} psw: {} already exists!".format(username, password))
+            self.logger.warning("user: {} psw: {} already exists!".format(username, password))
         else:
             error = "on create user:\t email: {}\n\nsend message:\t{}\nresponse is:\t{}".format(request, response.text)
-            LOGGER.critical("\nbad request on user creation, report this crash to RawBox_team@gmail.com\n {}\n\n".format(error))
+            self.logger.critical("\nbad request on user creation, report this crash to RawBox_team@gmail.com\n {}\n\n".format(error))
 
 
 class FileSystemOperator(object):
@@ -257,7 +258,7 @@ class FileSystemOperator(object):
                 f.write(content)
             time.sleep(3)
         else:
-            LOGGER.error("DOWNLOAD REQUEST for file {} , not found on server".format(path))
+            self.logger.error("DOWNLOAD REQUEST for file {} , not found on server".format(path))
 
     def move_a_file(self, origin_path, dst_path):
         """
@@ -329,6 +330,12 @@ def load_config():
         user = "username"
         psw = "password"
 
+        abs_path = os.path.dirname(os.path.abspath(__file__))
+
+        crash_log_path = os.path.join(abs_path, 'RawBox_crash_report.log')
+        config_path = os.path.join(abs_path, 'config.json')
+        snapshot_path = os.path.join(abs_path, 'snapshot_file.json')
+
         config = {
             "server_url" : "http://{}:{}/{}".format(
                 SERVER_URL,
@@ -336,15 +343,21 @@ def load_config():
                 API_PREFIX
             ),
             "dir_path": dir_path,
-            "snapshot_file_path": 'snapshot_file.json',
+            "snapshot_file_path": snapshot_path,
             "cmd_host": "localhost",
             "cmd_port": "6666",
             "username": user,
-            "password": psw
+            "password": psw,
+            "crash_repo_path": crash_log_path,
+            "stdout_log_level": "DEBUG",
+            "file_log_level": "ERROR",
         }
-        with open('snapshot_file.json', 'w') as snapshot_file:
-            json.dump({"timestamp": 0, "snapshot": ""}, snapshot_file)
-        with open('config.json', 'w') as config_file:
+
+        default_snapshot = {"timestamp": 0, "snapshot": ""}
+
+        with open(snapshot_path, 'w') as snapshot_file:
+            json.dump(default_snapshot, snapshot_file)
+        with open(config_path, 'w') as config_file:
             json.dump(config, config_file)
         return config, True
 
@@ -355,6 +368,7 @@ class DirectoryEventHandler(FileSystemEventHandler):
         self.cmd = cmd
         self.snap = snap
         self.paths_ignored = []
+        self.logger = logging.getLogger("RawBox.event_handler")
 
     def _is_copy(self, abs_path):
         """
@@ -381,7 +395,7 @@ class DirectoryEventHandler(FileSystemEventHandler):
             if not event.is_directory:
                 self.cmd.move_file(event.src_path, event.dest_path)
         else:
-            LOGGER.debug("".format("ingnored move on ", event.src_path))
+            self.logger.debug("".format("ingnored move on ", event.src_path))
             self.paths_ignored.remove(event.src_path)
             self.paths_ignored.remove(event.dest_path)
 
@@ -403,9 +417,9 @@ class DirectoryEventHandler(FileSystemEventHandler):
                     self.cmd.upload_file(event.src_path)
         else:
             if copy:
-                LOGGER.debug("".format("ingnored copy on ", event.src_path))
+                self.logger.debug("".format("ingnored copy on ", event.src_path))
             else:
-                LOGGER.debug("".format("ingnored creation on ", event.src_path))
+                self.logger.debug("".format("ingnored creation on ", event.src_path))
             self.paths_ignored.remove(event.src_path)
 
     def on_deleted(self, event):
@@ -420,7 +434,7 @@ class DirectoryEventHandler(FileSystemEventHandler):
             if not event.is_directory:
                 self.cmd.delete_file(event.src_path)
         else:
-            LOGGER.debug("".format("ingnored deletion on ", event.src_path))
+            self.logger.debug("".format("ingnored deletion on ", event.src_path))
             self.paths_ignored.remove(event.src_path)
 
     def on_modified(self, event):
@@ -435,7 +449,7 @@ class DirectoryEventHandler(FileSystemEventHandler):
             if not event.is_directory:
                 self.cmd.upload_file(event.src_path, put_file=True)
         else:
-            LOGGER.debug("".format("ingnored modified on ", event.src_path))
+            self.logger.debug("".format("ingnored modified on ", event.src_path))
             self.paths_ignored.remove(event.src_path)
 
 
@@ -445,6 +459,7 @@ class DirSnapshotManager(object):
         self.snapshot_file_path = snapshot_file_path
         self.last_status = self._load_status()
         self.local_full_snapshot = self.instant_snapshot()
+        self.logger = logging.getLogger("RawBox.snapshot_manager")
 
     def local_check(self):
         """ check id daemon is synchronized with local directory """
@@ -575,63 +590,63 @@ class DirSnapshotManager(object):
                 for new_server_path in new_server_paths: # 1) b 1
                     server_md5 = self.find_file_md5(server_snapshot, new_server_path)
                     if not server_md5 in self.local_full_snapshot: # 1) b 1 I
-                        LOGGER.debug("download:\t" + new_server_path)
+                        self.logger.debug("download:\t" + new_server_path)
                         command_list.append({'local_download': [new_server_path]})
                     else: # 1) b 1 II
-                        LOGGER.debug("copy or rename:\t" + new_server_path)
+                        self.logger.debug("copy or rename:\t" + new_server_path)
                         src_local_path = self.local_full_snapshot[server_md5][0]
                         command_list.append({'local_copy': [src_local_path, new_server_path]})
                 
                 for equal_path in equal_paths: # 1) b 2
                     client_md5 = self.find_file_md5(self.local_full_snapshot, equal_path, False)
                     if client_md5 != self.find_file_md5(server_snapshot, equal_path):
-                        LOGGER.debug("update download:\t" + equal_path)
+                        self.logger.debug("update download:\t" + equal_path)
                         command_list.append({'local_download': [equal_path]})
                     else:
-                        LOGGER.debug("no action:\t" + equal_path)
+                        self.logger.debug("no action:\t" + equal_path)
                 
                 for new_client_path in new_client_paths: # 1) b 3
-                    LOGGER.debug("remove local:\t" + new_client_path)
+                    self.logger.debug("remove local:\t" + new_client_path)
                     command_list.append({'local_delete': [new_client_path]})
             else:
-                LOGGER.debug("synchronized")
+                self.logger.debug("synchronized")
         #internal conflicts
         else: # 2)
             if self.is_syncro(server_timestamp): # 2) a
-                LOGGER.debug("****\tpush all\t****")
+                self.logger.debug("****\tpush all\t****")
                 for new_server_path in new_server_paths: # 2) a 1
-                    LOGGER.debug("remove:\t" + new_server_path)
+                    self.logger.debug("remove:\t" + new_server_path)
                     command_list.append({'remote_delete': [new_server_path]})
                 for equal_path in equal_paths: # 2) a 2
                     if self.find_file_md5(self.local_full_snapshot, equal_path, False) != self.find_file_md5(server_snapshot, equal_path):
-                        LOGGER.debug("update:\t" + equal_path)
+                        self.logger.debug("update:\t" + equal_path)
                         command_list.append({'remote_update': [equal_path]})
                     else:
-                        LOGGER.debug("no action:\t" + equal_path)
+                        self.logger.debug("no action:\t" + equal_path)
                 for new_client_path in new_client_paths: # 2) a 3
-                    LOGGER.debug("upload:\t" + new_client_path)
+                    self.logger.debug("upload:\t" + new_client_path)
                     command_list.append({'remote_upload': ["/".join([CONFIG_DIR_PATH, new_client_path])]})
             
             elif not self.is_syncro(server_timestamp): # 2) b
                 for new_server_path in new_server_paths: # 2) b 1
                     if not self.find_file_md5(server_snapshot, new_server_path) in self.local_full_snapshot: # 2) b 1 I
                         if self.check_files_timestamp(server_snapshot, new_server_path):
-                            LOGGER.debug("delete remote:\t" + new_server_path)
+                            self.logger.debug("delete remote:\t" + new_server_path)
                             command_list.append({'remote_delete': [new_server_path]})
                         else:
-                            LOGGER.debug("download local:\t" + new_server_path)
+                            self.logger.debug("download local:\t" + new_server_path)
                             command_list.append({'local_download': [new_server_path]})
                     else: # 2) b 1 II
-                        LOGGER.debug("copy or rename:\t" + new_server_path)
+                        self.logger.debug("copy or rename:\t" + new_server_path)
                         command_list.append({'local_copy': [new_server_path]})
                
                 for equal_path in equal_paths: # 2) b 2
                     if self.find_file_md5(self.local_full_snapshot, equal_path, False) != self.find_file_md5(server_snapshot, equal_path):
                         if self.check_files_timestamp(server_snapshot, equal_path): # 2) b 2 I
-                            LOGGER.debug("server push:\t" + equal_path)
+                            self.logger.debug("server push:\t" + equal_path)
                             command_list.append({'remote_upload': [equal_path]})
                         else:  # 2) b 2 II
-                            LOGGER.debug("create.conflicted:\t" + equal_path)
+                            self.logger.debug("create.conflicted:\t" + equal_path)
                             conflicted_path = "{}/{}.conflicted".format(
                                 "/".join(equal_path.split('/')[:-1]),
                                 "".join(equal_path.split('/')[-1])
@@ -639,9 +654,9 @@ class DirSnapshotManager(object):
                             command_list.append({'remote_upload': [conflicted_path]})
                             command_list.append({'local_copyAndRename': [equal_path, conflicted_path]})
                     else:
-                        LOGGER.debug("no action:\t" + equal_path)
+                        self.logger.debug("no action:\t" + equal_path)
                 for new_client_path in new_client_paths: # 2) b 3
-                    LOGGER.debug("remove remote\t" + new_client_path)
+                    self.logger.debug("remove remote\t" + new_client_path)
                     command_list.append({'remote_delete': [new_client_path]})
 
         return command_list
@@ -652,13 +667,14 @@ class CommandExecuter(object):
     def __init__(self,file_system_op, server_com):
         self.local = file_system_op
         self.remote = server_com
+        self.logger = logging.getLogger("RawBox.CommandExecuter")
         
     def syncronize_executer(self, command_list):
-        LOGGER.debug("EXECUTER\n")
+        self.logger.debug("EXECUTER\n")
         def error(*args,**kwargs):
             return False
 
-        LOGGER.debug(command_list)
+        self.logger.debug(command_list)
 
         for command_row in command_list:
             for command in command_row:
@@ -676,37 +692,71 @@ class CommandExecuter(object):
                         'delete': self.local.delete_a_file
                     }.get(command_type,error)(*(command_row[command]))
 
-def logger_init():
-    logger = logging.getLogger("RawBox")
+
+def logger_init(crash_repo_path, stdout_level, file_level):
+    log_levels = {
+        "DEBUG":    logging.DEBUG,
+        "INFO":     logging.INFO,
+        "WARNING":  logging.WARNING,
+        "ERROR":    logging.ERROR,
+        "CRITICAL": logging.CRITICAL,
+    }
+    stdout_level = log_levels[stdout_level]
+    file_level = log_levels[file_level]
+
+    logger = logging.getLogger('RawBox')
     logger.setLevel(logging.DEBUG)
     # create file handler which logs even debug messages
-    crash_logger = logging.FileHandler("crash_report.log")
-    crash_logger.setLevel(logging.ERROR)
+    crash_logger = logging.FileHandler(crash_repo_path)
+    crash_logger.setLevel(file_level)
     # create console handler with a low log level
     print_logger = logging.StreamHandler()
-    print_logger.setLevel(logging.DEBUG)
+    print_logger.setLevel(stdout_level)
     # create formatter for crash file logging
     formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     crash_logger.setFormatter(formatter)
     # add the handlers to logger
     logger.addHandler(print_logger)
     logger.addHandler(crash_logger)
-    global LOGGER
-    LOGGER = logger
+
+
+def args_part_init(stdout_level, file_level):
+    parser = argparse.ArgumentParser(description='RawBox client daemon')
+    parser.add_argument("--std-log", required=False)
+    parser.add_argument("--file-log", required=False)
+    args = parser.parse_args()
+
+    if args.std_log:
+        stdout_level = args.std_log
+    if args.file_log:
+        file_level = args.file_log
+    return stdout_level, file_level
 
 
 def main():
-    logger_init()
     config, is_new = load_config()
     global CONFIG_DIR_PATH
     CONFIG_DIR_PATH = config['dir_path']
-    snapshot_manager = DirSnapshotManager(config['snapshot_file_path'])
+    stdout_level, file_level = args_part_init(
+        stdout_level=config['stdout_log_level'],
+        file_level=config['file_log_level'],
+    )
+
+    logger_init(
+        crash_repo_path=config['crash_repo_path'],
+        stdout_level=stdout_level,
+        file_level=file_level,
+    )
+
+    snapshot_manager = DirSnapshotManager(
+        snapshot_file_path=config['snapshot_file_path'],
+    )
 
     server_com = ServerCommunicator(
         server_url=config['server_url'],
         username=config['username'],
         password=config['password'],
-        snapshot_manager = snapshot_manager)
+        snapshot_manager=snapshot_manager)
 
     event_handler = DirectoryEventHandler(server_com, snapshot_manager)
     file_system_op = FileSystemOperator(event_handler, server_com, snapshot_manager)
