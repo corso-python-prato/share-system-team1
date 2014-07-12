@@ -71,9 +71,6 @@ class ServerCommunicatorTest(unittest.TestCase):
                 self.server_snapshot = server_snapshot
                 return ['command']
 
-            def syncronize_executer(self, command_list):
-                self.command_list = command_list
-
             def save_snapshot(self, timestamp):
                 self.timestamp = timestamp
 
