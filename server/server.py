@@ -228,7 +228,6 @@ class Resource_with_auth(Resource):
 
 
 class UsersApi(Resource):
-    pending = {}
 
     def post(self, username):
         """Create a user registration request
@@ -241,36 +240,38 @@ class UsersApi(Resource):
             "timestamp": <timestamp>
             }
         }"""
+        pending = {}
         if os.path.isfile(PENDING_USERS):
             try:
                 with open(PENDING_USERS, "r") as p_u:
-                    UsersApi.pending = json.load(p_u)
+                    pending = json.load(p_u)
             except ValueError:  # the file exists but is not a json
                 os.remove(PENDING_USERS)
         try:
             psw = request.form["psw"]
         except KeyError:
-            abort(HTTP_BAD_REQUEST)
+            return "Missing password", HTTP_BAD_REQUEST
 
-        if username in UsersApi.pending:
+        if username in pending:
             return "This user have arleady a pending request", HTTP_CONFLICT
         elif username in User.users:
             return "This user already exists", HTTP_CONFLICT
         else:
             psw_hash = sha256_crypt.encrypt(psw)
             code = os.urandom(16).encode('hex')
-            UsersApi.pending[username] = \
+            pending[username] = \
                 {"password": psw_hash,
                  "code": code,
                  "timestamp": time.time()}
 
             with open(PENDING_USERS, "w") as p_u:
-                json.dump(UsersApi.pending, p_u)
+                json.dump(pending, p_u)
             content = code
             send_mail(username, "RawBox activation code", content)
             return "user added to pending users", HTTP_CREATED
 
     def put(self, username):
+        pending = {}
         """Activate a pending user
         Expected
         {"code": <activation code>}"""
@@ -282,19 +283,19 @@ class UsersApi(Resource):
         if (os.path.isfile(PENDING_USERS)):
             try:
                 with open(PENDING_USERS, "r") as p_u:
-                    UsersApi.pending = json.load(p_u)
+                    pending = json.load(p_u)
             except ValueError:  # the file exists but is not a json
                 os.remove(PENDING_USERS)
 
         if username in User.users:
             return "This user is already active", HTTP_CONFLICT
-        if username in UsersApi.pending:
-            if code == UsersApi.pending[username]["code"]:
-                User(username, UsersApi.pending[username]["password"])
-                del UsersApi.pending[username]
-                if UsersApi.pending:
+        if username in pending:
+            if code == pending[username]["code"]:
+                User(username, pending[username]["password"])
+                del pending[username]
+                if pending:
                     with open(PENDING_USERS, "w") as p_u:
-                        json.dump(UsersApi.pending, p_u)
+                        json.dump(pending, p_u)
                 else:
                     os.remove(PENDING_USERS)
                 return "user activated", HTTP_CREATED
