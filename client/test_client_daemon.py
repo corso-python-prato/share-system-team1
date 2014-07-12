@@ -25,7 +25,6 @@ import os
 class TestEnvironment(object):
 
     def __init__(self):
-        client_daemon.logger_init(False, False, False, True)
         logging.disable(logging.CRITICAL)
 
     def create(self):
