@@ -655,8 +655,7 @@ class TestShare(unittest.TestCase):
             "file_dest": os.path.join("shares", self.owner, "can_write/")
         }
         with server.app.test_client() as tc:
-            # for act in ["copy", "move"]:
-            for act in ["move"]:
+            for act in ["move", "copy"]:
                 received = tc.post(
                     "{}actions/{}".format(_API_PREFIX, act),
                     data=data,
