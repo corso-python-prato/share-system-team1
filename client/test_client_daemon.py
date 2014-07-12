@@ -150,7 +150,14 @@ class ServerCommunicatorTest(unittest.TestCase):
     def tearDown(self):
         httpretty.disable()
         httpretty.reset()
-    
+
+    def test_setexecuter(self):
+        executer = "executer"
+        self.server_comm.setExecuter(executer)
+        self.assertEqual(
+            self.server_comm.executer,
+            executer)
+
     def test_upload(self):
         put_file=True
         mock_auth_user = ":".join([self.username, self.password])
