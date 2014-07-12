@@ -521,7 +521,7 @@ class DirSnapshotManager(object):
 
     def update_snapshot_copy(self, body):
         """ update of local full snapshot by copy request"""
-        self.local_full_snapshot[self.file_snapMd5(body['src_path'])].append(body["dst_path"])
+        self.local_full_snapshot[self.file_snapMd5(body['src_path'])].append(get_relpath(body["dst_path"]))
 
     def update_snapshot_move(self, body):
         """ update of local full snapshot by move request"""
