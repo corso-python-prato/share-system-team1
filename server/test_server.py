@@ -1097,6 +1097,38 @@ class TestShare(unittest.TestCase):
         self.assertEqual(received.status_code, 200)
         self.assertNotIn(server_path, server.User.shared_resources)
 
+    def test_remove_share(self):
+        # test if aborts when the resource is not shared
+        received = self.tc.delete(
+            "{}shares/{}".format(_API_PREFIX, "not_shared_file.txt"),
+            headers=self.owner_headers
+        )
+        self.assertEqual(received.status_code, 400)
+
+        # share a file with a couple of users
+        for beneficiary in [self.ben1, self.ben2]:
+            received = self.tc.post(
+                "{}shares/{}/{}".format(
+                    _API_PREFIX, "shared_with_two_bens.txt", beneficiary
+                ),
+                headers=self.owner_headers
+            )
+            self.assertEqual(received.status_code, 200)
+
+        # remove the share on the resource and check
+        received = self.tc.delete(
+            "{}shares/{}".format(_API_PREFIX, "shared_with_two_bens.txt"),
+            headers=self.owner_headers
+        )
+        self.assertEqual(received.status_code, 200)
+        self.assertNotIn(
+            os.path.join(
+                server.USERS_DIRECTORIES,
+                self.owner,
+                "shared_with_two_bens.txt"
+            ),
+            server.User.shared_resources
+        )
 if __name__ == '__main__':
     server.app.config.update(TESTING=True)
     server.app.testing = True
