@@ -25,9 +25,8 @@ import os
 class TestEnvironment(object):
 
     def __init__(self):
-        mock_logger = logging.getLogger()
-        mock_logger.propagate = False
-        client_daemon.LOGGER = mock_logger
+        client_daemon.logger_init(False, False, False, True)
+        logging.disable(logging.CRITICAL)
 
     def create(self):
         self.test_main_path = os.path.join(os.path.expanduser('~'), 'test_path')
