@@ -183,6 +183,10 @@ class ServerCommunicatorTest(unittest.TestCase):
         self.assertEqual(host, '127.0.0.1:5000')
         self.assertEqual(method, 'POST')
 
+        #Case: IOError for file
+        filepath = "not/corret/path"
+        self.assertFalse(self.server_comm.upload_file(filepath))
+
     def test_download(self):
         mock_auth_user = ":".join([self.username, self.password])
         response = self.server_comm.download_file(self.file_path)
@@ -201,6 +205,18 @@ class ServerCommunicatorTest(unittest.TestCase):
         self.assertEqual(method, 'GET')
         #check response's body
         self.assertEqual(response[1], u'[{"title": "Test"}]')
+
+        #Case: server bad request
+        def _try_request(self, *args, **kwargs):
+            class Response(object):
+                def __init__(self):
+                    self.status_code = 400
+            response = Response()
+            return response
+
+        self.server_comm._try_request = _try_request
+        response = self.server_comm.download_file(self.file_path)
+        self.assertEqual(response, (False, False))
 
     def test_delete_file(self):
         mock_auth_user = ":".join([self.username, self.password])
