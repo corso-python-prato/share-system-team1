@@ -87,7 +87,6 @@ class ServerCommunicator(object):
 
     def download_file(self, dst_path):
         """ download a file from server"""
-
         error_log = "ERROR on download request " + dst_path
         success_log = "file downloaded! " + dst_path
 
@@ -693,7 +692,7 @@ class CommandExecuter(object):
                     }.get(command_type,error)(*(command_row[command]))
 
 
-def logger_init(crash_repo_path, stdout_level, file_level):
+def logger_init(crash_repo_path, stdout_level, file_level, disabled = False):
     log_levels = {
         "DEBUG":    logging.DEBUG,
         "INFO":     logging.INFO,
@@ -704,48 +703,59 @@ def logger_init(crash_repo_path, stdout_level, file_level):
     stdout_level = log_levels[stdout_level]
     file_level = log_levels[file_level]
 
+    # create formatter for crash file logging
+    formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+
     logger = logging.getLogger('RawBox')
     logger.setLevel(logging.DEBUG)
     # create file handler which logs even debug messages
-    crash_logger = logging.FileHandler(crash_repo_path)
-    crash_logger.setLevel(file_level)
+    if crash_repo_path:
+        crash_logger = logging.FileHandler(crash_repo_path)
+        crash_logger.setLevel(file_level)
+        crash_logger.setFormatter(formatter)
+        logger.addHandler(crash_logger)
     # create console handler with a low log level
     print_logger = logging.StreamHandler()
     print_logger.setLevel(stdout_level)
-    # create formatter for crash file logging
-    formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-    crash_logger.setFormatter(formatter)
     # add the handlers to logger
     logger.addHandler(print_logger)
-    logger.addHandler(crash_logger)
+    if disabled:
+        logging.disable(logging.CRITICAL)
 
 
-def args_part_init(stdout_level, file_level):
+def args_part_init(stdout_level, file_level, report_file):
     parser = argparse.ArgumentParser(description='RawBox client daemon')
     parser.add_argument("--std-log", required=False)
     parser.add_argument("--file-log", required=False)
+    parser.add_argument("--no-log", action='store_true', required=False)
+    parser.add_argument("--no-repo", action='store_true', required=False)
     args = parser.parse_args()
 
     if args.std_log:
         stdout_level = args.std_log
     if args.file_log:
         file_level = args.file_log
-    return stdout_level, file_level
+    if args.no_repo:
+        report_file = False;
+
+    return stdout_level, file_level, args.no_log, report_file
 
 
 def main():
     config, is_new = load_config()
     global CONFIG_DIR_PATH
     CONFIG_DIR_PATH = config['dir_path']
-    stdout_level, file_level = args_part_init(
+    stdout_level, file_level, disable, report_file = args_part_init(
         stdout_level=config['stdout_log_level'],
         file_level=config['file_log_level'],
+        report_file=config['crash_repo_path'],
     )
 
     logger_init(
-        crash_repo_path=config['crash_repo_path'],
+        crash_repo_path=report_file,
         stdout_level=stdout_level,
         file_level=file_level,
+        disabled=disable,
     )
 
     snapshot_manager = DirSnapshotManager(
