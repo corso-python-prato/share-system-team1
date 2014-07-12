@@ -27,7 +27,7 @@ api = Api(app)
 auth = HTTPBasicAuth()
 _API_PREFIX = "/API/v1/"
 
-SERVER_ROOT = "."
+SERVER_ROOT = ""
 
 parser = reqparse.RequestParser()
 parser.add_argument("task", type=str)
