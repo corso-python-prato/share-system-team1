@@ -240,9 +240,9 @@ class FileSystemOperator(object):
             create file
             when watchdog see the first event on this path ignore it
         """
-        self.add_event_to_ignore(get_abspath(path))
         abs_path, content = self.server_com.download_file(path)
         if abs_path and content:
+            self.add_event_to_ignore(get_abspath(path))
             try:
                 os.makedirs(os.path.split(abs_path)[0], 0755)
             except OSError:
