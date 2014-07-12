@@ -158,6 +158,20 @@ class ServerCommunicatorTest(unittest.TestCase):
             self.server_comm.executer,
             executer)
 
+    def test_get_url_relpath(self):
+        #Case: rigth separator
+        os.path.sep = '/'
+        test_path = "/test/path"
+        result = self.server_comm.get_url_relpath(test_path)
+        self.assertEqual(result, test_path)
+
+        #Case: other os separator
+        os.path.sep = "-"
+        test_path = "-test-path"
+        expected_result = "/test/path"
+        result = self.server_comm.get_url_relpath(test_path)
+        self.assertEqual(result, expected_result)
+
     def test_upload(self):
         put_file=True
         mock_auth_user = ":".join([self.username, self.password])
