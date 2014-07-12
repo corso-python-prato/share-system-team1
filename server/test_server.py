@@ -125,20 +125,13 @@ class EmailTest(unittest.TestCase):
             assert outbox[0].body == "test content"
 
     def test_create_user_mail(self):
-        user = "NennoLello"
-        psw = "zerocloninell'orto"
         data = {
-            "psw": psw
+            "psw": EmailTest.psw
         }
 
-        url = "".join((server._API_PREFIX, "user/", user))
         with self.mail.record_messages() as outbox:
-            self.tc.post(url, data=data, headers=None)
+            response = self.tc.post(self.url, data=data, headers=None)
             with open(server.PENDING_USERS, "r") as pending_file:
-                code = json.load(pending_file)[user]["code"]
-                assert outbox[0].body == code
-        os.remove(TEST_PENDING_USERS)
-
                 code = json.load(pending_file)[EmailTest.user]["code"]
                 self.assertEqual(outbox[0].body, code)
                 self.assertEqual(response.status_code, server.HTTP_CREATED)
