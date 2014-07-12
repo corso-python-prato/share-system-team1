@@ -83,6 +83,8 @@ class ServerCommunicatorTest(unittest.TestCase):
             def save_timestamp(self, timestamp):
                 self.server_timestamp = timestamp
 
+            def update_snapshot_delete(self, body):
+                self.update = body
 
         httpretty.enable()
         httpretty.register_uri(
@@ -216,6 +218,9 @@ class ServerCommunicatorTest(unittest.TestCase):
         self.assertEqual(host, '127.0.0.1:5000')
         #check if methods are equal
         self.assertEqual(method, 'POST')
+        self.assertEqual(
+            self.server_comm.snapshot_manager.update,
+            {"src_path": self.file_path})
 
     def test_move_file(self):
         mock_auth_user = ":".join([self.username, self.password])
@@ -298,9 +303,24 @@ class ServerCommunicatorTest(unittest.TestCase):
 class FileSystemOperatorTest(unittest.TestCase):
 
     def setUp(self):
-        #Generate test folder tree and configuration file
-        self.environment = TestEnvironment()
-        self.test_main_path, self.shared_dir, self.test_folder_1, self.test_folder_2, self.test_file_1, self.test_file_2, self.conf_snap_path, self.conf_snap_gen = self.environment.create()
+        class DirSnapshotManager(object):
+            def __init__(self):
+                self.delete = False
+                self.move = False
+                self.copy = False
+                self.upload = False
+
+            def update_snapshot_delete(self, body):
+                self.delete = body
+
+            def update_snapshot_move(self, body):
+                self.move = body
+
+            def update_snapshot_copy(self, body):
+                self.copy = body
+
+            def update_snapshot_upload(self, body):
+                self.upload = body
 
         self.client_path = '/tmp/user_dir'
         client_daemon.CONFIG_DIR_PATH = self.client_path
@@ -311,7 +331,7 @@ class FileSystemOperatorTest(unittest.TestCase):
         httpretty.register_uri(httpretty.GET, 'http://localhost/api/v1/files/{}'.format(self.filename),
             body='this is a test',
             content_type='text/plain')
-        self.snapshot_manager = DirSnapshotManager(self.conf_snap_path)
+        self.snapshot_manager = DirSnapshotManager()
         self.server_com = ServerCommunicator(
             server_url='http://localhost/api/v1',
             username='usernameFarlocco',
@@ -324,13 +344,15 @@ class FileSystemOperatorTest(unittest.TestCase):
 
     def tearDown(self):
         httpretty.disable()
-        self.environment.remove()
 
     def test_write_a_file(self):
         source_path = '{}/{}'.format(self.client_path, self.filename)
         self.file_system_op.write_a_file(source_path)
         written_file = open('{}/{}'.format(self.client_path,self.filename), 'rb').read()
         self.assertEqual('this is a test', written_file)
+        self.assertEqual(
+            self.snapshot_manager.upload,
+            {"src_path": source_path})
         #check if source isadded by write_a_file
         self.assertEqual([source_path], self.event_handler.paths_ignored)
 
@@ -344,6 +366,9 @@ class FileSystemOperatorTest(unittest.TestCase):
         self.file_system_op.move_a_file(source_path, dest_path)
         written_file = open(dest_path, 'rb').read()
         self.assertEqual('this is a test', written_file)
+        self.assertEqual(
+            self.snapshot_manager.move,
+            {"src_path": source_path, "dst_path": dest_path})
         #check if source and dest path are added by move_a_file
         self.assertEqual([source_path, dest_path], self.event_handler.paths_ignored)
 
@@ -357,6 +382,9 @@ class FileSystemOperatorTest(unittest.TestCase):
         self.file_system_op.copy_a_file(source_path, dest_path)
         copied_file = open(dest_path, 'rb').read()
         self.assertEqual('this is a test', copied_file)
+        self.assertEqual(
+            self.snapshot_manager.copy,
+            {"src_path": source_path, "dst_path": dest_path})
         #check if only dest_path is added by copy_a_file
         self.assertEqual([dest_path], self.event_handler.paths_ignored)
 
@@ -373,9 +401,15 @@ class FileSystemOperatorTest(unittest.TestCase):
         self.assertTrue(os.path.exists(file_to_delete.name))
         self.file_system_op.delete_a_file(file_to_delete.name)
         self.assertFalse(os.path.exists(file_to_delete.name))
+        self.assertEqual(
+            self.snapshot_manager.delete,
+            {"src_path": file_to_delete.name})
 
         self.file_system_op.delete_a_file(source_path)
         self.assertFalse(os.path.exists(source_path))
+        self.assertEqual(
+            self.snapshot_manager.delete,
+            {"src_path": source_path})
         #check if only source_path is added by delete_a_file in the 2 tested case
         self.assertEqual([file_to_delete.name, source_path], self.event_handler.paths_ignored)
 
