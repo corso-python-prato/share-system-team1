@@ -39,13 +39,13 @@ def transfer(path, flag=True, test=True):
             "file_src": client_path,
             "file_dest": os.path.join(new_path, DEMO_FILE)
         }
-        rv = DEMO_CLIENT.call("post", "actions/"+func, data)
+        rv = DEMO_CLIENT.call("post", "actions/" + func, data)
     else:
         data = {
             "file_src": NO_SERVER_PATH,
             "file_dest": os.path.join(new_path, DEMO_FILE)
         }
-        rv = DEMO_CLIENT.call("post", "actions/"+func, data)
+        rv = DEMO_CLIENT.call("post", "actions/" + func, data)
 
     return rv, client_path, server_path
 
