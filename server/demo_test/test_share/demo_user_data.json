@@ -70,6 +70,11 @@
                     "6186badadb5fbb0416cd29a04e2d92d7",
                     1405076398.984682
                 ],
+                "not_shared_file.txt": [
+                    "demo_test/test_share/user_dirs/Emilio@me.it/not_shared_file.txt",
+                    "6186badadb5fbb0416cd29a14e2d92d7",
+                    1405086398.984682
+                ],
                 "shared_with_two_bens.txt": [
                     "demo_test/test_share/user_dirs/Emilio@me.it/shared_with_two_bens.txt",
                     "6186badadb5fbb0416cd29a04e2d92d7",

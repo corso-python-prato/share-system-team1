@@ -947,11 +947,19 @@ class TestShare(unittest.TestCase):
         os.remove(server.USERS_DATA)
 
     def test_add_share(self):
-        # # check if it aborts, when the user doesn't exist
-        # DEMO_CLIENT.set_fake_usr(True)
-        # rv = DEMO_CLIENT.call("post", "shares/dir/usr")
-        # self.assertEqual(rv.status_code, 401)
-        # DEMO_CLIENT.set_fake_usr(False)
+        # check if it aborts, when the beneficiary doesn't exist
+        received = self.tc.post(
+            "{}shares/{}/{}".format(_API_PREFIX, "ciao.txt", "not_an_user"),
+            headers=self.owner_headers
+        )
+        self.assertEqual(received.status_code, 400)
+
+        # check if it aborts, when the resource doesn't exist
+        received = self.tc.post(
+            "{}shares/{}/{}".format(_API_PREFIX, "not_a_resource", self.ben1),
+            headers=self.owner_headers
+        )
+        self.assertEqual(received.status_code, 400)
 
         # share a file
         received = self.tc.post(
@@ -1098,7 +1106,14 @@ class TestShare(unittest.TestCase):
         self.assertNotIn(server_path, server.User.shared_resources)
 
     def test_remove_share(self):
-        # test if aborts when the resource is not shared
+        # test if aborts when the resource doesn't exist
+        received = self.tc.delete(
+            "{}shares/{}".format(_API_PREFIX, "not_a_file.txt"),
+            headers=self.owner_headers
+        )
+        self.assertEqual(received.status_code, 400)
+
+        # test if aborts when the resource isn't a share
         received = self.tc.delete(
             "{}shares/{}".format(_API_PREFIX, "not_shared_file.txt"),
             headers=self.owner_headers
@@ -1229,6 +1244,8 @@ class TestShare(unittest.TestCase):
             ),
             server.User.shared_resources
         )
+
+
 if __name__ == '__main__':
     server.app.config.update(TESTING=True)
     server.app.testing = True
