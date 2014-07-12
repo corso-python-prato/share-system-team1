@@ -1,13 +1,12 @@
 #!/usr/bin/env python
 #-*- coding: utf-8 -*-
 
-
+import time
 import server
 import os
 import json
 import unittest
 import shutil
-from base64 import b64encode
 
 TEST_DIRECTORY = "test_users_dirs/"
 TEST_USER_DATA = "test_user_data.json"
@@ -110,6 +109,7 @@ class EmailTest(unittest.TestCase):
                 os.mkdir(TEST_DIRECTORY)
             except OSError:
                 shutil.rmtree(TEST_DIRECTORY)
+
     def test_mail(self):
         receiver = "test@rawbox.com"
         obj = "test"
