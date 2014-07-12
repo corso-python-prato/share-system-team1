@@ -521,7 +521,7 @@ class DirSnapshotManager(object):
 
     def update_snapshot_copy(self, body):
         """ update of local full snapshot by copy request"""
-        self.local_full_snapshot[self.file_snapMd5(body['src_path'])].append(body["dst_path"])
+        self.local_full_snapshot[self.file_snapMd5(body['src_path'])].append(get_relpath(body["dst_path"]))
 
     def update_snapshot_move(self, body):
         """ update of local full snapshot by move request"""
@@ -632,7 +632,8 @@ class DirSnapshotManager(object):
             
             elif not self.is_syncro(server_timestamp): # 2) b
                 for new_server_path in new_server_paths: # 2) b 1
-                    if not self.find_file_md5(server_snapshot, new_server_path) in self.local_full_snapshot: # 2) b 1 I
+                    server_md5 = self.find_file_md5(server_snapshot, new_server_path)
+                    if not server_md5 in self.local_full_snapshot: # 2) b 1 I
                         if self.check_files_timestamp(server_snapshot, new_server_path):
                             print "delete remote:\t" + new_server_path
                             command_list.append({'remote_delete': [new_server_path]})
@@ -641,7 +642,8 @@ class DirSnapshotManager(object):
                             command_list.append({'local_download': [new_server_path]})
                     else: # 2) b 1 II
                         print  "copy or rename:\t" + new_server_path
-                        command_list.append({'local_copy': [new_server_path]})
+                        src_local_path = self.local_full_snapshot[server_md5][0]
+                        command_list.append({'local_copy': [src_local_path ,new_server_path]})
                
                 for equal_path in equal_paths: # 2) b 2
                     if self.find_file_md5(self.local_full_snapshot, equal_path, False) != self.find_file_md5(server_snapshot, equal_path):
@@ -654,8 +656,8 @@ class DirSnapshotManager(object):
                                 "/".join(equal_path.split('/')[:-1]),
                                 "".join(equal_path.split('/')[-1])
                             )
+                            command_list.append({'local_copy': [equal_path, conflicted_path]})
                             command_list.append({'remote_upload': [conflicted_path]})
-                            command_list.append({'local_copyAndRename': [equal_path, conflicted_path]})
                     else:
                         print "no action:\t" + equal_path
                 for new_client_path in new_client_paths: # 2) b 3
@@ -693,7 +695,6 @@ class CommandExecuter(object):
                         'copy': self.local.copy_a_file,
                         'download': self.local.write_a_file,
                         'delete': self.local.delete_a_file,
-                        'copyAndRename': self.local.copy_and_rename,
                     }.get(command_type,error)(*(command_row[command]))
 
 

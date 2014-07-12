@@ -21,6 +21,7 @@ import unittest
 import hashlib
 import base64
 import shutil
+import copy
 import json
 import os
 
@@ -560,6 +561,107 @@ class DirSnapshotManagerTest(unittest.TestCase):
         new_conf = json.load(open(self.conf_snap_path))
 
         self.assertEqual(expected_conf, new_conf)
+
+    def test_update_snapshot_upload(self):
+        original_snapshot = copy.deepcopy(self.snapshot_manager.local_full_snapshot)
+        del self.snapshot_manager.local_full_snapshot['fea80f2db003d4ebc4536023814aa885']
+        self.snapshot_manager.update_snapshot_upload({"src_path": self.test_file_1})
+        self.assertEqual(self.snapshot_manager.local_full_snapshot, original_snapshot)
+
+    def test_update_snapshot_update(self):
+        original_snapshot = copy.deepcopy(self.snapshot_manager.local_full_snapshot)
+        mock_snapshot = copy.deepcopy(original_snapshot)
+        mock_file_content = "test_content"
+        with open(self.test_file_1, 'rb') as f:
+            original_content = f.read()
+
+        with open(self.test_file_1, 'wb') as f:
+            f.write(mock_file_content)
+
+        mock_file_content_md5 = hashlib.md5(mock_file_content).hexdigest()
+
+        mock_snapshot[mock_file_content_md5] = [client_daemon.get_relpath(self.test_file_1)]
+        del mock_snapshot['fea80f2db003d4ebc4536023814aa885']
+
+        #------- update a file without copies -------#
+        self.snapshot_manager.update_snapshot_update({"src_path":self.test_file_1})
+        self.assertEqual(self.snapshot_manager.local_full_snapshot, mock_snapshot)
+        #reset original condition
+        self.snapshot_manager.local_full_snapshot = copy.deepcopy(original_snapshot)
+
+        #------- update a file with copies -------#
+        mock_copy_path = client_daemon.get_relpath(self.test_file_1 + "_copy")
+        self.snapshot_manager.local_full_snapshot['fea80f2db003d4ebc4536023814aa885'].append(mock_copy_path)
+        mock_snapshot = copy.deepcopy(self.snapshot_manager.local_full_snapshot)
+        mock_snapshot['fea80f2db003d4ebc4536023814aa885'].remove(client_daemon.get_relpath(self.test_file_1))
+        mock_snapshot[mock_file_content_md5] = [client_daemon.get_relpath(self.test_file_1)]
+
+        self.snapshot_manager.update_snapshot_update({"src_path":self.test_file_1})
+        self.assertEqual(self.snapshot_manager.local_full_snapshot, mock_snapshot)
+        #reset original condition
+        self.snapshot_manager.local_full_snapshot = copy.deepcopy(original_snapshot)
+
+        #------- update a file like another -------#
+        self.snapshot_manager.local_full_snapshot['fea80f2db003d4ebc4536023814aa885'].append(mock_copy_path)
+        self.snapshot_manager.local_full_snapshot[mock_file_content_md5] = [mock_copy_path + "_another"]
+        self.snapshot_manager.update_snapshot_update({"src_path":self.test_file_1})
+        mock_snapshot = {
+            '81bcb26fd4acfaa5d0acc7eef1d3013a': ['sub_dir_2/test_file_2.txt'],
+            'fea80f2db003d4ebc4536023814aa885': ['sub_dir_1/test_file_1.txt_copy'],
+            '27565f9a57c128674736aa644012ce67': [
+                'sub_dir_1/test_file_1.txt_copy_another',
+                'sub_dir_1/test_file_1.txt'
+                ]
+        }
+        self.assertEqual(self.snapshot_manager.local_full_snapshot, mock_snapshot)
+        #reset original condition
+        self.snapshot_manager.local_full_snapshot = original_snapshot
+        with open(self.test_file_1,'w') as f:
+            f.write(original_content)
+
+    def test_update_snapshot_copy(self):
+        mock_snapshot = copy.deepcopy(self.snapshot_manager.local_full_snapshot)
+        original_snapshot = copy.deepcopy(mock_snapshot)
+        mock_copy_path = self.test_file_1 + "_copy"
+        mock_snapshot['fea80f2db003d4ebc4536023814aa885'].append(client_daemon.get_relpath(mock_copy_path))
+        self.snapshot_manager.update_snapshot_copy({
+            "src_path": self.test_file_1,
+            "dst_path": self.test_file_1 + "_copy",
+            })
+        self.assertEqual(self.snapshot_manager.local_full_snapshot ,mock_snapshot)
+        self.snapshot_manager.local_full_snapshot = original_snapshot
+
+    def test_update_snapshot_move(self):
+        original_snapshot = copy.deepcopy(self.snapshot_manager.local_full_snapshot)
+        mock_snapshot = copy.deepcopy(original_snapshot)
+        mock_new_dest = self.test_file_1 + "_new_dest"
+        with open(self.test_file_1, 'rb') as f:
+            file_1_content = f.read()
+        with open(mock_new_dest, "wb") as f:
+            f.write(file_1_content)
+        mock_snapshot['fea80f2db003d4ebc4536023814aa885'][0] = client_daemon.get_relpath(mock_new_dest)
+        self.snapshot_manager.update_snapshot_move({'src_path':self.test_file_1, 'dst_path' :mock_new_dest})
+        self.assertEqual(self.snapshot_manager.local_full_snapshot, mock_snapshot)
+        #reset origial confition
+        self.snapshot_manager.local_full_snapshot = original_snapshot
+        os.remove(mock_new_dest)
+
+    def test_update_snapshot_delete(self):
+        mock_snapshot = copy.deepcopy(self.snapshot_manager.local_full_snapshot)
+        original_snapshot = copy.deepcopy(mock_snapshot)
+        del mock_snapshot['fea80f2db003d4ebc4536023814aa885']
+        self.snapshot_manager.update_snapshot_delete({'src_path':self.test_file_1})
+        #delete a file without copies
+        self.assertEqual(self.snapshot_manager.local_full_snapshot, mock_snapshot)
+
+        #reset original condition
+        self.snapshot_manager.local_full_snapshot = copy.deepcopy(original_snapshot)
+
+        mock_copy_path = self.test_file_1 + "_copy"
+        self.snapshot_manager.local_full_snapshot['fea80f2db003d4ebc4536023814aa885'].append(client_daemon.get_relpath(mock_copy_path))
+        self.snapshot_manager.update_snapshot_delete({"src_path": mock_copy_path})
+        #delete a file with copies
+        self.assertEqual(self.snapshot_manager.local_full_snapshot, original_snapshot)
 
     def test_save_timestamp(self):
         #Case: timestamp not correct
