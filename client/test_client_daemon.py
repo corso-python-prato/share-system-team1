@@ -383,6 +383,13 @@ class FileSystemOperatorTest(unittest.TestCase):
     def tearDown(self):
         httpretty.disable()
 
+    def test_add_event_to_ignore(self):
+        test_path = "/test/path"
+        self.file_system_op.add_event_to_ignore(test_path)
+        self.assertEqual(
+            self.event_handler.paths_ignored,
+            [test_path])
+
     def test_write_a_file(self):
         source_path = '{}/{}'.format(self.client_path, self.filename)
         self.file_system_op.write_a_file(source_path)
