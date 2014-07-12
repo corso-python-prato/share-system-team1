@@ -12,58 +12,6 @@ TEST_DIRECTORY = "test_users_dirs/"
 TEST_USER_DATA = "test_user_data.json"
 TEST_PENDING_USERS = "test_user_pending.tmp"
 
-DEMO_USER = "i_am_an_user@rawbox.it"
-DEMO_PSW = "very_secret_password"
-DEMO_FAKE_USER = "fake_user"
-DEMO_CLIENT = None
-
-DEMO_FILE = "somefile.txt"
-DEMO_CONTENT = "Hello my dear,\nit's a beautiful day here in Compiobbi."
-DEMO_DEST_COPY_PATH = "new_cp"
-DEMO_DEST_MOVE_PATH = "new_mv"
-NO_SERVER_PATH = "marcoRegna"
-
-
-def transfer(path, flag=True, test=True):
-    client_path, server_path = set_tmp_params(path)
-    if flag:
-        func = "copy"
-        new_path = "{}/{}".format(DEMO_DEST_COPY_PATH, path)
-    else:
-        func = "move"
-        new_path = "{}/{}".format(DEMO_DEST_MOVE_PATH, path)
-
-    if test:
-        data = {
-            "file_src": client_path,
-            "file_dest": os.path.join(new_path, DEMO_FILE)
-        }
-        rv = DEMO_CLIENT.call("post", "actions/" + func, data)
-    else:
-        data = {
-            "file_src": NO_SERVER_PATH,
-            "file_dest": os.path.join(new_path, DEMO_FILE)
-        }
-        rv = DEMO_CLIENT.call("post", "actions/" + func, data)
-
-    return rv, client_path, server_path
-
-
-def set_tmp_params(father_dir):
-    """ Add a file in user's directory, in the path passed in argument
-    Please, use path here with only a word (not "dir/subdir") """
-    client_path = os.path.join(father_dir, DEMO_FILE)
-    server_path = os.path.join(TEST_DIRECTORY, DEMO_USER, client_path)
-    os.makedirs(os.path.dirname(server_path))
-    shutil.copy(DEMO_FILE, server_path)
-
-    server_father_path = os.path.join(TEST_DIRECTORY, DEMO_USER, father_dir)
-    u = server.User.users[DEMO_USER]
-    u.paths[father_dir] = [server_father_path, 0, False]
-    u.paths[client_path] = [server_path, 0, 0]
-
-    return client_path, server_path
-
 
 class EmailTest(unittest.TestCase):
 
