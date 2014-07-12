@@ -80,8 +80,24 @@ class EmailTest(unittest.TestCase):
         self.mail = server.Mail(self.app)
         server.app.config.update(TESTING=True)
         self.tc = server.app.test_client()
+
+        try:
+            os.mkdir(TEST_DIRECTORY)
+        except OSError:
+            shutil.rmtree(TEST_DIRECTORY)
+            os.mkdir(TEST_DIRECTORY)
+
+        server.USERS_DIRECTORIES = TEST_DIRECTORY
+
         server.PENDING_USERS = TEST_PENDING_USERS
 
+        open(TEST_USER_DATA, "w").close()
+        server.USERS_DATA = TEST_USER_DATA
+
+        EmailTest.user = "user_mail@demo.it"
+        EmailTest.psw = "password_demo"
+        EmailTest.code = "5f8e441f01abc7b3e312917efb52cc12"  # os.urandom(16).encode('hex')
+        self.url = "".join((server._API_PREFIX, "Users/", EmailTest.user))
     def test_mail(self):
         receiver = "test@rawbox.com"
         obj = "test"
