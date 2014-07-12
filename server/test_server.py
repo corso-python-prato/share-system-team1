@@ -98,6 +98,18 @@ class EmailTest(unittest.TestCase):
         EmailTest.psw = "password_demo"
         EmailTest.code = "5f8e441f01abc7b3e312917efb52cc12"  # os.urandom(16).encode('hex')
         self.url = "".join((server._API_PREFIX, "Users/", EmailTest.user))
+
+    def tearDown(self):
+        server.User.users = {}
+        if os.path.exists(TEST_PENDING_USERS):
+            os.remove(TEST_PENDING_USERS)
+        if os.path.exists(TEST_USER_DATA):
+            os.remove(TEST_USER_DATA)
+        if os.path.exists(TEST_DIRECTORY):
+            try:
+                os.mkdir(TEST_DIRECTORY)
+            except OSError:
+                shutil.rmtree(TEST_DIRECTORY)
     def test_mail(self):
         receiver = "test@rawbox.com"
         obj = "test"
