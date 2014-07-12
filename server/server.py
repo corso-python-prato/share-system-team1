@@ -236,7 +236,7 @@ class UsersApi(Resource):
         save pending as
         {<username>:
             {
-            "psw": <password>,
+            "password": <password>,
             "code": <activation_code>
             "timestamp": <timestamp>
             }
