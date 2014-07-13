@@ -44,6 +44,17 @@ class EmailTest(unittest.TestCase):
         if os.path.exists(TEST_PENDING_USERS):
             os.remove(TEST_PENDING_USERS)
 
+    def test_mail_correct_data(self):
+        with self.mail.record_messages() as outbox:
+            server.send_mail(
+                EmailTest.email,
+                EmailTest.obj,
+                EmailTest.content
+            )
+            self.assertEqual(len(outbox), 1)
+            self.assertEqual(outbox[0].subject, EmailTest.obj)
+            self.assertEqual(outbox[0].body, EmailTest.content)
+
         try:
             os.mkdir(TEST_DIRECTORY)
         except OSError:
