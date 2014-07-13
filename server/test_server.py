@@ -55,6 +55,18 @@ class EmailTest(unittest.TestCase):
             self.assertEqual(outbox[0].subject, EmailTest.obj)
             self.assertEqual(outbox[0].body, EmailTest.content)
 
+    def test_create_user_email(self):
+        data = {
+            "psw": EmailTest.psw
+        }
+
+        with self.mail.record_messages() as outbox:
+            self.tc.post(self.url, data=data, headers=None)
+            with open(server.PENDING_USERS, "r") as pending_file:
+                code = json.load(pending_file)[EmailTest.user]["code"]
+                self.assertEqual(outbox[0].body, code)
+
+
         try:
             os.mkdir(TEST_DIRECTORY)
         except OSError:
