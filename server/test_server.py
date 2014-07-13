@@ -28,6 +28,16 @@ class EmailTest(unittest.TestCase):
         server.app.config.update(TESTING=True)
         self.tc = server.app.test_client()
 
+        server.PENDING_USERS = TEST_PENDING_USERS
+
+        EmailTest.email = "test@rawbox.com"
+        EmailTest.obj = "test"
+        EmailTest.content = "test content"
+
+        EmailTest.user = "user_mail@demo.it"
+        EmailTest.psw = "password_demo"
+        EmailTest.code = "5f8e441f01abc7b3e312917efb52cc12"  # os.urandom(16).encode('hex')
+        self.url = "".join((server._API_PREFIX, "Users/", EmailTest.user))
         try:
             os.mkdir(TEST_DIRECTORY)
         except OSError:
