@@ -933,6 +933,7 @@ class TestShare(unittest.TestCase):
             os.path.join(TestShare.root, "user_data.json")
         )
         server.server_setup()
+        self.tc = server.app.test_client()
 
         # this class comes with some users
         self.owner = "Emilio@me.it"
@@ -940,8 +941,6 @@ class TestShare(unittest.TestCase):
         self.ben1 = "Ben1@me.too"
         self.ben1_headers = make_headers(self.ben1, "password")
         self.ben2 = "Ben2@me.too"
-        # self.ben2_headers = make_headers(self.ben2, "password")
-        self.tc = server.app.test_client()
 
     def tearDown(self):
         os.remove(server.USERS_DATA)
@@ -988,11 +987,6 @@ class TestShare(unittest.TestCase):
         )
 
     def test_can_write(self):
-        # DEMO_CLIENT.set_fake_usr(True)
-        # rv = DEMO_CLIENT.call("post", "shares/dir/usr")
-        # self.assertEqual(rv.status_code, 401)
-        # DEMO_CLIENT.set_fake_usr(False)
-
         # share a file with an user (create a share)
         # TODO: load this from json when the shares will be saved on file
         received = self.tc.post(
@@ -1021,10 +1015,9 @@ class TestShare(unittest.TestCase):
                 self.assertEqual(received.status_code, 403)
 
         # case Action delete
-        data = {"path": destination}
         received = self.tc.post(
             "{}actions/delete".format(_API_PREFIX),
-            data=data,
+            data={"path": destination},
             headers=self.ben1_headers
         )
         self.assertEqual(received.status_code, 403)
