@@ -81,7 +81,7 @@ class User(object):
             # The json file is not present. It will be created a new structure
             # from scratch.
             pass
-        # If the json file is corrupted, it will be raised a ValueError.
+        # If the json file is corrupted, it will be raised a ValueError here.
         # In that case, please remove the corrupted file.
         else:
             for u, v in saved["users"].items():

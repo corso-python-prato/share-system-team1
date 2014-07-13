@@ -788,12 +788,16 @@ class TestServerInternalErrors(unittest.TestCase):
 
     def setUp(self):
         self.root = TestServerInternalErrors.root
-        self.user_data = os.path.join(self.root, "user_data.json")
         server.SERVER_ROOT = self.root
+        server.server_setup()
+
+        self.user_data = os.path.join(self.root, "user_data.json")
+        self.user_dirs = os.path.join(self.root, "user_dirs")
+        self.tc = server.app.test_client()
         
     def tearDown(self):
         try:
-            shutil.rmtree(os.path.join(self.root, "user_dirs"))
+            shutil.rmtree(self.user_dirs)
         except OSError:
             pass
         try:
