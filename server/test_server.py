@@ -169,6 +169,15 @@ class UserActions(unittest.TestCase):
         response = self.tc.post(self.url, data=data, headers=None)
         self.assertEqual(response.status_code, server.HTTP_CONFLICT)
 
+    def test_create_user_that_is_arleady_active(self):
+        data = {
+            "psw": UserActions.psw
+        }
+
+        self.inject_user(TEST_USER_DATA, UserActions.user, UserActions.psw)
+        response = self.tc.post(self.url, data=data, headers=None)
+        self.assertEqual(response.status_code, server.HTTP_CONFLICT)
+
     def test_activate_user(self):
         fake_pending_user = {}
         fake_pending_user[EmailTest.user] = {
