@@ -101,13 +101,6 @@ class User(object):
         with open(filename, "w") as f:
             json.dump(to_save, f)
 
-    @classmethod
-    def get_user(cls, username):
-        try:
-            return cls.users[username]
-        except KeyError:
-            raise MissingUserError("User doesn't exist")
-
     # DYNAMIC METHODS
     def __init__(self, username, clear_password, from_dict=None):
         # if restoring the server:
@@ -235,7 +228,7 @@ class User(object):
 
             # upgrade every beneficiaries
             for ben_name in User.shared_resources[share][1:]:
-                ben_user = User.get_user(ben_name)
+                ben_user = User.users[ben_name]
                 if not only_modify:
                     ben_user.paths[ben_path] = file_meta
                 ben_user.timestamp = now
@@ -273,7 +266,7 @@ class User(object):
                         shared_server_path, ben_path = is_shared
                         for ben_name in \
                                 User.shared_resources[shared_server_path][1:]:
-                            ben_user = User.get_user(ben_name)
+                            ben_user = User.users[ben_name]
                             del ben_user.paths[ben_path]
                     # step 3: remove from paths
                     del self.paths[client_subdir]
@@ -284,7 +277,7 @@ class User(object):
         if is_shared:
             shared_server_path, ben_path = is_shared
             for ben_name in User.shared_resources[shared_server_path][1:]:
-                ben_user = User.get_user(ben_name)
+                ben_user = User.users[ben_name]
                 del ben_user.paths[ben_path]
                 ben_user.timestamp = now
             # if the shared resource is a removed file or an empty directory
@@ -337,7 +330,7 @@ class Files(Resource):
         """ Send a JSON with the timestamp of the last change in user
         directories and an md5 for each file
         Expected GET method without path """
-        u = User.get_user(auth.username())
+        u = User.users[auth.username()]
         tree = {}
         for p, v in u.paths.items():
             if not v[1]:
@@ -366,7 +359,7 @@ class Files(Resource):
         """Download
         Returns file content as a byte string
         Expected GET method with path"""
-        u = User.get_user(auth.username())
+        u = User.users[auth.username()]
         server_path = u.get_server_path(client_path)
         if not server_path:
             return "File unreachable", HTTP_NOT_FOUND
@@ -390,7 +383,7 @@ class Files(Resource):
         Updates an existing file
         Expected as POST data:
         { "file_content" : <file>} """
-        u = User.get_user(auth.username())
+        u = User.users[auth.username()]
         server_path = u.get_server_path(client_path)
         if not server_path:
             abort(HTTP_NOT_FOUND)
@@ -408,7 +401,7 @@ class Files(Resource):
         Upload a new file
         Expected as POST data:
         { "file_content" : <file>} """
-        u = User.get_user(auth.username())
+        u = User.users[auth.username()]
         server_path = u.get_server_path(client_path)
 
         if server_path:
@@ -434,7 +427,7 @@ class Actions(Resource):
     def _delete(self):
         """ Expected as POST data:
         { "path" : <path>} """
-        u = User.get_user(auth.username())
+        u = User.users[auth.username()]
         client_path = request.form["path"]
         server_path = u.get_server_path(client_path)
         if not server_path:
@@ -457,7 +450,7 @@ class Actions(Resource):
         depending on keep_the_original value
         Expected as POST data:
         { "file_src": <path>, "file_dest": <path> }"""
-        u = User.get_user(auth.username())
+        u = User.users[auth.username()]
         client_src = request.form["file_src"]
         client_dest = request.form["file_dest"]
 
@@ -500,7 +493,7 @@ class Actions(Resource):
 
 class Shares(Resource):
     def post(self, client_path, beneficiary):
-        owner = User.get_user(auth.username())
+        owner = User.users[auth.username()]
 
         if not owner.add_share(client_path, beneficiary):
             abort(HTTP_BAD_REQUEST)     # TODO: choice the code
@@ -511,9 +504,11 @@ class Shares(Resource):
                             beneficiary):
         # remove the beneficiary from the shared resources list
         try:
-            ben_user = User.get_user(beneficiary)
+            ben_user = User.users[beneficiary]
             User.shared_resources[server_path].remove(beneficiary)
         except (KeyError, ValueError):
+            # beneficiary is not an user or the resource is not shared
+            # or the resource is shared, but not with this beneficiary
             abort(HTTP_BAD_REQUEST)
 
         if len(User.shared_resources[server_path]) == 1:
@@ -543,29 +538,29 @@ class Shares(Resource):
             return HTTP_OK
 
     def delete(self, client_path, beneficiary=None):
-        owner = User.get_user(auth.username())
+        owner = User.users[auth.username()]
         server_path = owner.get_server_path(client_path)
         if not server_path:
             return "The specified file or directory is not present", \
                 HTTP_BAD_REQUEST
         if beneficiary:
-            return self._remove_beneficiary(
-                owner,
-                server_path,
-                client_path,
-                beneficiary)
+            if beneficiary not in User.users:
+                return "The specified beneficiary is not an user", \
+                    HTTP_BAD_REQUEST
+            else:
+                return self._remove_beneficiary(
+                    owner, server_path, client_path, beneficiary
+                )
         else:
             return self._remove_share(owner, server_path, client_path)
 
 
 @auth.verify_password
 def verify_password(username, password):
-    try:
-        u = User.get_user(username)
-    except MissingUserError:
+    if username not in User.users:
         return False
     else:
-        return sha256_crypt.verify(password, u.psw)
+        return sha256_crypt.verify(password, User.users[username].psw)
 
 
 @app.route("{}create_user".format(_API_PREFIX), methods=["POST"])
@@ -593,6 +588,7 @@ def server_setup():
     if not os.path.isdir(USERS_DIRECTORIES):
         os.makedirs(USERS_DIRECTORIES)
     User.user_class_init()
+
 
 def main():
     server_setup()
