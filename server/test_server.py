@@ -792,6 +792,9 @@ class TestServerInternalErrors(unittest.TestCase):
     def setUp(self):
         server.app.config.update(TESTING=True)
         server.app.testing = True
+        # Note: it's possible to make assertRaises on internal server
+        # exceptions from the test_client only if app testing is True.
+
         self.root = TestServerInternalErrors.root
         server.SERVER_ROOT = self.root
         server.server_setup()
@@ -834,17 +837,24 @@ class TestServerInternalErrors(unittest.TestCase):
             shutil.rmtree(self.user_dirs)
             os.makedirs(os.path.join(self.user_dirs, username))
 
-        with self.assertRaises(OSError):
-            # Note: the exception comes event to here only if app testing is
-            # True
-            received = self.tc.post(
+        def try_to_create_user():
+            return self.tc.post(
                 _API_PREFIX + "create_user",
                 data={
                     "user": username,
                     "psw": "omg_it_will_be_raised_an_error!"
                 }
             )
-            self.assertEqual(received.status_code, 500)
+
+        # check if OSError is raised
+        with self.assertRaises(OSError):
+            try_to_create_user()
+
+        # check if returns 500
+        server.app.testing = False
+        received = try_to_create_user()
+        self.assertEqual(received.status_code, 500)
+
     def test_access_to_non_existent_server_path(self):
         """
         If a path exists in some user's paths dictionary, but it's not in the
