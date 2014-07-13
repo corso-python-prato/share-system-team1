@@ -137,19 +137,6 @@ class UserActions(unittest.TestCase):
         data = {
             "psw": UserActions.psw
         }
-    def test_mail(self):
-        receiver = "test@rawbox.com"
-        obj = "test"
-        content = "test content"
-        with self.mail.record_messages() as outbox:
-            server.send_mail(
-                receiver,
-                obj,
-                content
-            )
-            assert len(outbox) == 1
-            assert outbox[0].subject == "test"
-            assert outbox[0].body == "test content"
 
         response = self.tc.post(self.url, data=data, headers=None)
         self.assertEqual(response.status_code, server.HTTP_CREATED)
