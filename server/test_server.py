@@ -276,10 +276,6 @@ class TestSequenceFunctions(unittest.TestCase):
         rv = DEMO_CLIENT.call("get", "files/" + NO_SERVER_PATH)
         self.assertEqual(rv.status_code, 404)
 
-        os.remove(server_path)
-        rv = DEMO_CLIENT.call("get", "files/" + client_path)
-        self.assertEqual(rv.status_code, 410)
-
     def test_files_put(self):
         demo_path = "somepath/somefile.txt"
 
