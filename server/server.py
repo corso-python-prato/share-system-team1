@@ -77,11 +77,12 @@ class User(object):
             ud = open(USERS_DATA, "r")
             saved = json.load(ud)
             ud.close()
-        # if error, create new structure from scratch
         except IOError:
-            pass                # missing file
-        except ValueError:      # invalid json
-            os.remove(USERS_DATA)
+            # The json file is not present. It will be created a new structure
+            # from scratch.
+            pass
+        # If the json file is corrupted, it will be raised a ValueError.
+        # In that case, please remove the corrupted file.
         else:
             for u, v in saved["users"].items():
                 User(u, None, from_dict=v)

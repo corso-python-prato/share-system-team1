@@ -783,6 +783,36 @@ class TestSequenceFunctions(unittest.TestCase):
         )
 
 
+class TestServerInternalErrors(unittest.TestCase):
+    root = "demo_test/internal_errors"
+
+    def setUp(self):
+        self.root = TestServerInternalErrors.root
+        self.user_data = os.path.join(self.root, "user_data.json")
+        server.SERVER_ROOT = self.root
+        
+    def tearDown(self):
+        try:
+            shutil.rmtree(os.path.join(self.root, "user_dirs"))
+        except OSError:
+            pass
+        try:
+            os.remove(self.user_data)
+        except OSError:
+            pass
+
+    def test_corrupted_users_data_json(self):
+        """
+        If the user data file is corrupted, it will be raised a ValueError.
+        """
+        shutil.copy(
+            os.path.join(self.root, "corrupted_user_data.json"),
+            self.user_data
+        )
+        with self.assertRaises(ValueError):
+            server.server_setup()
+
+
 if __name__ == '__main__':
     # make tests!
     unittest.main()
