@@ -39,6 +39,7 @@ _API_PREFIX = "/API/v1/"
 USERS_DIRECTORIES = "user_dirs/"
 USERS_DATA = "user_data.json"
 PENDING_USERS = ".pending.tmp"
+CORRUPTED_DATA = "corrupted_data"
 parser = reqparse.RequestParser()
 parser.add_argument("task", type=str)
 
@@ -245,8 +246,13 @@ class UsersApi(Resource):
             try:
                 with open(PENDING_USERS, "r") as p_u:
                     pending = json.load(p_u)
-            except ValueError:  # the file exists but is not a json
-                os.remove(PENDING_USERS)
+            except ValueError:  # PENDING_USERS exists but is corrupted
+                if os.path.getsize(PENDING_USERS) > 0:
+                    shutil.copy(PENDING_USERS, CORRUPTED_DATA)
+                    os.remove(PENDING_USERS)
+                else:           # PENDING_USERS exists but is empty
+                    pending = {}
+
         try:
             psw = request.form["psw"]
         except KeyError:
@@ -281,11 +287,16 @@ class UsersApi(Resource):
             return "Missing activation code", HTTP_BAD_REQUEST
 
         if (os.path.isfile(PENDING_USERS)):
+        if os.path.isfile(PENDING_USERS):
             try:
                 with open(PENDING_USERS, "r") as p_u:
                     pending = json.load(p_u)
-            except ValueError:  # the file exists but is not a json
-                os.remove(PENDING_USERS)
+            except ValueError:  # PENDING_USERS exists but is corrupted
+                if os.path.getsize(PENDING_USERS) > 0:
+                    shutil.copy(PENDING_USERS, CORRUPTED_DATA)
+                    os.remove(PENDING_USERS)
+                else:           # PENDING_USERS exists but is empty
+                    pending = {}
 
         if username in User.users:
             return "This user is already active", HTTP_CONFLICT
