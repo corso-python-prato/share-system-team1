@@ -153,6 +153,13 @@ class UserActions(unittest.TestCase):
             timestamp = data[UserActions.user]["timestamp"]
             self.assertIsNotNone(timestamp)
 
+    def test_create_user_missing_password(self):
+        data = {}
+
+        self.inject_user(TEST_USER_DATA, UserActions.user, UserActions.psw)
+        response = self.tc.post(self.url, data=data, headers=None)
+        self.assertEqual(response.status_code, server.HTTP_BAD_REQUEST)
+
         data = {
             "psw": EmailTest.psw
         }
