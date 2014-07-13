@@ -10,6 +10,7 @@ import random
 import json
 import os
 
+from server import _API_PREFIX
 
 TEST_DIRECTORY = "test_users_dirs/"
 TEST_USER_DATA = "test_user_data.json"
