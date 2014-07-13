@@ -884,6 +884,7 @@ class TestServerInternalErrors(unittest.TestCase):
         server.app.testing = False
         received = try_to_download()
         self.assertEqual(received.status_code, 500)
+        server.app.testing = True
 
         # 2. case move or copy
         def try_to_transfer(action):
@@ -896,7 +897,6 @@ class TestServerInternalErrors(unittest.TestCase):
                 headers=owner_headers
             )
         # check IOError
-        server.app.testing = True
         for action in ["move", "copy"]:
             with self.assertRaises(IOError):
                 try_to_transfer(action)
@@ -905,6 +905,7 @@ class TestServerInternalErrors(unittest.TestCase):
         for action in ["move", "copy"]:
             try_to_transfer(action)
         self.assertEqual(received.status_code, 500)
+        server.app.testing = True
 
 
 if __name__ == '__main__':
