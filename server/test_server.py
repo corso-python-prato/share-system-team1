@@ -69,6 +69,34 @@ class EmailTest(unittest.TestCase):
 
 class UserActions(unittest.TestCase):
 
+    def inject_user(self, inject_dest, user, psw=None, code=None):
+        underskin_user = {}
+
+        if not os.path.exists(inject_dest):
+            open(inject_dest, "w").close()
+
+        if os.path.getsize(inject_dest) > 0:
+            with open(inject_dest, "r") as tmp_file:
+                underskin_user = json.load(tmp_file)
+
+        if inject_dest == TEST_PENDING_USERS:
+            underskin_user[user] = {
+                "password": psw,
+                "code": code,
+                "timestamp": time.time()}
+            with open(inject_dest, "w") as tmp_file:
+                json.dump(underskin_user, tmp_file)
+
+        if inject_dest == TEST_USER_DATA:
+            underskin_user[user] = {
+                "paths": {"": ["user_dirs/fake_root", False, 1405197042.793583]},
+                "psw": psw,
+                "timestamp": 1405197042.793476
+            }
+            server.User.users = underskin_user
+            with open(inject_dest, "w") as tmp_file:
+                json.dump(underskin_user, tmp_file)
+
         try:
             os.mkdir(TEST_DIRECTORY)
         except OSError:
