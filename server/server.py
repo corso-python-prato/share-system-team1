@@ -286,7 +286,9 @@ class UsersApi(Resource):
         except KeyError:
             return "Missing activation code", HTTP_BAD_REQUEST
 
-        if (os.path.isfile(PENDING_USERS)):
+        if username in User.users:
+            return "This user is already active", HTTP_CONFLICT
+
         if os.path.isfile(PENDING_USERS):
             try:
                 with open(PENDING_USERS, "r") as p_u:
@@ -298,8 +300,6 @@ class UsersApi(Resource):
                 else:           # PENDING_USERS exists but is empty
                     pending = {}
 
-        if username in User.users:
-            return "This user is already active", HTTP_CONFLICT
         if username in pending:
             if code == pending[username]["code"]:
                 User(username, pending[username]["password"])
