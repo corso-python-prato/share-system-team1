@@ -67,6 +67,8 @@ class EmailTest(unittest.TestCase):
                 self.assertEqual(outbox[0].body, code)
 
 
+class UserActions(unittest.TestCase):
+
         try:
             os.mkdir(TEST_DIRECTORY)
         except OSError:
