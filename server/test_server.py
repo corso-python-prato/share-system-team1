@@ -787,6 +787,8 @@ class TestServerInternalErrors(unittest.TestCase):
     root = "demo_test/internal_errors"
 
     def setUp(self):
+        server.app.config.update(TESTING=True)
+        server.app.testing = True
         self.root = TestServerInternalErrors.root
         server.SERVER_ROOT = self.root
         server.server_setup()
@@ -815,6 +817,31 @@ class TestServerInternalErrors(unittest.TestCase):
         )
         with self.assertRaises(ValueError):
             server.server_setup()
+
+    def test_directory_already_present(self):
+        """
+        If, creating a new user, after checking his username, a directory with
+        his/her name is already present, it will be raised an OSError and
+        it will be returned a status code 500.
+        """
+        username = "papplamoose@500.com"
+        try:
+            os.makedirs(os.path.join(self.user_dirs, username))
+        except OSError:
+            shutil.rmtree(self.user_dirs)
+            os.makedirs(os.path.join(self.user_dirs, username))
+
+        with self.assertRaises(OSError):
+            # Note: the exception comes event to here only if app testing is
+            # True
+            received = self.tc.post(
+                _API_PREFIX + "create_user",
+                data={
+                    "user": username,
+                    "psw": "omg_it_will_be_raised_an_error!"
+                }
+            )
+            self.assertEqual(received.status_code, 500)
 
 
 if __name__ == '__main__':

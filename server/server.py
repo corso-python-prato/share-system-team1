@@ -110,7 +110,7 @@ class User(object):
 
     # DYNAMIC METHODS
     def __init__(self, username, clear_password, from_dict=None):
-        # if restoring the server
+        # if restoring the server:
         if from_dict:
             self.username = username
             self.psw = from_dict["psw"]
@@ -119,12 +119,13 @@ class User(object):
             User.users[username] = self
             return
 
+        # else, if a real new user is being created:
         psw_hash = sha256_crypt.encrypt(clear_password)
         full_path = os.path.join(USERS_DIRECTORIES, username)
-        try:
-            os.mkdir(full_path)
-        except OSError:
-            abort(HTTP_CONFLICT)
+        os.mkdir(full_path)
+        # If a directory with the same name of the user is already present,
+        # it will be raised an OSError here. It shouldn't happen, if the server
+        # works right.
 
         # OBJECT ATTRIBUTES
         self.username = username
