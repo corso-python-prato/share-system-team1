@@ -179,17 +179,14 @@ class UserActions(unittest.TestCase):
         self.assertEqual(response.status_code, server.HTTP_CONFLICT)
 
     def test_activate_user(self):
-        fake_pending_user = {}
-        fake_pending_user[EmailTest.user] = {
-            "password": EmailTest.psw,
-            "code": EmailTest.code,
-            "timestamp": time.time()}
-        with open(TEST_PENDING_USERS, "w") as tmp_file:
-            json.dump(fake_pending_user, tmp_file)
 
         data = {
-            "code": EmailTest.code
+            "code": UserActions.code
         }
+
+        self.inject_user(TEST_PENDING_USERS, UserActions.user, UserActions.psw, UserActions.code)
+        response = self.tc.put(self.url, data=data, headers=None)
+        self.assertEqual(response.status_code, server.HTTP_CREATED)
 
 
 if __name__ == "__main__":
