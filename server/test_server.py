@@ -97,6 +97,12 @@ class UserActions(unittest.TestCase):
             with open(inject_dest, "w") as tmp_file:
                 json.dump(underskin_user, tmp_file)
 
+    def setUp(self):
+        self.app = server.Flask(__name__)
+        self.app.config.from_object(__name__)
+        server.app.config.update(TESTING=True)
+        self.tc = server.app.test_client()
+
         try:
             os.mkdir(TEST_DIRECTORY)
         except OSError:
@@ -110,10 +116,10 @@ class UserActions(unittest.TestCase):
         open(TEST_USER_DATA, "w").close()
         server.USERS_DATA = TEST_USER_DATA
 
-        EmailTest.user = "user_mail@demo.it"
-        EmailTest.psw = "password_demo"
-        EmailTest.code = "5f8e441f01abc7b3e312917efb52cc12"  # os.urandom(16).encode('hex')
-        self.url = "".join((server._API_PREFIX, "Users/", EmailTest.user))
+        UserActions.user = "user_mail@demo.it"
+        UserActions.psw = "password_demo"
+        UserActions.code = "5f8e441f01abc7b3e312917efb52cc12"  # os.urandom(16).encode('hex')
+        self.url = "".join((server._API_PREFIX, "Users/", UserActions.user))
 
     def tearDown(self):
         server.User.users = {}
