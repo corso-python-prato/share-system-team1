@@ -188,6 +188,14 @@ class UserActions(unittest.TestCase):
         response = self.tc.put(self.url, data=data, headers=None)
         self.assertEqual(response.status_code, server.HTTP_CREATED)
 
+    def test_activate_user_missing_code(self):
+
+        data = {}
+
+        self.inject_user(TEST_PENDING_USERS, UserActions.user, UserActions.psw)
+        response = self.tc.put(self.url, data=data, headers=None)
+        self.assertEqual(response.status_code, server.HTTP_BAD_REQUEST)
+
 
 if __name__ == "__main__":
     # make tests!
