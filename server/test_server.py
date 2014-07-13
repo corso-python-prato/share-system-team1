@@ -133,6 +133,10 @@ class UserActions(unittest.TestCase):
             except OSError:
                 shutil.rmtree(TEST_DIRECTORY)
 
+    def test_create_user(self):
+        data = {
+            "psw": UserActions.psw
+        }
     def test_mail(self):
         receiver = "test@rawbox.com"
         obj = "test"
@@ -147,7 +151,21 @@ class UserActions(unittest.TestCase):
             assert outbox[0].subject == "test"
             assert outbox[0].body == "test content"
 
-    def test_create_user_mail(self):
+        response = self.tc.post(self.url, data=data, headers=None)
+        self.assertEqual(response.status_code, server.HTTP_CREATED)
+
+        with open(server.PENDING_USERS, "r") as pending_file:
+            data = json.load(pending_file)
+            user = data.keys()[0]
+            self.assertEqual(user, UserActions.user)
+            psw = data[UserActions.user]["password"]
+            self.assertTrue(sha256_crypt.verify(UserActions.psw, psw))
+            code = data[UserActions.user]["code"]
+            self.assertIsNotNone(code)
+            self.assertEqual(len(code), 32)
+            timestamp = data[UserActions.user]["timestamp"]
+            self.assertIsNotNone(timestamp)
+
         data = {
             "psw": EmailTest.psw
         }
