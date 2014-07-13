@@ -364,13 +364,9 @@ class Files(Resource):
         if not server_path:
             return "File unreachable", HTTP_NOT_FOUND
 
-        try:
-            f = open(server_path, "rb")
+        with open(server_path, "rb") as f:
             content = f.read()
-            f.close()
-            return content
-        except IOError:
-            abort(HTTP_GONE)
+        return content
 
     def get(self, client_path=None):
         if not client_path:

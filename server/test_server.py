@@ -29,6 +29,11 @@ DEMO_DEST_MOVE_PATH = "new_mv"
 NO_SERVER_PATH = "marcoRegna"
 
 
+def make_headers(user, psw):
+    return {
+        "Authorization": "Basic "
+        + b64encode("{0}:{1}".format(user, psw))
+    }
 def transfer(path, flag=True, test=True):
     client_path, server_path = set_tmp_params(path)
     if flag:
@@ -840,6 +845,58 @@ class TestServerInternalErrors(unittest.TestCase):
                 }
             )
             self.assertEqual(received.status_code, 500)
+    def test_access_to_non_existent_server_path(self):
+        """
+        If a path exists in some user's paths dictionary, but it's not in the
+        filesystem, when somebody will try to access it, it will be raised an
+        IOError and it will be returned a status code 500.
+        TODO: un utente prova a fare post di una roba che c'è già
+        """
+        owner = "Emilio@me.it"
+        owner_headers = make_headers(owner, "password")
+        owner_filepath = "ciao.txt"
+
+        # setup
+        shutil.copy(
+            os.path.join(self.root, "demo_user_data.json"),
+            self.user_data
+        )
+        server.server_setup()
+
+        # 1. case download
+        def try_to_download():
+            return self.tc.get(
+                "{}files/{}".format(_API_PREFIX, owner_filepath),
+                headers=owner_headers
+            )
+        # check IOError
+        with self.assertRaises(IOError):
+            try_to_download()
+        # check service code
+        server.app.testing = False
+        received = try_to_download()
+        self.assertEqual(received.status_code, 500)
+
+        # 2. case move or copy
+        def try_to_transfer(action):
+            return self.tc.post(
+                "{}actions/{}".format(_API_PREFIX, action),
+                data={
+                    "file_src": owner_filepath,
+                    "file_dest": "transferred.file"
+                },
+                headers=owner_headers
+            )
+        # check IOError
+        server.app.testing = True
+        for action in ["move", "copy"]:
+            with self.assertRaises(IOError):
+                try_to_transfer(action)
+        # check service code
+        server.app.testing = False
+        for action in ["move", "copy"]:
+            try_to_transfer(action)
+        self.assertEqual(received.status_code, 500)
 
 
 if __name__ == '__main__':
