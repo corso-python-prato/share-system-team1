@@ -1009,8 +1009,9 @@ class TestShare(unittest.TestCase):
         destination = os.path.join(
             "shares", self.owner, "can_write", "parole.txt"
         )
+        demo_file = "demo_test/demofile1.txt"
         for verb in [self.tc.post, self.tc.put]:
-            with open(os.path.join(TestShare.root, "demofile1.txt"), "r") as f:
+            with open(demo_file, "r") as f:
                 data = {"file_content": f}
                 received = verb(
                     "{}files/{}".format(_API_PREFIX, destination),
@@ -1148,8 +1149,8 @@ class TestShare(unittest.TestCase):
     def test_changes_in_shared_directory(self):
         subdir = "changing"
         filename = "changing_file.txt"
-        demo_file1 = os.path.join(TestShare.root, "demofile1.txt")
-        demo_file2 = os.path.join(TestShare.root, "demofile2.txt")
+        demo_file1 = "demo_test/demofile1.txt"
+        demo_file2 = "demo_test/demofile2.txt"
 
         # setup
         sub_path = os.path.join(server.USERS_DIRECTORIES, self.owner, subdir)
