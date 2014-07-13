@@ -7,6 +7,7 @@ import os
 import json
 import unittest
 import shutil
+from passlib.hash import sha256_crypt
 
 TEST_DIRECTORY = "test_users_dirs/"
 TEST_USER_DATA = "test_user_data.json"
@@ -204,6 +205,20 @@ class UserActions(unittest.TestCase):
         self.inject_user(TEST_USER_DATA, UserActions.user, UserActions.psw, UserActions.code)
         response = self.tc.put(self.url, data=data, headers=None)
         self.assertEqual(response.status_code, server.HTTP_CONFLICT)
+
+    def test_activate_user_that_is_not_the_last_pending_user(self):
+        data = {
+            "code": UserActions.code
+        }
+
+        self.inject_user(TEST_PENDING_USERS,
+                         "fake_user@demo.it",
+                         sha256_crypt.encrypt("fake_password"),
+                         "this0is0a0fake0code0long32char00")
+        self.inject_user(TEST_PENDING_USERS, UserActions.user, UserActions.psw, UserActions.code)
+        response = self.tc.put(self.url, data=data, headers=None)
+        self.assertEqual(response.status_code, server.HTTP_CREATED)
+        self.assertTrue(os.path.exists(TEST_PENDING_USERS))
 
 
 if __name__ == "__main__":
