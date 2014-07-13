@@ -16,11 +16,11 @@ import hashlib
 from server_errors import *
 
 
-HTTP_CONFLICT = 409
-HTTP_CREATED = 201
-HTTP_NOT_FOUND = 404
-HTTP_BAD_REQUEST = 400
 HTTP_OK = 200
+HTTP_CREATED = 201
+HTTP_BAD_REQUEST = 400
+HTTP_NOT_FOUND = 404
+HTTP_CONFLICT = 409
 HTTP_GONE = 410
 
 config = ConfigParser.ConfigParser()
@@ -268,17 +268,17 @@ class UsersApi(Resource):
                 json.dump(pending, p_u)
             content = code
             send_mail(username, "RawBox activation code", content)
-            return "user added to pending users", HTTP_CREATED
+            return "User added to pending users", HTTP_CREATED
 
     def put(self, username):
-        pending = {}
         """Activate a pending user
         Expected
         {"code": <activation code>}"""
+        pending = {}
         try:
             code = request.form["code"]
-        except KeyErcreateror:
-            abort(HTTP_BAD_REQUEST)
+        except KeyError:
+            return "Missing activation code", HTTP_BAD_REQUEST
 
         if (os.path.isfile(PENDING_USERS)):
             try:
@@ -298,11 +298,11 @@ class UsersApi(Resource):
                         json.dump(pending, p_u)
                 else:
                     os.remove(PENDING_USERS)
-                return "user activated", HTTP_CREATED
+                return "User activated", HTTP_CREATED
             else:
-                return "wrong code", HTTP_NOT_FOUND
+                return "Wrong code", HTTP_NOT_FOUND
         else:
-            return "user need to be created", HTTP_NOT_FOUND
+            return "User need to be created", HTTP_NOT_FOUND
 
     @auth.login_required
     def delete(self, username):
