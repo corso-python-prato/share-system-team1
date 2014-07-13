@@ -160,16 +160,14 @@ class UserActions(unittest.TestCase):
         response = self.tc.post(self.url, data=data, headers=None)
         self.assertEqual(response.status_code, server.HTTP_BAD_REQUEST)
 
+    def test_create_user_that_is_arleady_pending(self):
         data = {
-            "psw": EmailTest.psw
+            "psw": UserActions.psw
         }
 
-        with self.mail.record_messages() as outbox:
-            response = self.tc.post(self.url, data=data, headers=None)
-            with open(server.PENDING_USERS, "r") as pending_file:
-                code = json.load(pending_file)[EmailTest.user]["code"]
-                self.assertEqual(outbox[0].body, code)
-                self.assertEqual(response.status_code, server.HTTP_CREATED)
+        self.inject_user(TEST_PENDING_USERS, UserActions.user, UserActions.psw)
+        response = self.tc.post(self.url, data=data, headers=None)
+        self.assertEqual(response.status_code, server.HTTP_CONFLICT)
 
     def test_activate_user(self):
         fake_pending_user = {}
