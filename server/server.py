@@ -9,6 +9,7 @@ import hashlib
 import shutil
 import time
 import json
+import sys
 import os
 import re
 
@@ -26,7 +27,7 @@ api = Api(app)
 auth = HTTPBasicAuth()
 _API_PREFIX = "/API/v1/"
 
-SERVER_ROOT = ""
+SERVER_ROOT = os.path.dirname(sys.argv[0])
 
 parser = reqparse.RequestParser()
 parser.add_argument("task", type=str)
@@ -145,7 +146,7 @@ class User(object):
 
     def get_server_path(self, client_path):
         if client_path in self.paths:
-            return self.paths[client_path][0]
+            return os.path.join(SERVER_ROOT, self.paths[client_path][0])
         else:
             return False
 
@@ -157,7 +158,6 @@ class User(object):
         # search the first directory father already present
         directory_path, filename = os.path.split(client_path)
         dir_list = directory_path.split("/")
-
         to_be_created = []
         while (len(dir_list) > 0) \
                 and (os.path.join(*dir_list) not in self.paths):
@@ -170,7 +170,7 @@ class User(object):
 
         # check if the user can write in that server directory
         new_client_path = father
-        new_server_path = self.paths[new_client_path][0]
+        new_server_path = self.get_server_path(new_client_path)
         if not can_write(self.username, new_server_path):
             return False
 
