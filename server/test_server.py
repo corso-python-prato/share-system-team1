@@ -34,6 +34,8 @@ def make_headers(user, psw):
         "Authorization": "Basic "
         + b64encode("{0}:{1}".format(user, psw))
     }
+
+
 def transfer(path, flag=True, test=True):
     client_path, server_path = set_tmp_params(path)
     if flag:
