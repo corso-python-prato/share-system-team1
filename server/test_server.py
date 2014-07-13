@@ -153,9 +153,12 @@ class TestSequenceFunctions(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         # restore previous status
-        os.remove(DEMO_FILE)
-        os.remove(TEST_USER_DATA)
-        shutil.rmtree(TEST_DIRECTORY)
+        try:
+            os.remove(DEMO_FILE)
+            os.remove(TEST_USER_DATA)
+            shutil.rmtree(TEST_DIRECTORY)
+        except OSError:
+            pass
 
     def setUp(self):
         server.app.config.update(TESTING=True)
@@ -182,11 +185,10 @@ class TestSequenceFunctions(unittest.TestCase):
         rv = client.create_demo_user()
         self.assertEqual(rv.status_code, server.HTTP_CONFLICT)
 
-        user = "Giovanni"
+        user = "Gianni"
         psw = "zappa"
         client = TestClient(user, psw)
 
-        os.mkdir(os.path.join(TEST_DIRECTORY, user))
         rv = client.create_demo_user()
         self.assertEqual(rv.status_code, server.HTTP_CONFLICT)
 
@@ -456,6 +458,7 @@ class TestSequenceFunctions(unittest.TestCase):
         previous_users = server.User.users
         server.User.user_class_init()
         self.assertEqual(server.User.users, previous_users)
+
         # check 2: if there is a json, upload the users from it
         username = "UserName"
         tmp_dict = {
@@ -482,12 +485,6 @@ class TestSequenceFunctions(unittest.TestCase):
             json.dump(tmp_dict, f)
         server.User.user_class_init()
         self.assertIn(username, server.User.users)
-
-        # check 3: if the json is invalid, remove it
-        with open(server.USERS_DATA, "w") as f:
-            f.write("{'users': poksd [sd ]sd []}")
-        server.User.user_class_init()
-        self.assertFalse(os.path.exists(server.USERS_DATA))
 
         # restore the previous situation
         os.chdir(working_directory)
@@ -797,7 +794,7 @@ class TestServerInternalErrors(unittest.TestCase):
         self.user_data = os.path.join(self.root, "user_data.json")
         self.user_dirs = os.path.join(self.root, "user_dirs")
         self.tc = server.app.test_client()
-        
+
     def tearDown(self):
         try:
             shutil.rmtree(self.user_dirs)
