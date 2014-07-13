@@ -230,17 +230,7 @@ class Resource_with_auth(Resource):
 
 class UsersApi(Resource):
 
-    def post(self, username):
-        """Create a user registration request
-        Expected {"psw": <password>}
-        save pending as
-        {<username>:
-            {
-            "password": <password>,
-            "code": <activation_code>
-            "timestamp": <timestamp>
-            }
-        }"""
+    def load_pending_users(self):
         pending = {}
         if os.path.isfile(PENDING_USERS):
             try:
@@ -252,6 +242,20 @@ class UsersApi(Resource):
                     os.remove(PENDING_USERS)
                 else:           # PENDING_USERS exists but is empty
                     pending = {}
+        return pending
+
+    def post(self, username):
+        """Create a user registration request
+        Expected {"psw": <password>}
+        save pending as
+        {<username>:
+            {
+            "password": <password>,
+            "code": <activation_code>
+            "timestamp": <timestamp>
+            }
+        }"""
+        pending = self.load_pending_users()
 
         try:
             psw = request.form["psw"]
@@ -280,7 +284,6 @@ class UsersApi(Resource):
         """Activate a pending user
         Expected
         {"code": <activation code>}"""
-        pending = {}
         try:
             code = request.form["code"]
         except KeyError:
@@ -289,16 +292,7 @@ class UsersApi(Resource):
         if username in User.users:
             return "This user is already active", HTTP_CONFLICT
 
-        if os.path.isfile(PENDING_USERS):
-            try:
-                with open(PENDING_USERS, "r") as p_u:
-                    pending = json.load(p_u)
-            except ValueError:  # PENDING_USERS exists but is corrupted
-                if os.path.getsize(PENDING_USERS) > 0:
-                    shutil.copy(PENDING_USERS, CORRUPTED_DATA)
-                    os.remove(PENDING_USERS)
-                else:           # PENDING_USERS exists but is empty
-                    pending = {}
+        pending = self.load_pending_users()
 
         if username in pending:
             if code == pending[username]["code"]:
