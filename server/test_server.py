@@ -196,6 +196,15 @@ class UserActions(unittest.TestCase):
         response = self.tc.put(self.url, data=data, headers=None)
         self.assertEqual(response.status_code, server.HTTP_BAD_REQUEST)
 
+    def test_activate_user_that_is_arleady_active(self):
+        data = {
+            "code": UserActions.code
+        }
+
+        self.inject_user(TEST_USER_DATA, UserActions.user, UserActions.psw, UserActions.code)
+        response = self.tc.put(self.url, data=data, headers=None)
+        self.assertEqual(response.status_code, server.HTTP_CONFLICT)
+
 
 if __name__ == "__main__":
     # make tests!
