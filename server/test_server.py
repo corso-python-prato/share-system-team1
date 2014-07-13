@@ -1147,7 +1147,11 @@ class TestShare(unittest.TestCase):
 
         # setup
         sub_path = os.path.join(server.USERS_DIRECTORIES, self.owner, subdir)
-        os.mkdir(sub_path)
+        try:
+            os.mkdir(sub_path)
+        except OSError:
+            shutil.rmtree(sub_path)
+            os.mkdir(sub_path)
         shutil.copy2(demo_file1, os.path.join(sub_path, filename))
 
         # share subdir with beneficiary
