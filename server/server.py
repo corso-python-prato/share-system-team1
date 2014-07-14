@@ -9,7 +9,6 @@ import hashlib
 import shutil
 import time
 import json
-import sys
 import os
 import re
 
@@ -27,7 +26,7 @@ api = Api(app)
 auth = HTTPBasicAuth()
 _API_PREFIX = "/API/v1/"
 
-SERVER_ROOT = os.path.dirname(os.path.abspath(sys.argv[0]))
+SERVER_ROOT = os.path.dirname(__file__)
 
 parser = reqparse.RequestParser()
 parser.add_argument("task", type=str)

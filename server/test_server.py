@@ -8,7 +8,6 @@ import shutil
 import string
 import random
 import json
-import sys
 import os
 
 from server import _API_PREFIX
@@ -787,10 +786,7 @@ def make_headers(user, psw):
 
 class TestServerInternalErrors(unittest.TestCase):
     root = os.path.join(
-        os.path.dirname(
-            os.path.abspath(
-                sys.argv[0])
-        ),
+        os.path.dirname(__file__),
         "demo_test/internal_errors"
     )
 
