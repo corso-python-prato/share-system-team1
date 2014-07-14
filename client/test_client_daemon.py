@@ -2,6 +2,7 @@ from client_daemon import DirSnapshotManager
 from client_daemon import DirectoryEventHandler
 from client_daemon import ServerCommunicator
 from client_daemon import FileSystemOperator
+from client_daemon import CommandExecuter
 from client_daemon import get_abspath
 from client_daemon import get_relpath
 from client_daemon import load_config
@@ -903,6 +904,88 @@ class DirectoryEventHandlerTest(unittest.TestCase):
         self.event_handler.on_modified(modify_file_event)
         self.assertFalse(self.server_comm.cmd["upload"])
         self.assertFalse(self.test_src in self.event_handler.paths_ignored)
+
+
+class CommandExecuterTest(unittest.TestCase):
+
+    def setUp(self):
+        class FileSystemOperator(object):
+            def __init__(self):
+                self.copy = False
+                self.write = False
+                self.delete = False
+
+            def copy_a_file(self, origin_path, dst_path):
+                self.copy = [origin_path, dst_path]
+
+            def write_a_file(self, path):
+                self.write = path
+
+            def delete_a_file(self, dst_path):
+                self.delete = dst_path
+
+        class ServerCommunicator(object):
+            def __init__(self):
+                self.upload = False
+                self.delete = False
+
+            def upload_file(self, dst_path):
+                self.upload = dst_path
+
+            def delete_file(self, dst_path):
+                self.delete = dst_path
+
+        self.file_system_op = FileSystemOperator()
+        self.server_comm = ServerCommunicator()
+        self.executer = CommandExecuter(
+            self.file_system_op,
+            self.server_comm)
+
+    def test_syncronize_executer(self):
+        #Case: remote and local command error
+
+        error_command_list = [
+            {'local_errorcommand': 'sub_dir_2/test_file_3.txt'},
+            {'remote_errorcommand': 'sub_dir_1/test_file_1.txt'},
+        ]
+
+        self.executer.syncronize_executer(error_command_list)
+
+        self.assertFalse(self.file_system_op.copy)
+        self.assertFalse(self.file_system_op.write)
+        self.assertFalse(self.file_system_op.delete)
+        self.assertFalse(self.server_comm.upload)
+        self.assertFalse(self.server_comm.delete)
+
+        #Case: remote and local command
+
+        command_list = [
+            {'local_download': ['download/test/path']},
+            {'local_copy': [
+                'src/copy/test/path',
+                'src/copy/test/path']},
+            {'local_delete': ['delete/test/path']},
+            {'remote_delete': ['delete/test/path']},
+            {'remote_upload': ['upload/test/path']},
+        ]
+
+        self.executer.syncronize_executer(command_list)
+
+        self.assertEqual(
+            self.file_system_op.copy,
+            ['src/copy/test/path', 'src/copy/test/path'])
+        self.assertEqual(
+            self.file_system_op.write,
+            'download/test/path')
+        self.assertEqual(
+            self.file_system_op.delete,
+            'delete/test/path')
+        self.assertEqual(
+            self.server_comm.upload,
+            'upload/test/path')
+        self.assertEqual(
+            self.server_comm.delete,
+            'delete/test/path')
 
 
 class FunctionTest(unittest.TestCase):
