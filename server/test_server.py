@@ -787,7 +787,10 @@ def make_headers(user, psw):
 
 class TestServerInternalErrors(unittest.TestCase):
     root = os.path.join(
-        os.path.dirname(sys.argv[0]),
+        os.path.dirname(
+            os.path.abspath(
+                sys.argv[0])
+        ),
         "demo_test/internal_errors"
     )
 
