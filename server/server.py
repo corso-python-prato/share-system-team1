@@ -27,20 +27,20 @@ api = Api(app)
 auth = HTTPBasicAuth()
 _API_PREFIX = "/API/v1/"
 
-SERVER_ROOT = ""
+SERVER_ROOT = os.path.dirname(__file__)
 
 parser = reqparse.RequestParser()
 parser.add_argument("task", type=str)
 
 
-def to_md5(path, block_size=2 ** 20):
-    """ if path is a file, return a md5;
-    if path is a directory, return False """
-    if os.path.isdir(path):
+def to_md5(full_path, block_size=2 ** 20):
+    """ if server_ path is a file, return a md5;
+    if server_path is a directory, return False """
+    if os.path.isdir(full_path):
         return False
 
     m = hashlib.md5()
-    with open(path, 'rb') as f:
+    with open(full_path, 'rb') as f:
         for chunk in iter(lambda: f.read(block_size), b''):
             m.update(chunk)
 
@@ -53,8 +53,7 @@ def can_write(username, server_path):
     Check if an user is the owner of a file (or father directory).
     (the server_path begins with his name)
     """
-    if re.match("^{}{}(\/.)?".format(USERS_DIRECTORIES, username),
-                server_path):
+    if re.match("^{}(\/.)?".format(username), server_path):
         return True
     else:
         return False
@@ -137,7 +136,7 @@ class User(object):
         self.timestamp = time.time()
 
         # update users, file
-        self.push_path("", full_path, update_user_data=False)
+        self.push_path("", username, update_user_data=False)
         User.users[username] = self
         User.save_users()
 
@@ -147,12 +146,6 @@ class User(object):
             "paths": self.paths,
             "timestamp": self.timestamp
         }
-
-    def get_server_path(self, client_path):
-        if client_path in self.paths:
-            return self.paths[client_path][0]
-        else:
-            return False
 
     def create_server_path(self, client_path):
         # the client_path do not have to contain "../"
@@ -175,7 +168,8 @@ class User(object):
 
         # check if the user can write in that server directory
         new_client_path = father
-        new_server_path = self.paths[new_client_path][0]
+        new_server_path = self.paths[father][0]
+
         if not can_write(self.username, new_server_path):
             return False
 
@@ -183,8 +177,11 @@ class User(object):
         for d in to_be_created:
             new_client_path = os.path.join(new_client_path, d)
             new_server_path = os.path.join(new_server_path, d)
-            if not os.path.exists(new_server_path):
-                os.makedirs(new_server_path)
+            # create these directories on disk
+            full_path = os.path.join(USERS_DIRECTORIES, new_server_path)
+            if not os.path.exists(full_path):
+                os.makedirs(full_path)
+            # update the structure
             self.push_path(
                 new_client_path,
                 new_server_path,
@@ -222,7 +219,7 @@ class User(object):
 
     def push_path(self, client_path, server_path, update_user_data=True,
                   only_modify=False):
-        md5 = to_md5(server_path)
+        md5 = to_md5(os.path.join(USERS_DIRECTORIES, server_path))
         now = time.time()
         file_meta = [server_path, md5, now]
         self.paths[client_path] = file_meta
@@ -260,7 +257,7 @@ class User(object):
                 server_subdir = self.paths[client_subdir][0]
                 try:
                     # step 1: remove from filesystem
-                    os.rmdir(server_subdir)
+                    os.rmdir(os.path.join(USERS_DIRECTORIES, server_subdir))
                 except OSError:
                     # the directory is not empty
                     break
@@ -278,7 +275,7 @@ class User(object):
                     dir_list.pop()
 
         # remove from shared beneficiary's paths
-        is_shared = self._get_ben_path(self.get_server_path(client_path))
+        is_shared = self._get_ben_path(self.paths[client_path][0])
         if is_shared:
             shared_server_path, ben_path = is_shared
             for ben_name in User.shared_resources[shared_server_path][1:]:
@@ -295,14 +292,11 @@ class User(object):
         User.save_users()
 
     def add_share(self, client_path, beneficiary):
-        server_path = self.get_server_path(client_path)
-        if not server_path:
-            return False
-
         try:
+            server_path = self.paths[client_path][0]
             ben = User.users[beneficiary]
         except KeyError:
-            # beneficiary is not an user
+            # invalid client_path or the beneficiary is not an user
             return False
 
         if server_path not in User.shared_resources:
@@ -313,9 +307,9 @@ class User(object):
         new_client_path = self._get_shared_root(server_path)
         ben.paths[new_client_path] = self.paths[client_path]
 
-        if os.path.isdir(server_path):
-            # add to the beneficiary's paths every file and folder in the
-            # shared folder
+        if self.paths[client_path][1] is False:
+            # If client_path is a directory, add to the beneficiary's paths
+            # every file and folder in the shared folder
             for path, value in self.paths.items():
                 if path.startswith(client_path):
                     to_insert = path.replace(client_path, new_client_path, 1)
@@ -365,12 +359,15 @@ class Files(Resource):
         Returns file content as a byte string
         Expected GET method with path"""
         u = User.get_user(auth.username())
-        server_path = u.get_server_path(client_path)
-        if not server_path:
+        try:
+            full_path = os.path.join(
+                USERS_DIRECTORIES, u.paths[client_path][0]
+            )
+        except KeyError:
             return "File unreachable", HTTP_NOT_FOUND
 
         try:
-            f = open(server_path, "rb")
+            f = open(full_path, "rb")
             content = f.read()
             f.close()
             return content
@@ -389,14 +386,17 @@ class Files(Resource):
         Expected as POST data:
         { "file_content" : <file>} """
         u = User.get_user(auth.username())
-        server_path = u.get_server_path(client_path)
-        if not server_path:
+
+        try:
+            server_path = u.paths[client_path][0]
+        except KeyError:
             abort(HTTP_NOT_FOUND)
-        if not can_write(auth.username(), server_path):
+
+        if not can_write(u.username, server_path):
             abort(HTTP_FORBIDDEN)
 
         f = request.files["file_content"]
-        f.save(server_path)
+        f.save(os.path.join(USERS_DIRECTORIES, server_path))
 
         u.push_path(client_path, server_path, only_modify=True)
         return u.timestamp, HTTP_CREATED
@@ -407,13 +407,10 @@ class Files(Resource):
         Expected as POST data:
         { "file_content" : <file>} """
         u = User.get_user(auth.username())
-        server_path = u.get_server_path(client_path)
 
-        if server_path:
-            if not can_write(auth.username(), server_path):
-                abort(HTTP_FORBIDDEN)
-            return "A file of the same name already exists in the same path", \
-                HTTP_CONFLICT
+        if client_path in u.paths:
+            # The file is already present. To modify it, use PUT, not POST
+            abort(HTTP_CONFLICT)
 
         server_path = u.create_server_path(client_path)
 
@@ -422,7 +419,7 @@ class Files(Resource):
             abort(HTTP_FORBIDDEN)
 
         f = request.files["file_content"]
-        f.save(server_path)
+        f.save(os.path.join(USERS_DIRECTORIES, server_path))
 
         u.push_path(client_path, server_path)
         return u.timestamp, HTTP_CREATED
@@ -432,15 +429,20 @@ class Actions(Resource):
     def _delete(self):
         """ Expected as POST data:
         { "path" : <path>} """
+        # check user and path
         u = User.get_user(auth.username())
         client_path = request.form["path"]
-        server_path = u.get_server_path(client_path)
-        if not server_path:
+        try:
+            server_path = u.paths[client_path][0]
+        except KeyError:
             abort(HTTP_NOT_FOUND)
-        if not can_write(auth.username(), server_path):
-                abort(HTTP_FORBIDDEN)
-        os.remove(server_path)
+        if not can_write(u.username, server_path):
+            abort(HTTP_FORBIDDEN)
 
+        # change on disk!
+        os.remove(os.path.join(USERS_DIRECTORIES, server_path))
+
+        # change the structure
         u.rm_path(client_path)
         return u.timestamp
 
@@ -459,8 +461,9 @@ class Actions(Resource):
         client_src = request.form["file_src"]
         client_dest = request.form["file_dest"]
 
-        server_src = u.get_server_path(client_src)
-        if not server_src:
+        try:
+            server_src = u.paths[client_src][0]
+        except KeyError:
             abort(HTTP_NOT_FOUND)
 
         server_dest = u.create_server_path(client_dest)
@@ -468,14 +471,18 @@ class Actions(Resource):
             # the server_path belongs to another user
             abort(HTTP_FORBIDDEN)
 
+        # changes on disk!
+        full_src = os.path.join(USERS_DIRECTORIES, server_src)
+        full_dest = os.path.join(USERS_DIRECTORIES, server_dest)
         try:
             if keep_the_original:
-                shutil.copy(server_src, server_dest)
+                shutil.copy(full_src, full_dest)
             else:
-                shutil.move(server_src, server_dest)
+                shutil.move(full_src, full_dest)
         except shutil.Error:
             return abort(HTTP_CONFLICT)
         else:
+            # update the structure
             if keep_the_original:
                 u.push_path(client_dest, server_dest)
             else:
@@ -542,8 +549,9 @@ class Shares(Resource):
 
     def delete(self, client_path, beneficiary=None):
         owner = User.get_user(auth.username())
-        server_path = owner.get_server_path(client_path)
-        if not server_path:
+        try:
+            server_path = owner.paths[client_path][0]
+        except KeyError:
             return "The specified file or directory is not present", \
                 HTTP_BAD_REQUEST
         if beneficiary:

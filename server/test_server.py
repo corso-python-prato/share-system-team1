@@ -13,6 +13,9 @@ import os
 from server import _API_PREFIX
 from server_errors import *
 
+DEMO_FILE = os.path.join(os.path.dirname(__file__), "demo_test/demofile1.txt")
+DEMO_FILE2 = os.path.join(os.path.dirname(__file__), "demo_test/demofile2.txt")
+
 TEST_DIRECTORY = "test_users_dirs/"
 TEST_USER_DATA = "test_user_data.json"
 
@@ -571,7 +574,10 @@ class TestActionsAPI(unittest.TestCase):
 
 
 class NewRootTestExample(unittest.TestCase):
-    other_directory = "proppolo"
+    other_directory = os.path.join(
+        os.path.dirname(__file__),
+        "proppolo"
+    )
 
     def setUp(self):
         server.SERVER_ROOT = NewRootTestExample.other_directory
@@ -595,7 +601,10 @@ class NewRootTestExample(unittest.TestCase):
 
 
 class TestUser(unittest.TestCase):
-    root = "demo_test/test_user"
+    root = os.path.join(
+        os.path.dirname(__file__),
+        "demo_test"
+    )
 
     def setUp(self):
         server.SERVER_ROOT = TestUser.root
@@ -643,19 +652,20 @@ class TestUser(unittest.TestCase):
         #         tc.post(_API_PREFIX + "create_user", data=data)
 
     def test_to_md5(self):
+        # setup
+        demo_file1_copy = os.path.join(TestUser.root, "demofile1_copy.txt")
+        shutil.copy(DEMO_FILE, demo_file1_copy)
+
         # check if two files with the same content have the same md5
-        first_md5 = server.to_md5(
-            os.path.join(TestUser.root, "demofile1.txt")
-        )
-        first_copy_md5 = server.to_md5(
-            os.path.join(TestUser.root, "demofile1_copy.txt")
-        )
+        first_md5 = server.to_md5(DEMO_FILE)
+        first_copy_md5 = server.to_md5(demo_file1_copy)
         self.assertEqual(first_md5, first_copy_md5)
 
+        # tear down
+        os.remove(demo_file1_copy)
+
         # check if two different files have different md5
-        second_md5 = server.to_md5(
-            os.path.join(TestUser.root, "demofile2.txt")
-        )
+        second_md5 = server.to_md5(DEMO_FILE2)
         self.assertNotEqual(first_md5, second_md5)
 
         # check if, for a directory, returns False
@@ -924,7 +934,10 @@ class TestSequenceFunctions(unittest.TestCase):
 
 
 class TestShare(unittest.TestCase):
-    root = "demo_test/test_share"
+    root = os.path.join(
+        os.path.dirname(__file__),
+        "demo_test/test_share"
+    )
 
     def setUp(self):
         server.SERVER_ROOT = TestShare.root
@@ -1079,7 +1092,6 @@ class TestShare(unittest.TestCase):
         self.assertEqual(received.status_code, 200)
 
         server_path = os.path.join(
-            server.USERS_DIRECTORIES,
             self.owner,
             "shared_with_two_bens.txt"
         )
@@ -1142,8 +1154,6 @@ class TestShare(unittest.TestCase):
     def test_changes_in_shared_directory(self):
         subdir = "changing"
         filename = "changing_file.txt"
-        demo_file1 = "demo_test/demofile1.txt"
-        demo_file2 = "demo_test/demofile2.txt"
 
         # setup
         sub_path = os.path.join(server.USERS_DIRECTORIES, self.owner, subdir)
@@ -1152,7 +1162,7 @@ class TestShare(unittest.TestCase):
         except OSError:
             shutil.rmtree(sub_path)
             os.mkdir(sub_path)
-        shutil.copy2(demo_file1, os.path.join(sub_path, filename))
+        shutil.copy2(DEMO_FILE, os.path.join(sub_path, filename))
 
         # share subdir with beneficiary
         # TODO: load this from json when the shares will be saved on file
@@ -1166,7 +1176,7 @@ class TestShare(unittest.TestCase):
 
         # update a shared file and check if it's ok
         owner_timestamp = server.User.users[self.owner].timestamp
-        with open(demo_file2, "r") as f:
+        with open(DEMO_FILE2, "r") as f:
             received = self.tc.put(
                 "{}files/{}/{}".format(
                     _API_PREFIX, subdir, filename
@@ -1182,7 +1192,7 @@ class TestShare(unittest.TestCase):
         self.assertEqual(owner_new_timestamp, ben_timestamp)
 
         # upload a new file in shared directory and check
-        with open(demo_file1, "r") as f:
+        with open(DEMO_FILE, "r") as f:
             received = self.tc.post(
                 "{}files/{}/{}".format(
                     _API_PREFIX, subdir, "other_subdir/new_file"
@@ -1237,9 +1247,7 @@ class TestShare(unittest.TestCase):
         self.assertEqual(received.status_code, 200)
 
         self.assertNotIn(
-            os.path.join(
-                server.USERS_DIRECTORIES, self.owner, subdir
-            ),
+            os.path.join(self.owner, subdir),
             server.User.shared_resources
         )
 
