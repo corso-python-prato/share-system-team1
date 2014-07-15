@@ -1,3 +1,18 @@
+· test rimozione singolo file condiviso
+
+· usare il read-only dell'os sulla cartella share
+
+· eliminazione di un file condiviso
+· controllare che uno non condivida con sé stesso
+· salvataggio di shared_resources
+
+
+
+· test cose modificate in share
+
+
+· togliere owner come primo della lista?
+· cercare codici http in Flask
 · 'nose' and 'coverage' have to be added in requirements?
 
 · test delle cose: che schiantino bene.

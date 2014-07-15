@@ -11,14 +11,15 @@ import shutil
 import time
 import json
 import os
+import re
 
 
-
-HTTP_CONFLICT = 409
-HTTP_CREATED = 201
-HTTP_NOT_FOUND = 404
-HTTP_BAD_REQUEST = 400
 HTTP_OK = 200
+HTTP_CREATED = 201
+HTTP_BAD_REQUEST = 400
+HTTP_FORBIDDEN = 403
+HTTP_NOT_FOUND = 404
+HTTP_CONFLICT = 409
 HTTP_GONE = 410
 
 app = Flask(__name__)
@@ -31,7 +32,7 @@ parser = reqparse.RequestParser()
 parser.add_argument("task", type=str)
 
 
-def to_md5(path, block_size=2**20):
+def to_md5(path, block_size=2 ** 20):
     """ if path is a file, return a md5;
     if path is a directory, return False """
     if os.path.isdir(path):
@@ -45,6 +46,19 @@ def to_md5(path, block_size=2**20):
     return m.hexdigest()
 
 
+def can_write(username, server_path):
+    """
+    This sharing system is in read-only mode.
+    Check if an user is the owner of a file (or father directory).
+    (the server_path begins with his name)
+    """
+    if re.match("^{}{}(\/.)?".format(USERS_DIRECTORIES, username),
+                server_path):
+        return True
+    else:
+        return False
+
+
 class User(object):
     """ maintaining two dictionaries:
         · paths     = { client_path : [server_path, md5] }
@@ -52,6 +66,8 @@ class User(object):
     server_path is for shared directories management """
 
     users = {}
+    shared_resources = {}
+    # { "shared_server_path": [user1, user2, ...] }
 
     # CLASS AND STATIC METHODS
     @staticmethod
@@ -94,6 +110,7 @@ class User(object):
     def __init__(self, username, clear_password, from_dict=None):
         # if restoring the server
         if from_dict:
+            self.username = username
             self.psw = from_dict["psw"]
             self.paths = from_dict["paths"]
             self.timestamp = from_dict["timestamp"]
@@ -108,6 +125,7 @@ class User(object):
             abort(HTTP_CONFLICT)
 
         # OBJECT ATTRIBUTES
+        self.username = username
         self.psw = psw_hash
 
         # path of each file and each directory of the user:
@@ -154,9 +172,13 @@ class User(object):
         else:
             father = os.path.join(*dir_list)
 
-        # create all the new subdirs and add them to paths
+        # check if the user can write in that server directory
         new_client_path = father
         new_server_path = self.paths[new_client_path][0]
+        if not can_write(self.username, new_server_path):
+            return False
+
+        # create all the new subdirs and add them to paths
         for d in to_be_created:
             new_client_path = os.path.join(new_client_path, d)
             new_server_path = os.path.join(new_server_path, d)
@@ -170,19 +192,63 @@ class User(object):
 
         return os.path.join(new_server_path, filename)
 
-    def push_path(self, client_path, server_path, update_user_data=True):
+    def _get_shared_root(self, server_path):
+        """
+        From a server_path, generate a valid shared root.
+        """
+        path_parts = server_path.split("/")
+        # if len(path_parts) > 3:
+        #     # shared resource has to be in owner's root
+        #     return False
+
+        resource_name = path_parts.pop()
+        return os.path.join("shares", self.username, resource_name)
+
+    def _get_ben_path(self, server_path):
+        """
+        Search a shared father for the resource. If it exists, return the
+        shared resource name and the ben_path, else return False.
+        """
+        for shared_server_path, beneficiaries in User.shared_resources.items():
+            if server_path.startswith(shared_server_path):
+                ben_path = server_path.replace(
+                    shared_server_path,
+                    self._get_shared_root(shared_server_path),
+                    1
+                )
+                return shared_server_path, ben_path
+        return False
+
+    def push_path(self, client_path, server_path, update_user_data=True,
+                  only_modify=False):
         md5 = to_md5(server_path)
         now = time.time()
-        self.paths[client_path] = [server_path, md5, now]
+        file_meta = [server_path, md5, now]
+        self.paths[client_path] = file_meta
+
+        is_shared = self._get_ben_path(server_path)
+        if is_shared:
+            share, ben_path = is_shared
+
+            # upgrade every beneficiaries
+            for ben_name in User.shared_resources[share][1:]:
+                ben_user = User.get_user(ben_name)
+                if not only_modify:
+                    ben_user.paths[ben_path] = file_meta
+                ben_user.timestamp = now
+
         if update_user_data:
             self.timestamp = now
             User.save_users()
-        # TODO: manage shared folder here. Something like:
-        # for s, v in shared_folder.items():
-        #     if server_path.startswith(s):
-        #         update each user
 
     def rm_path(self, client_path):
+        """
+        Remove the path from the paths dictionary. If there are empty
+        directories, remove them from the filesystem.
+        """
+        now = time.time()
+        self.timestamp = now
+
         # remove empty directories
         directory_path, filename = os.path.split(client_path)
         if directory_path != "":
@@ -192,18 +258,71 @@ class User(object):
                 client_subdir = os.path.join(*dir_list)
                 server_subdir = self.paths[client_subdir][0]
                 try:
+                    # step 1: remove from filesystem
                     os.rmdir(server_subdir)
-                except OSError:         # the directory is not empty
+                except OSError:
+                    # the directory is not empty
                     break
                 else:
+                    # step 2: remove from shared beneficiary's paths
+                    is_shared = self._get_ben_path(server_subdir)
+                    if is_shared:
+                        shared_server_path, ben_path = is_shared
+                        for ben_name in \
+                                User.shared_resources[shared_server_path][1:]:
+                            ben_user = User.get_user(ben_name)
+                            del ben_user.paths[ben_path]
+                    # step 3: remove from paths
                     del self.paths[client_subdir]
-                    # TODO: manage shared folder here.
                     dir_list.pop()
+
+        # remove from shared beneficiary's paths
+        is_shared = self._get_ben_path(self.get_server_path(client_path))
+        if is_shared:
+            shared_server_path, ben_path = is_shared
+            for ben_name in User.shared_resources[shared_server_path][1:]:
+                ben_user = User.get_user(ben_name)
+                del ben_user.paths[ben_path]
+                ben_user.timestamp = now
+            # if the shared resource is a removed file or an empty directory
+            # remove it from shared_resources
+            if not os.path.exists(shared_server_path):
+                del User.shared_resources[shared_server_path]
 
         # remove the argument client_path and save
         del self.paths[client_path]
-        self.timestamp = time.time()
         User.save_users()
+
+    def add_share(self, client_path, beneficiary):
+        server_path = self.get_server_path(client_path)
+        if not server_path:
+            return False
+
+        try:
+            ben = User.users[beneficiary]
+        except KeyError:
+            # beneficiary is not an user
+            return False
+
+        if server_path not in User.shared_resources:
+            User.shared_resources[server_path] = [self.username, beneficiary]
+        else:
+            User.shared_resources[server_path].append(beneficiary)
+
+        new_client_path = self._get_shared_root(server_path)
+        ben.paths[new_client_path] = self.paths[client_path]
+
+        if os.path.isdir(server_path):
+            # add to the beneficiary's paths every file and folder in the
+            # shared folder
+            for path, value in self.paths.items():
+                if path.startswith(client_path):
+                    to_insert = path.replace(client_path, new_client_path, 1)
+                    ben.paths[to_insert] = value
+
+        ben.timestamp = time.time()
+        User.save_users()
+        return True
 
 
 class Resource(Resource):
@@ -272,11 +391,13 @@ class Files(Resource):
         server_path = u.get_server_path(client_path)
         if not server_path:
             abort(HTTP_NOT_FOUND)
+        if not can_write(auth.username(), server_path):
+            abort(HTTP_FORBIDDEN)
 
         f = request.files["file_content"]
         f.save(server_path)
 
-        u.push_path(client_path, server_path)
+        u.push_path(client_path, server_path, only_modify=True)
         return u.timestamp, HTTP_CREATED
 
     def post(self, client_path):
@@ -285,11 +406,19 @@ class Files(Resource):
         Expected as POST data:
         { "file_content" : <file>} """
         u = User.get_user(auth.username())
-        if u.get_server_path(client_path):
+        server_path = u.get_server_path(client_path)
+
+        if server_path:
+            if not can_write(auth.username(), server_path):
+                abort(HTTP_FORBIDDEN)
             return "A file of the same name already exists in the same path", \
                 HTTP_CONFLICT
 
         server_path = u.create_server_path(client_path)
+
+        if not server_path:
+            # the server_path belongs to another user
+            abort(HTTP_FORBIDDEN)
 
         f = request.files["file_content"]
         f.save(server_path)
@@ -307,7 +436,8 @@ class Actions(Resource):
         server_path = u.get_server_path(client_path)
         if not server_path:
             abort(HTTP_NOT_FOUND)
-
+        if not can_write(auth.username(), server_path):
+                abort(HTTP_FORBIDDEN)
         os.remove(server_path)
 
         u.rm_path(client_path)
@@ -333,6 +463,9 @@ class Actions(Resource):
             abort(HTTP_NOT_FOUND)
 
         server_dest = u.create_server_path(client_dest)
+        if not server_dest:
+            # the server_path belongs to another user
+            abort(HTTP_FORBIDDEN)
 
         try:
             if keep_the_original:
@@ -360,6 +493,66 @@ class Actions(Resource):
             return Actions.commands[cmd](self)
         except KeyError:
             return abort(HTTP_NOT_FOUND)
+
+
+class Shares(Resource):
+    def post(self, client_path, beneficiary):
+        owner = User.get_user(auth.username())
+
+        if not owner.add_share(client_path, beneficiary):
+            abort(HTTP_BAD_REQUEST)     # TODO: choice the code
+        else:
+            return HTTP_OK          # TODO: timestamp is needed here?
+
+    def _remove_beneficiary(self, owner, server_path, client_path,
+                            beneficiary):
+        # remove the beneficiary from the shared resources list
+        try:
+            ben_user = User.get_user(beneficiary)
+            User.shared_resources[server_path].remove(beneficiary)
+        except (KeyError, ValueError):
+            abort(HTTP_BAD_REQUEST)
+
+        if len(User.shared_resources[server_path]) == 1:
+            # the resource isn't shared with anybody.
+            # (the first element in the list is the owner)
+            del User.shared_resources[server_path]
+
+        # remove every resource which isn't shared anymore
+        ben_path = owner._get_shared_root(server_path)
+        for client_path in ben_user.paths.keys():
+            if client_path.startswith(ben_path):
+                del ben_user.paths[client_path]
+
+        # update timestamp and save
+        ben_user.timestamp = time.time()
+        User.save_users()
+        return HTTP_OK
+
+    def _remove_share(self, owner, server_path, client_path):
+        try:
+            for ben in User.shared_resources[server_path][1:]:
+                self._remove_beneficiary(owner, server_path, client_path, ben)
+        except KeyError:
+            abort(HTTP_BAD_REQUEST)
+        else:
+            User.save_users()
+            return HTTP_OK
+
+    def delete(self, client_path, beneficiary=None):
+        owner = User.get_user(auth.username())
+        server_path = owner.get_server_path(client_path)
+        if not server_path:
+            return "The specified file or directory is not present", \
+                HTTP_BAD_REQUEST
+        if beneficiary:
+            return self._remove_beneficiary(
+                owner,
+                server_path,
+                client_path,
+                beneficiary)
+        else:
+            return self._remove_share(owner, server_path, client_path)
 
 
 @auth.verify_password
@@ -396,9 +589,16 @@ def main():
     app.run(host="0.0.0.0", debug=True)         # TODO: remove debug=True
 
 
-api.add_resource(Files, "{}files/<path:client_path>".format(_API_PREFIX),
+api.add_resource(
+    Files,
+    "{}files/<path:client_path>".format(_API_PREFIX),
     "{}files/".format(_API_PREFIX))
 api.add_resource(Actions, "{}actions/<string:cmd>".format(_API_PREFIX))
+api.add_resource(
+    Shares,
+    "{}shares/<path:client_path>".format(_API_PREFIX),
+    "{}shares/<path:client_path>/<string:beneficiary>".format(_API_PREFIX)
+)
 
 if __name__ == "__main__":
     main()
