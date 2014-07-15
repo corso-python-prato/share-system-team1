@@ -1012,20 +1012,31 @@ class TestShare(unittest.TestCase):
 
         # a beneficiary tries to add a file to a shared directory, but the
         # share is read-only.
-        # case Files POST and PUT
+        # case Files POST
+        destination = os.path.join(
+            "shares", self.owner, "can_write", "new_file.txt"
+        )
+        with open(DEMO_FILE, "r") as f:
+            data = {"file_content": f}
+            received = self.tc.post(
+                "{}files/{}".format(_API_PREFIX, destination),
+                data=data,
+                headers=self.ben1_headers
+            )
+            self.assertEqual(received.status_code, 403)
+
+        # case Files PUT
         destination = os.path.join(
             "shares", self.owner, "can_write", "parole.txt"
         )
-        demo_file = "demo_test/demofile1.txt"
-        for verb in [self.tc.post, self.tc.put]:
-            with open(demo_file, "r") as f:
-                data = {"file_content": f}
-                received = verb(
-                    "{}files/{}".format(_API_PREFIX, destination),
-                    data=data,
-                    headers=self.ben1_headers
-                )
-                self.assertEqual(received.status_code, 403)
+        with open(DEMO_FILE, "r") as f:
+            data = {"file_content": f}
+            received = self.tc.put(
+                "{}files/{}".format(_API_PREFIX, destination),
+                data=data,
+                headers=self.ben1_headers
+            )
+            self.assertEqual(received.status_code, 403)
 
         # case Action delete
         received = self.tc.post(
