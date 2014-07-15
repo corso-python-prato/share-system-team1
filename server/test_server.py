@@ -639,18 +639,6 @@ class TestUser(unittest.TestCase):
             received = tc.post(_API_PREFIX + "create_user", data=data)
         self.assertEqual(received.status_code, server.HTTP_CONFLICT)
 
-        # TODO: to be revised after server fix
-        # # check the error raised when the directory for a new user
-        # # already exists
-        # data = {
-        #     "user": "Giovanni",
-        #     "psw": "zappa"
-        # }
-        # os.mkdir(os.path.join(server.USERS_DIRECTORIES, data["user"]))
-        # with server.app.test_client() as tc:
-        #     with self.assertRaises(ConflictError):
-        #         tc.post(_API_PREFIX + "create_user", data=data)
-
     def test_to_md5(self):
         # setup
         demo_file1_copy = os.path.join(TestUser.root, "demofile1_copy.txt")
@@ -1059,7 +1047,6 @@ class TestShare(unittest.TestCase):
             )
             self.assertEqual(received.status_code, 403)
 
-
     def test_remove_beneficiary(self):
         # test if aborts when the resource is not on the server
         received = self.tc.delete(
@@ -1264,6 +1251,7 @@ class TestShare(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    # TODO: these things, here, are ok for nose?
     server.app.config.update(TESTING=True)
     server.app.testing = True
 

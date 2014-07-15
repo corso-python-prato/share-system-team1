@@ -60,14 +60,16 @@ def can_write(username, server_path):
 
 
 class User(object):
-    """ maintaining two dictionaries:
+    """
+    Maintaining two dictionaries:
         · paths     = { client_path : [server_path, md5] }
-        · inside Snapshot: { md5 : [client_path1, client_path2] }
-    server_path is for shared directories management """
+        · shared_resources: { server_path : [owner, ben1, ben2, ...] }
+    The full path to access to the file is a join between USERS_DIRECTORIES and
+    the server_path.
+    """
 
     users = {}
     shared_resources = {}
-    # { "shared_server_path": [user1, user2, ...] }
 
     # CLASS AND STATIC METHODS
     @staticmethod
@@ -305,6 +307,9 @@ class User(object):
             User.shared_resources[server_path].append(beneficiary)
 
         new_client_path = self._get_shared_root(server_path)
+
+        # The item referenced in ben.paths and in the owner's paths is the
+        # same. If modified, the both are update.
         ben.paths[new_client_path] = self.paths[client_path]
 
         if self.paths[client_path][1] is False:
@@ -332,7 +337,8 @@ class Files(Resource):
         u = User.get_user(auth.username())
         tree = {}
         for p, v in u.paths.items():
-            if not v[1]:
+            if v[1] is False:
+                # the path p is a directory
                 continue
 
             if not v[1] in tree:
@@ -413,7 +419,6 @@ class Files(Resource):
             abort(HTTP_CONFLICT)
 
         server_path = u.create_server_path(client_path)
-
         if not server_path:
             # the server_path belongs to another user
             abort(HTTP_FORBIDDEN)
@@ -480,7 +485,7 @@ class Actions(Resource):
             else:
                 shutil.move(full_src, full_dest)
         except shutil.Error:
-            return abort(HTTP_CONFLICT)
+            return abort(HTTP_CONFLICT)         # TODO: check.
         else:
             # update the structure
             if keep_the_original:
@@ -510,7 +515,7 @@ class Shares(Resource):
         if not owner.add_share(client_path, beneficiary):
             abort(HTTP_BAD_REQUEST)     # TODO: choice the code
         else:
-            return HTTP_OK          # TODO: timestamp is needed here?
+            return HTTP_OK              # TODO: timestamp is needed here?
 
     def _remove_beneficiary(self, owner, server_path, client_path,
                             beneficiary):
@@ -523,7 +528,7 @@ class Shares(Resource):
 
         if len(User.shared_resources[server_path]) == 1:
             # the resource isn't shared with anybody.
-            # (the first element in the list is the owner)
+            # (the first user in the list is the owner)
             del User.shared_resources[server_path]
 
         # remove every resource which isn't shared anymore
@@ -554,12 +559,11 @@ class Shares(Resource):
         except KeyError:
             return "The specified file or directory is not present", \
                 HTTP_BAD_REQUEST
+
         if beneficiary:
             return self._remove_beneficiary(
-                owner,
-                server_path,
-                client_path,
-                beneficiary)
+                owner, server_path, client_path, beneficiary
+            )
         else:
             return self._remove_share(owner, server_path, client_path)
 
@@ -599,6 +603,7 @@ def server_setup():
     if not os.path.isdir(USERS_DIRECTORIES):
         os.makedirs(USERS_DIRECTORIES)
     User.user_class_init()
+
 
 def main():
     server_setup()
