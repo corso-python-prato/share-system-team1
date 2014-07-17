@@ -630,7 +630,7 @@ class DirSnapshotManager(object):
                         print "no action:\t" + equal_path
                 for new_client_path in new_client_paths: # 2) a 3
                     print "upload:\t" + new_client_path
-                    command_list.append({'remote_upload': ["/".join([CONFIG_DIR_PATH, new_client_path])]})
+                    command_list.append({'remote_upload': [new_client_path]})
             
             elif not self.is_syncro(server_timestamp): # 2) b
                 for new_server_path in new_server_paths: # 2) b 1
