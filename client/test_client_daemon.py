@@ -18,6 +18,7 @@ from watchdog.events import DirCreatedEvent
 from watchdog.events import DirMovedEvent
 import client_daemon
 import httpretty
+import requests
 import unittest
 import hashlib
 import base64
@@ -160,6 +161,40 @@ class ServerCommunicatorTest(unittest.TestCase):
     def tearDown(self):
         httpretty.disable()
         httpretty.reset()
+
+    def test_try_request(self):
+        class Callback(object):
+            status_code = 200
+            exc = False
+
+            def __init__(self, auth, *args, **kwargs):
+                self.auth = auth
+                if Callback.exc:
+                    Callback.exc = False
+                    raise requests.exceptions.RequestException()
+
+        #Case: success
+        result = self.server_comm._try_request(Callback)
+        self.assertEqual(
+            result.auth,
+            self.server_comm.auth)
+        self.assertEqual(result.status_code, 200)
+
+        #Case: error 401
+        Callback.status_code = 401
+        result = self.server_comm._try_request(Callback)
+        self.assertEqual(
+            result.auth,
+            self.server_comm.auth)
+        self.assertEqual(result.status_code, 401)
+
+        #Case: request exception
+        Callback.ecx = True
+        result = self.server_comm._try_request(Callback)
+        self.assertEqual(
+            result.auth,
+            self.server_comm.auth)
+        self.assertEqual(result.status_code, 401)
 
     def test_setexecuter(self):
         executer = "executer"
