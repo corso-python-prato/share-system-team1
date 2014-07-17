@@ -40,15 +40,27 @@ class TestEnvironment(object):
         os.makedirs(self.test_folder_2)
         self.test_file_1 = os.path.join(self.test_share_dir, 'sub_dir_1', 'test_file_1.txt')
         self.test_file_2 = os.path.join(self.test_share_dir, 'sub_dir_2', 'test_file_2.txt')
+        self.test_file_3 = os.path.join(self.test_share_dir, 'sub_dir_2', 'test_file_3.txt')
         open(self.test_file_1, 'w').write('Lorem ipsum dolor sit amet')
         open(self.test_file_2, 'w').write('Integer non tincidunt dolor')
+        open(self.test_file_3, 'w').write('Nam rutrum urna facilisis molestie')
 
+        self.true_snapshot = {
+            '81bcb26fd4acfaa5d0acc7eef1d3013a': ['sub_dir_2/test_file_2.txt'],
+            'd1e2ac797b8385e792ac1e31db4a81f9': ['sub_dir_2/test_file_3.txt'],
+            'fea80f2db003d4ebc4536023814aa885': ['sub_dir_1/test_file_1.txt'],
+        }
+
+        self.md5_snapshot = '2b829f9fd20451aa44d144e5ec0f00af'
         self.conf_snap_path = os.path.join(self.test_main_path, 'snapshot_file.json')
-        self.conf_snap_gen = {"timestamp": 123123, "snapshot": "ab8d6b3c332aa253bb2b471c57b73e27"}
+        self.conf_snap_gen = {
+            "timestamp": 123123,
+            "snapshot": self.md5_snapshot,
+        }
 
         open(self.conf_snap_path, 'w').write(json.dumps(self.conf_snap_gen))
 
-        return self.test_main_path, self.test_share_dir, self.test_folder_1, self.test_folder_2, self.test_file_1, self.test_file_2, self.conf_snap_path, self.conf_snap_gen
+        return self.test_main_path, self.test_share_dir, self.test_folder_1, self.test_folder_2, self.test_file_1, self.test_file_2, self.test_file_3, self.true_snapshot, self.md5_snapshot, self.conf_snap_path, self.conf_snap_gen
 
 
     def remove(self):
@@ -472,14 +484,9 @@ class DirSnapshotManagerTest(unittest.TestCase):
     def setUp(self):
         #Generate test folder tree and configuration file
         self.environment = TestEnvironment()
-        self.test_main_path, self.test_share_dir, self.test_folder_1, self.test_folder_2, self.test_file_1, self.test_file_2, self.conf_snap_path, self.conf_snap_gen = self.environment.create()
+        self.test_main_path, self.test_share_dir, self.test_folder_1, self.test_folder_2, self.test_file_1, self.test_file_2, self.test_file_3, self.true_snapshot, self.md5_snapshot, self.conf_snap_path, self.conf_snap_gen = self.environment.create()
         client_daemon.CONFIG_DIR_PATH = self.test_share_dir
 
-        self.true_snapshot= {
-            '81bcb26fd4acfaa5d0acc7eef1d3013a': ['sub_dir_2/test_file_2.txt'],
-            'fea80f2db003d4ebc4536023814aa885': ['sub_dir_1/test_file_1.txt'],
-        }
-        self.md5_snapshot = 'ab8d6b3c332aa253bb2b471c57b73e27'
         self.snapshot_manager = DirSnapshotManager(self.conf_snap_path)
 
     def tearDown(self):
