@@ -913,7 +913,7 @@ class DirectoryEventHandlerTest(unittest.TestCase):
 
         #Case: delete file in ignored directory
         self.event_handler.paths_ignored.append(self.test_src)
-        self.event_handler.on_created(delete_file_event)
+        self.event_handler.on_deleted(delete_file_event)
         self.assertFalse(self.server_comm.cmd["delete"])
         self.assertFalse(self.test_src in self.event_handler.paths_ignored)
 
