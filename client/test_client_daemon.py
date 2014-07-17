@@ -495,17 +495,19 @@ class DirSnapshotManagerTest(unittest.TestCase):
     def test_diff_snapshot_paths(self):
         #server snapshot unsinket with local path:
         #   sub_dir_1/test_file_1.txt modified
-        #   sub_dir_2/test_file_3.txt added
+        #   sub_dir_2/test_file_4.txt added
         #   sub_dir_2/test_file_3.txt deleted
         unsinked_server_snap = {
             'fea80f2db004d4ebc4536023814aa885': [{'path': u'sub_dir_1/test_file_1.txt', 'timestamp': 123124}],
-            '456jk3b334bb33463463fbhj4b3534t3': [{'path': u'sub_dir_2/test_file_3.txt', 'timestamp': 123125}],
+            '456jk3b334bb33463463fbhj4b3534t3': [{'path': u'sub_dir_2/test_file_4.txt', 'timestamp': 123125}],
         }
 
         new_client, new_server, equal = self.snapshot_manager.diff_snapshot_paths(self.true_snapshot, unsinked_server_snap)
 
-        self.assertEqual(['sub_dir_2/test_file_2.txt'], new_client)
-        self.assertEqual(['sub_dir_2/test_file_3.txt'], new_server)
+        self.assertEqual(
+            ['sub_dir_2/test_file_3.txt', 'sub_dir_2/test_file_2.txt'],
+            new_client)
+        self.assertEqual(['sub_dir_2/test_file_4.txt'], new_server)
         self.assertEqual(['sub_dir_1/test_file_1.txt'], equal)
 
     def test_syncronize_dispatcher(self):
@@ -513,19 +515,24 @@ class DirSnapshotManagerTest(unittest.TestCase):
         sinked_server_snap = {
             '81bcb26fd4acfaa5d0acc7eef1d3013a': [
                 {'path': u'sub_dir_2/test_file_2.txt', 'timestamp': 123123}],
+            'd1e2ac797b8385e792ac1e31db4a81f9': [
+                {'path': u'sub_dir_2/test_file_3.txt', 'timestamp': 123123}],
             'fea80f2db003d4ebc4536023814aa885': [
                 {'path': u'sub_dir_1/test_file_1.txt', 'timestamp': 123123}],
         }
         #server snapshot unsinket with local path:
         #   sub_dir_1/test_file_1.txt modified
-        #   sub_dir_2/test_file_1.txt added
+        #   sub_dir_2/test_file_4.txt added
+        #   sub_dir_1/test_file_2.txt copied
+        #   sub_dir_2/test_file_3.txt deleted
         unsinked_server_snap = {
             '81bcb26fd4acfaa5d0acc7eef1d3013a': [
-                {'path': u'sub_dir_2/test_file_2.txt', 'timestamp': 123123}],
+                {'path': u'sub_dir_2/test_file_2.txt', 'timestamp': 123123},
+                {'path': u'sub_dir_1/test_file_2.txt', 'timestamp': 123123}],
             'fea80f2db004d4ebc4536023814aa885': [
                 {'path': u'sub_dir_1/test_file_1.txt', 'timestamp': 123124}],
             '456jk3b334bb33463463fbhj4b3534t3': [
-                {'path': u'sub_dir_2/test_file_3.txt', 'timestamp': 123125}],
+                {'path': u'sub_dir_2/test_file_4.txt', 'timestamp': 123125}],
         }
 
         sinked_timestamp = 123123
@@ -540,8 +547,12 @@ class DirSnapshotManagerTest(unittest.TestCase):
 
         #Case: no deamon internal conflicts != timestamp
         expected_result = [
-            {'local_download': ['sub_dir_2/test_file_3.txt']},
+            {'local_download': ['sub_dir_2/test_file_4.txt']},
+            {'local_copy': [
+                'sub_dir_2/test_file_2.txt',
+                'sub_dir_1/test_file_2.txt']},
             {'local_download': ['sub_dir_1/test_file_1.txt']},
+            {'local_delete': ['sub_dir_2/test_file_3.txt']}
         ]
         result = self.snapshot_manager.syncronize_dispatcher(
             server_timestamp=unsinked_timestamp,
@@ -550,19 +561,28 @@ class DirSnapshotManagerTest(unittest.TestCase):
 
         #Case: deamon internal conflicts == timestamp
         self.snapshot_manager.last_status['snapshot'] = "21451512512512512"
-        expected_result = []
+        expected_result = [
+            {'remote_delete': ['sub_dir_2/test_file_4.txt']},
+            {'remote_delete': ['sub_dir_1/test_file_2.txt']},
+            {'remote_update': ['sub_dir_1/test_file_1.txt', True]},
+            {'remote_upload': ['sub_dir_2/test_file_3.txt']}
+        ]
         result = self.snapshot_manager.syncronize_dispatcher(
             server_timestamp=sinked_timestamp,
-            server_snapshot=sinked_server_snap)
+            server_snapshot=unsinked_server_snap)
         self.assertEqual(result, expected_result)
 
         #Case: no deamon internal conflicts != timestamp
         expected_result = [
-            {'local_download': ['sub_dir_2/test_file_3.txt']},
+            {'local_download': ['sub_dir_2/test_file_4.txt']},
+            {'local_copy': [
+                'sub_dir_2/test_file_2.txt',
+                'sub_dir_1/test_file_2.txt']},
             {'local_copy': [
                 'sub_dir_1/test_file_1.txt',
                 'sub_dir_1/test_file_1.txt.conflicted']},
             {'remote_upload': ['sub_dir_1/test_file_1.txt.conflicted']},
+            {'remote_delete': ['sub_dir_2/test_file_3.txt']},
         ]
         result = self.snapshot_manager.syncronize_dispatcher(
             server_timestamp=unsinked_timestamp,
@@ -570,10 +590,16 @@ class DirSnapshotManagerTest(unittest.TestCase):
         self.assertEqual(result, expected_result)
 
     def test_local_check(self):
-        self.assertEqual(self.snapshot_manager.local_check(), True)
+        #Case: regular check
+        self.assertTrue(self.snapshot_manager.local_check())
 
+        #Case: error check
         self.snapshot_manager.last_status['snapshot'] = 'faultmd5'
-        self.assertEqual(self.snapshot_manager.local_check(), False)
+        self.assertFalse(self.snapshot_manager.local_check())
+
+        #Case: not last_status
+        self.snapshot_manager.last_status['snapshot'] = ""
+        self.assertTrue(self.snapshot_manager.local_check())
 
     def test_is_syncro(self):
         test_srv_timestamp = '123123'
@@ -623,8 +649,6 @@ class DirSnapshotManagerTest(unittest.TestCase):
         original_snapshot = copy.deepcopy(self.snapshot_manager.local_full_snapshot)
         mock_snapshot = copy.deepcopy(original_snapshot)
         mock_file_content = "test_content"
-        with open(self.test_file_1, 'rb') as f:
-            original_content = f.read()
 
         with open(self.test_file_1, 'wb') as f:
             f.write(mock_file_content)
@@ -658,6 +682,7 @@ class DirSnapshotManagerTest(unittest.TestCase):
         self.snapshot_manager.update_snapshot_update({"src_path":self.test_file_1})
         mock_snapshot = {
             '81bcb26fd4acfaa5d0acc7eef1d3013a': ['sub_dir_2/test_file_2.txt'],
+            'd1e2ac797b8385e792ac1e31db4a81f9': ['sub_dir_2/test_file_3.txt'],
             'fea80f2db003d4ebc4536023814aa885': ['sub_dir_1/test_file_1.txt_copy'],
             '27565f9a57c128674736aa644012ce67': [
                 'sub_dir_1/test_file_1.txt_copy_another',
@@ -665,10 +690,6 @@ class DirSnapshotManagerTest(unittest.TestCase):
                 ]
         }
         self.assertEqual(self.snapshot_manager.local_full_snapshot, mock_snapshot)
-        #reset original condition
-        self.snapshot_manager.local_full_snapshot = original_snapshot
-        with open(self.test_file_1,'w') as f:
-            f.write(original_content)
 
     def test_update_snapshot_copy(self):
         mock_snapshot = copy.deepcopy(self.snapshot_manager.local_full_snapshot)
@@ -729,7 +750,7 @@ class DirSnapshotManagerTest(unittest.TestCase):
         test_timestamp = 123124
         expected_snap = {
             "timestamp": 123124,
-            "snapshot": "ab8d6b3c332aa253bb2b471c57b73e27"
+            "snapshot": self.md5_snapshot
         }
         self.snapshot_manager.save_timestamp(test_timestamp)
         new_snap_conf = json.load(open(self.conf_snap_path))
