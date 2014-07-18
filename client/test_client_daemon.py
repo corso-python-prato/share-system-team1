@@ -815,8 +815,8 @@ class DirSnapshotManagerTest(unittest.TestCase):
     def test_instant_snapshot(self):
         shutil.copy(self.test_file_1, self.test_folder_2)
         self.true_snapshot['fea80f2db003d4ebc4536023814aa885'] = [
-            'sub_dir_1/test_file_1.txt',
             'sub_dir_2/test_file_1.txt',
+            'sub_dir_1/test_file_1.txt',
         ]
         instant_snapshot = self.snapshot_manager.instant_snapshot()
         self.assertEqual(instant_snapshot, self.true_snapshot)
