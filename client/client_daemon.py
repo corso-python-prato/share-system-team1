@@ -240,9 +240,9 @@ class FileSystemOperator(object):
             create file
             when watchdog see the first event on this path ignore it
         """
-        self.add_event_to_ignore(get_abspath(path))
         abs_path, content = self.server_com.download_file(path)
         if abs_path and content:
+            self.add_event_to_ignore(get_abspath(path))
             try:
                 os.makedirs(os.path.split(abs_path)[0], 0755)
             except OSError:
@@ -473,7 +473,9 @@ class DirSnapshotManager(object):
 
     def global_md5(self):
         """ calculate the global md5 of local_full_snapshot """
-        snap_list = sorted(list(self.local_full_snapshot))
+        for k, v in self.local_full_snapshot.items():
+            v.sort()
+        snap_list = sorted(list(self.local_full_snapshot.items()))
         return hashlib.md5(str(snap_list)).hexdigest()
 
     def instant_snapshot(self):
@@ -517,7 +519,7 @@ class DirSnapshotManager(object):
 
     def update_snapshot_copy(self, body):
         """ update of local full snapshot by copy request"""
-        self.local_full_snapshot[self.file_snapMd5(body['src_path'])].append(body["dst_path"])
+        self.local_full_snapshot[self.file_snapMd5(body['src_path'])].append(get_relpath(body["dst_path"]))
 
     def update_snapshot_move(self, body):
         """ update of local full snapshot by move request"""
@@ -624,7 +626,7 @@ class DirSnapshotManager(object):
                         print "no action:\t" + equal_path
                 for new_client_path in new_client_paths: # 2) a 3
                     print "upload:\t" + new_client_path
-                    command_list.append({'remote_upload': ["/".join([CONFIG_DIR_PATH, new_client_path])]})
+                    command_list.append({'remote_upload': [new_client_path]})
             
             elif not self.is_syncro(server_timestamp): # 2) b
                 for new_server_path in new_server_paths: # 2) b 1
