@@ -189,7 +189,7 @@ class ServerCommunicatorTest(unittest.TestCase):
         self.assertEqual(result.status_code, 401)
 
         #Case: request exception
-        Callback.ecx = True
+        Callback.exc = True
         result = self.server_comm._try_request(Callback)
         self.assertEqual(
             result.auth,
