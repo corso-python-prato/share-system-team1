@@ -632,18 +632,18 @@ class DirSnapshotManager(object):
             elif not self.is_syncro(server_timestamp): # 2) b
                 for new_server_path in new_server_paths: # 2) b 1
                     server_md5 = self.find_file_md5(server_snapshot, new_server_path)
-                    if not server_md5 in self.local_full_snapshot: # 2) b 1 I
-                        if self.check_files_timestamp(server_snapshot, new_server_path):
-                            print "delete remote:\t" + new_server_path
-                            command_list.append({'remote_delete': [new_server_path]})
-                        else:
-                            print "download local:\t" + new_server_path
-                            command_list.append({'local_download': [new_server_path]})
-                    else: # 2) b 1 II
-                        print  "copy or rename:\t" + new_server_path
-                        src_local_path = self.local_full_snapshot[server_md5][0]
-                        command_list.append({'local_copy': [src_local_path ,new_server_path]})
-               
+                    if self.check_files_timestamp(server_snapshot, new_server_path):
+                        print "delete remote:\t" + new_server_path
+                        command_list.append({'remote_delete': [new_server_path]})
+                    else:
+                        if not server_md5 in self.local_full_snapshot: # 2) b 1 I
+                                print "download local:\t" + new_server_path
+                                command_list.append({'local_download': [new_server_path]})
+                        else: # 2) b 1 II
+                            print  "copy or rename:\t" + new_server_path
+                            src_local_path = self.local_full_snapshot[server_md5][0]
+                            command_list.append({'local_copy': [src_local_path ,new_server_path]})
+
                 for equal_path in equal_paths: # 2) b 2
                     if self.find_file_md5(self.local_full_snapshot, equal_path, False) != self.find_file_md5(server_snapshot, equal_path):
                         if self.check_files_timestamp(server_snapshot, equal_path): # 2) b 2 I
