@@ -447,50 +447,47 @@ class TestActionsAPI(unittest.TestCase):
                      headers=self.headers)
         self.assertEqual(rv.status_code, 409)
 
-    # def test_actions_move(self):
-    #     with server.app.test_client() as tc:
-    #         f = open(TestActionsAPI.test_file, "r")
-    #         data = {"file_src": "src", "file_dest": "dest"}
-    #         url = "{}{}".format(TestActionsAPI.url_radix, "move",
-    #                             client_path)
-    #         rv = tc.post(server._API_PREFIX + url,
-    #                      data=data,
-    #                      headers=make_headers("fake_user",
-    #                                           TestActionsAPI.password_test))
-    #         f.close()
-    #         self.assertEqual(rv.status_code, 401)
+    def test_actions_move(self):
+        cls = TestActionsAPI
+        url = "{}{}{}".format(_API_PREFIX, cls.url_radix, "move")
+        data = {"file_src": "demo1", "file_dest": "mv/dest.txt"}
 
-    #     with server.app.test_client() as tc:
-    #         f = open(TestActionsAPI.test_file, "r")
-    #         data = {"file_src": "src", "file_dest": "dest"}
-    #         url = "{}{}".format(TestActionsAPI.url_radix, "move",
-    #                             TestActionsAPI.test_file_name)
-    #         rv = tc.post(server._API_PREFIX + url,
-    #                      data=data,
-    #                      headers=make_headers(TestActionsAPI.user_test,
-    #                                           TestActionsAPI.password_test))
-    #         f.close()
-    #         self.assertEqual(rv.status_code, 201)
-    #         self.assertEqual(os.path.isfile(server_path), False)
-    #         u = server.User.users[TestActionsAPI.user_test]
-    #         self.assertEqual("mv/{}".format(TestActionsAPI.test_file_name)
-    #                          in u.paths, False)
-    #         self.assertEqual(os.path.isfile(full_dest_path), True)
-    #         self.assertEqual("{}/mv/{}".format("new_mv",
-    #                                            TestActionsAPI.test_file_name)
-    #                          in u.paths, True)
+        # try to move something with a fake user
+        received = self.tc.post(
+            url, data=data, headers=make_headers("fake_user", "some_psw")
+        )
+        self.assertEqual(received.status_code, 401)
 
-    #     with server.app.test_client() as tc:
-    #         f = open(TestActionsAPI.test_file, "r")
-    #         data = {"file_src": "src", "file_dest": "dest"}
-    #         url = "{}{}".format(TestActionsAPI.url_radix, "move",
-    #                             client_path)
-    #         rv = tc.post(server._API_PREFIX + url,
-    #                      data=data,
-    #                      headers=make_headers(TestActionsAPI.user_test,
-    #                                           TestActionsAPI.password_test))
-    #         f.close()
-    #         self.assertEqual(rv.status_code, 404)
+        # test the correct move action
+        received = self.tc.post(
+            url, data=data, headers=self.headers
+        )
+        self.assertEqual(received.status_code, 201)
+        # check the disk
+        self.assertFalse(
+            os.path.isfile(
+                os.path.join(self.test_folder, "demo1")
+        ))
+        self.assertTrue(
+            os.path.isdir(
+                os.path.join(self.test_folder, "mv")
+        ))
+        self.assertTrue(
+            os.path.isfile(
+                os.path.join(self.test_folder, "mv/dest.txt")
+        ))
+        # check the structure
+        user_paths = server.User.users[cls.user_test].paths
+        self.assertNotIn("demo1", user_paths)
+        self.assertIn("mv", user_paths)
+        self.assertIn("mv/dest.txt", user_paths)
+
+        # test the status code returned when the source doesn't exist
+        data = {"file_src": "not_a_file", "file_dest": "mv/dest2.txt"}
+        received = self.tc.post(
+            url, data=data, headers=self.headers
+        )
+        self.assertEqual(received.status_code, 404)
 
 
 class NewRootTestExample(unittest.TestCase):
