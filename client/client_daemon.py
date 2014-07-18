@@ -394,7 +394,7 @@ class DirectoryEventHandler(FileSystemEventHandler):
             if not event.is_directory:
                 self.cmd.move_file(event.src_path, event.dest_path)
         else:
-            logger.debug("".format("ingnored move on ", event.src_path))
+            logger.debug("".format("ignored move on ", event.src_path))
             self.paths_ignored.remove(event.src_path)
             self.paths_ignored.remove(event.dest_path)
 
@@ -416,9 +416,9 @@ class DirectoryEventHandler(FileSystemEventHandler):
                     self.cmd.upload_file(event.src_path)
         else:
             if copy:
-                logger.debug("".format("ingnored copy on ", event.src_path))
+                logger.debug("".format("ignored copy on ", event.src_path))
             else:
-                logger.debug("".format("ingnored creation on ", event.src_path))
+                logger.debug("".format("ignored creation on ", event.src_path))
             self.paths_ignored.remove(event.src_path)
 
     def on_deleted(self, event):
@@ -433,7 +433,7 @@ class DirectoryEventHandler(FileSystemEventHandler):
             if not event.is_directory:
                 self.cmd.delete_file(event.src_path)
         else:
-            logger.debug("".format("ingnored deletion on ", event.src_path))
+            logger.debug("".format("ignored deletion on ", event.src_path))
             self.paths_ignored.remove(event.src_path)
 
     def on_modified(self, event):
@@ -448,7 +448,7 @@ class DirectoryEventHandler(FileSystemEventHandler):
             if not event.is_directory:
                 self.cmd.upload_file(event.src_path, put_file=True)
         else:
-            logger.debug("".format("ingnored modified on ", event.src_path))
+            logger.debug("".format("ignored modified on ", event.src_path))
             self.paths_ignored.remove(event.src_path)
 
 
