@@ -721,7 +721,7 @@ def logger_init(crash_repo_path, stdout_level, file_level, disabled = False):
         logging.disable(logging.CRITICAL)
 
 
-def args_part_init(stdout_level, file_level, report_file):
+def args_parse_init(stdout_level, file_level, report_file):
     parser = argparse.ArgumentParser(description='RawBox client daemon')
     parser.add_argument("--std-log-level", required=False, help="set the logging level to std out. this argument accept:\n\tDEBUG\n\tINFO\n\tWARNING\n\tERROR\n\tCRITICAL, by default is " + stdout_level, default=stdout_level)
     parser.add_argument("--file-log-level", required=False, help="set the logging level to file. this argument accept:\n\tDEBUG\n\tINFO\n\tWARNING\n\tERROR\n\tCRITICAL, by default is" + file_level, default=file_level)
@@ -739,7 +739,7 @@ def main():
     config, is_new = load_config()
     global CONFIG_DIR_PATH
     CONFIG_DIR_PATH = config['dir_path']
-    args = args_part_init(
+    args = args_parse_init(
         stdout_level=config['stdout_log_level'],
         file_level=config['file_log_level'],
         report_file=config['crash_repo_path'],
