@@ -128,11 +128,16 @@ def make_headers(user, psw):
 class TestFilesAPI(unittest.TestCase):
     user_test = "action_man"
     password_test = "password"
-    url_radix = "files/"
-
+    url_radix = "files/"  
     root = os.path.join(
         os.path.dirname(__file__),
         "demo_test/test_file"
+    )
+    test_file_name = os.path.join(
+        root,
+        "user_dirs",
+        user_test,
+        "random_file.txt"
     )
 
     def setUp(self):
@@ -201,12 +206,7 @@ class TestFilesAPI(unittest.TestCase):
 
     def test_get(self):
         url = "{}{}".format(TestFilesAPI.url_radix, "random_file.txt")
-        server_path = os.path.join(
-            TestFilesAPI.root,
-            "user_dirs",
-            TestFilesAPI.user_test,
-            "random_file.txt"
-        )
+        server_path = TestFilesAPI.test_file_name
 
         #fail authentication
         rv = self.tc.get(server._API_PREFIX + url,
@@ -229,54 +229,68 @@ class TestFilesAPI(unittest.TestCase):
                     headers=make_headers(TestFilesAPI.user_test,
                                          TestFilesAPI.password_test))
         self.assertEqual(rv.status_code, 404)
-        
 
-#     def test_put(self):
 
-#         client_path, server_path = self.set_tmp_params("modify")
-#         if not server_path in server.User.users[TestFilesAPI.user_test
-#                                                 ].paths[client_path]:
-#             return
+    def test_put(self):
+        #set-up
+        shutil.copy(
+            TestFilesAPI.test_file_name,
+            os.path.join(
+                TestFilesAPI.root,
+                "user_dirs",
+                TestFilesAPI.user_test,
+                "backup_random_file.txt"
+            ),
+        )
 
-#         with server.app.test_client() as tc:
-#             f = open(TestFilesAPI.test_file, "r")
-#             data = {"file_content": f}
-#             url = "{}{}".format(TestFilesAPI.url_radix,
-#                                 TestFilesAPI.test_file_name)
-#             rv = tc.put(server._API_PREFIX + url,
-#                         data=data,
-#                         headers=make_headers("fake_user",
-#                                              TestFilesAPI.password_test))
-#             f.close()
-#             self.assertEqual(rv.status_code, 401)
+        #fail authentication
+        with open(DEMO_FILE, "r") as f:
+            data = {"file_content": f}
+            url = "{}{}".format(TestFilesAPI.url_radix,
+                                "random_file.txt")
+            rv = self.tc.put(server._API_PREFIX + url,
+                        data=data,
+                        headers=make_headers("fake_user",
+                                             TestFilesAPI.password_test))
+            self.assertEqual(rv.status_code, 401)
 
-#         with server.app.test_client() as tc:
-#             f = open(TestFilesAPI.test_file, "r")
-#             data = {"file_content": f}
-#             url = "{}{}".format(TestFilesAPI.url_radix,
-#                                 TestFilesAPI.test_file_name)
-#             rv = tc.put(server._API_PREFIX + url,
-#                         data=data,
-#                         headers=make_headers(TestFilesAPI.user_test,
-#                                              TestFilesAPI.password_test))
-#             f.close()
-#             self.assertEqual(rv.status_code, 201)
+        #correct put
+        with open(DEMO_FILE, "r") as f:
+            data = {"file_content": f}
+            url = "{}{}".format(TestFilesAPI.url_radix,
+                                "random_file.txt")
+            rv = self.tc.put(server._API_PREFIX + url,
+                        data=data,
+                        headers=make_headers(TestFilesAPI.user_test,
+                                             TestFilesAPI.password_test))
+            self.assertEqual(rv.status_code, 201)
 
-#         with open(server_path, "r") as f:
-#                 got_content = f.read()
-#                 with open(TestFilesAPI.test_file, "r") as fp:
-#                     self.assertEqual(fp.read(), got_content)
+        with open(TestFilesAPI.test_file_name, "r") as f:
+            with open(DEMO_FILE, "r") as fp:
+                self.assertEqual(fp.read(), f.read())
 
-#         with server.app.test_client() as tc:
-#             f = open(TestFilesAPI.test_file, "r")
-#             data = {"file_content": f}
-#             url = "{}{}".format(TestFilesAPI.url_radix, "NO_SERVER_PATH")
-#             rv = tc.put(server._API_PREFIX + url,
-#                         data=data,
-#                         headers=make_headers(TestFilesAPI.user_test,
-#                                              TestFilesAPI.password_test))
-#             f.close()
-#             self.assertEqual(rv.status_code, 404)
+        #restore
+        shutil.move(
+            os.path.join(
+                TestFilesAPI.root,
+                "user_dirs",
+                TestFilesAPI.user_test,
+                "backup_random_file.txt"
+            ),
+            TestFilesAPI.test_file_name
+        )
+
+        #wrong path
+        with open(DEMO_FILE, "r") as f:
+            data = {"file_content": f}
+            url = "{}{}".format(TestFilesAPI.url_radix, "NO_SERVER_PATH")
+            rv = self.tc.put(server._API_PREFIX + url,
+                        data=data,
+                        headers=make_headers(TestFilesAPI.user_test,
+                                             TestFilesAPI.password_test))
+            self.assertEqual(rv.status_code, 404)
+
+
 
 
 # class TestActionsAPI(unittest.TestCase):
