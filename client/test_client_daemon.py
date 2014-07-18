@@ -514,6 +514,9 @@ class FileSystemOperatorTest(unittest.TestCase):
         #check if only source_path is added by delete_a_file in the 2 tested case
         self.assertEqual([file_to_delete.name, source_path], self.event_handler.paths_ignored)
 
+        #Case: wrong path
+        self.file_system_op.delete_a_file('wrong/path')
+
 
 class DirSnapshotManagerTest(unittest.TestCase):
     def setUp(self):
