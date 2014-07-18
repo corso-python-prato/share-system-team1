@@ -159,13 +159,15 @@ class RawBoxCmd(cmd.Cmd):
         create a new RawBox user
         create user <email>
         """
-        if line:
+        try:
             command = line.split()[0]
             arguments = line.split()[1]
-            {
-                'user': self.executer._create_user
-            }.get(command, self.error)(arguments)
-        else:
+            if command != 'user':
+                self.error("error, wrong command. Use 'create user'")
+            else:
+                self.executer._create_user(arguments)
+        except IndexError:
+            self.error("error, must use command user")
             Message('INFO', self.do_create.__doc__)
 
     def do_activate(self, line):
@@ -173,12 +175,16 @@ class RawBoxCmd(cmd.Cmd):
         activate a new RawBox user previously created
         activate <email> <code>
         """
-        if line:
+        user = None
+        try:
             user = line.split()[0]
-            code = line.split()[1][5:]
+            code = line.split()[1]
             self.executer._activate_user(user, code)
-        else:
-            Message('INFO', self.do_activate.__doc__)
+        except IndexError:
+            if not user:
+                Message('INFO', self.do_activate.__doc__)
+            else:
+                self.error("You have to specify: <your email> <your activation code>")
 
     def do_delete(self, line):
         """
