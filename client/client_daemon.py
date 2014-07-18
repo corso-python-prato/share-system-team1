@@ -305,7 +305,7 @@ class FileSystemOperator(object):
         else:
             try:
                 os.remove(dst_path)
-            except IOError:
+            except OSError:
                 pass
         self.snapshot_manager.update_snapshot_delete({"src_path": get_abspath(dst_path)})
 
