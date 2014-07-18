@@ -86,7 +86,7 @@ class TestFilesAPI(unittest.TestCase):
         with open(DEMO_FILE, "r") as f:
             data = {"file_content": f}
             rv = self.tc.post(
-                server._API_PREFIX + url,
+                _API_PREFIX + url,
                 data=data,
                 headers=make_headers("fake_user", "some_psw"))
             self.assertEqual(rv.status_code, 401)
@@ -95,7 +95,7 @@ class TestFilesAPI(unittest.TestCase):
         with open(DEMO_FILE, "r") as f:
             data = {"file_content": f}
             rv = self.tc.post(
-                server._API_PREFIX + url,
+                _API_PREFIX + url,
                 data=data,
                 headers=self.headers
             )
@@ -116,7 +116,7 @@ class TestFilesAPI(unittest.TestCase):
         with open(DEMO_FILE, "r") as f:
             data = {"file_content": f}
             rv = self.tc.post(
-                server._API_PREFIX + url,
+                _API_PREFIX + url,
                 data=data,
                 headers=self.headers
             )
@@ -131,14 +131,14 @@ class TestFilesAPI(unittest.TestCase):
 
         # fail authentication
         received = self.tc.get(
-            server._API_PREFIX + url,
+            _API_PREFIX + url,
             headers=make_headers("fake_user", TestFilesAPI.password_test)
         )
         self.assertEqual(received.status_code, 401)
 
         # downloading file
         received = self.tc.get(
-            server._API_PREFIX + url,
+            _API_PREFIX + url,
             headers=self.headers
         )
         self.assertEqual(received.status_code, 200)
@@ -148,7 +148,7 @@ class TestFilesAPI(unittest.TestCase):
         # try to download file not present
         url = "{}{}".format(TestFilesAPI.url_radix, "NO_SERVER_PATH")
         rv = self.tc.get(
-            server._API_PREFIX + url,
+            _API_PREFIX + url,
             headers=self.headers
         )
         self.assertEqual(rv.status_code, 404)
@@ -166,7 +166,7 @@ class TestFilesAPI(unittest.TestCase):
             data = {"file_content": f}
             url = "{}{}".format(cls.url_radix, "random_file.txt")
             rv = self.tc.put(
-                server._API_PREFIX + url,
+                _API_PREFIX + url,
                 data=data,
                 headers=make_headers("fake_user", cls.password_test)
             )
@@ -177,7 +177,7 @@ class TestFilesAPI(unittest.TestCase):
             data = {"file_content": f}
             url = "{}{}".format(cls.url_radix, "random_file.txt")
             rv = self.tc.put(
-                server._API_PREFIX + url,
+                _API_PREFIX + url,
                 data=data,
                 headers=self.headers
             )
@@ -198,7 +198,7 @@ class TestFilesAPI(unittest.TestCase):
             data = {"file_content": f}
             url = "{}{}".format(cls.url_radix, "NO_SERVER_PATH")
             rv = self.tc.put(
-                server._API_PREFIX + url,
+                _API_PREFIX + url,
                 data=data,
                 headers=self.headers
             )
@@ -213,14 +213,14 @@ class TestFilesAPI(unittest.TestCase):
 
         def get_diff():
             rv = self.tc.get(
-                server._API_PREFIX + self.url_radix,
+                _API_PREFIX + self.url_radix,
                 headers=headers
             )
             self.assertEqual(rv.status_code, 200)
             return json.loads(rv.data)
 
         rv = self.tc.post(
-            server._API_PREFIX + "create_user",
+            _API_PREFIX + "create_user",
             data=data
         )
         self.assertEqual(rv.status_code, 201)
@@ -240,7 +240,7 @@ class TestFilesAPI(unittest.TestCase):
             with open(DEMO_FILE, "r") as f:
                 data_local = {"file_content": f}
                 rv = self.tc.post(
-                    "{}{}{}".format(server._API_PREFIX, self.url_radix, p),
+                    "{}{}{}".format(_API_PREFIX, self.url_radix, p),
                     data=data_local,
                     headers=headers
                 )
@@ -255,7 +255,7 @@ class TestFilesAPI(unittest.TestCase):
         # third check: delete a file
         data3 = {"path": some_paths[1]}
         rv = self.tc.post(
-            server._API_PREFIX + "actions/delete",
+            _API_PREFIX + "actions/delete",
             data=data3,
             headers=headers
         )
@@ -332,7 +332,7 @@ class TestActionsAPI(unittest.TestCase):
 
     def test_actions_delete(self):
         url = "{}{}{}".format(
-            server._API_PREFIX, TestActionsAPI.url_radix, "delete"
+            _API_PREFIX, TestActionsAPI.url_radix, "delete"
         )
         data = {"path": "demo1"}
 
@@ -384,7 +384,7 @@ class TestActionsAPI(unittest.TestCase):
         cls = TestActionsAPI
         data = {"file_src": "demo1", "file_dest": "dest"}
         url = "{}{}{}".format(
-            server._API_PREFIX, cls.url_radix, "copy"
+            _API_PREFIX, cls.url_radix, "copy"
         )
 
         # try copy with a fake user
