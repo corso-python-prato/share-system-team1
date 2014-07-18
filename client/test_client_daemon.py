@@ -20,6 +20,7 @@ import client_daemon
 import httpretty
 import requests
 import unittest
+import logging
 import hashlib
 import base64
 import shutil
@@ -28,6 +29,9 @@ import json
 import os
 
 class TestEnvironment(object):
+
+    def __init__(self):
+        logging.disable(logging.CRITICAL)
 
     def create(self):
         self.test_main_path = os.path.join(os.path.expanduser('~'), 'test_path')
@@ -811,8 +815,8 @@ class DirSnapshotManagerTest(unittest.TestCase):
     def test_instant_snapshot(self):
         shutil.copy(self.test_file_1, self.test_folder_2)
         self.true_snapshot['fea80f2db003d4ebc4536023814aa885'] = [
-            'sub_dir_2/test_file_1.txt',
             'sub_dir_1/test_file_1.txt',
+            'sub_dir_2/test_file_1.txt',
         ]
         instant_snapshot = self.snapshot_manager.instant_snapshot()
         self.assertEqual(instant_snapshot, self.true_snapshot)
@@ -1282,6 +1286,8 @@ class FunctionTest(unittest.TestCase):
         #reset
         os.remove('config.json')
 
+        abs_path = os.path.dirname(os.path.abspath(__file__))
+
         #Case: IOError
         expected_conf = {
             "server_url": "http://{}:{}/{}".format(
@@ -1290,7 +1296,10 @@ class FunctionTest(unittest.TestCase):
                 client_daemon.API_PREFIX
             ),
             "dir_path": os.path.join(os.path.expanduser("~"), "RawBox"),
-            "snapshot_file_path": 'snapshot_file.json',
+            "snapshot_file_path": os.path.join(abs_path, 'snapshot_file.json'),
+            "crash_repo_path": os.path.join(abs_path, 'RawBox_crash_report.log'),
+            "file_log_level": "ERROR",
+            "stdout_log_level": "DEBUG",
             "cmd_host": "localhost",
             "cmd_port": "6666",
             "username": 'username',
