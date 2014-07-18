@@ -309,10 +309,6 @@ class FileSystemOperator(object):
             os.remove(dst_path)
         self.snapshot_manager.update_snapshot_delete({"src_path": get_abspath(dst_path)})
 
-    def copy_and_rename(self, src_path, dst_path):
-        """ copy a file with extension .conflicted """
-        pass
-
 
 def load_config():
     try:
