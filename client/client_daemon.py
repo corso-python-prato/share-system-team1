@@ -704,6 +704,8 @@ def logger_init(crash_repo_path, stdout_level, file_level, disabled = False):
     # create formatter for crash file logging
     formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
+    logger = logging.getLogger()
+
     # create file handler which logs even debug messages
     if crash_repo_path:
         crash_logger = logging.FileHandler(crash_repo_path)
