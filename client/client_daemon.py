@@ -721,16 +721,16 @@ def logger_init(crash_repo_path, stdout_level, file_level, disabled = False):
 
 def args_part_init(stdout_level, file_level, report_file):
     parser = argparse.ArgumentParser(description='RawBox client daemon')
-    parser.add_argument("--std-log", required=False)
-    parser.add_argument("--file-log", required=False)
-    parser.add_argument("--no-log", action='store_true', required=False)
-    parser.add_argument("--no-repo", action='store_true', required=False)
+    parser.add_argument("--std-log-level", required=False, help="set the logging level to std out, by default is DEBUG. this argument accept:\n\tDEBUG\n\tINFO\n\tWARNING\n\tERROR\n\tCRITICAL")
+    parser.add_argument("--file-log-level", required=False, help="set the logging level to file, by default is ERROR. this argument accept:\n\tDEBUG\n\tINFO\n\tWARNING\n\tERROR\n\tCRITICAL")
+    parser.add_argument("--no-log", action='store_true', required=False, help="disable all log, by default is false")
+    parser.add_argument("--no-repo", action='store_true', required=False, help="disable the creation of a crash file, by default is false")
     args = parser.parse_args()
 
-    if args.std_log:
-        stdout_level = args.std_log
-    if args.file_log:
-        file_level = args.file_log
+    if args.std_log_level:
+        stdout_level = args.std_log_level
+    if args.file_log_level:
+        file_level = args.file_log_level
     if args.no_repo:
         report_file = False;
 
