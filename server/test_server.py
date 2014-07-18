@@ -409,52 +409,43 @@ class TestActionsAPI(unittest.TestCase):
         )
         self.assertTrue(os.path.isdir(user_dir))
 
-    # def test_actions_copy(self):
-    #     with server.app.test_client() as tc:
-    #         f = open(TestActionsAPI.test_file, "r")
-    #         data = {"file_src": "src", "file_dest": "dest"}
-    #         url = "{}{}".format(TestActionsAPI.url_radix, "copy",
-    #                             client_path)
-    #         rv = tc.post(server._API_PREFIX + url,
-    #                      data=data,
-    #                      headers=make_headers("fake_user",
-    #                                           TestActionsAPI.password_test))
-    #         f.close()
-    #         self.assertEqual(rv.status_code, 401)
+    def test_actions_copy(self):
+        data = {"file_src": "demo1", "file_dest": "dest"}
+        url = "{}{}{}".format(server._API_PREFIX, TestActionsAPI.url_radix, "copy")
 
-    #     with server.app.test_client() as tc:
-    #         f = open(TestActionsAPI.test_file, "r")
-    #         data = {"file_src": "src", "file_dest": "dest"}
-    #         url = "{}{}".format(TestActionsAPI.url_radix, "copy",
-    #                             TestActionsAPI.test_file_name)
-    #         rv = tc.post(server._API_PREFIX + url,
-    #                      data=data,
-    #                      headers=make_headers(TestActionsAPI.user_test,
-    #                                           TestActionsAPI.password_test))
-    #         f.close()
-    #         self.assertEqual(rv.status_code, 201)
-    #         self.assertEqual(os.path.isfile(server_path), True)
-    #         u = server.User.users[TestActionsAPI.user_test]
-    #         self.assertEqual("cp/{}".format(TestActionsAPI.test_file_name)
-    #                          in u.paths, True)
-    #         self.assertEqual(os.path.isfile(full_dest_path), True)
-    #         self.assertEqual("{}/cp/{}".format("new_cp",
-    #                                            TestActionsAPI.test_file_name)
-    #                          in u.paths, True)
+        #try copy with a fake user
+        rv = self.tc.post(url,
+                     data=data,
+                     headers=make_headers("fake_user",
+                                          "fail_pass"))
+        self.assertEqual(rv.status_code, 401)
 
-    #     client_path, server_path = set_tmp_params("prova")
-    #     data = {"file_src": client_path, "file_dest": client_path}
-    #     with server.app.test_client() as tc:
-    #         f = open(TestActionsAPI.test_file, "r")
-    #         data = {"file_src": "src", "file_dest": "dest"}
-    #         url = "{}{}".format(TestActionsAPI.url_radix, "copy",
-    #                             client_path)
-    #         rv = tc.post(server._API_PREFIX + url,
-    #                      data=data,
-    #                      headers=make_headers(TestActionsAPI.user_test,
-    #                                           TestActionsAPI.password_test))
-    #         f.close()
-    #         self.assertEqual(rv.status_code, 409)
+        #try correct copy 
+        rv = self.tc.post(url,
+                     data=data,
+                     headers=self.headers)
+        self.assertEqual(rv.status_code, 201)
+
+        self.assertEqual(os.path.isfile(os.path.join(
+            TestActionsAPI.root, "user_dirs", TestActionsAPI.user_test,"demo1")), True)
+
+        self.assertNotIn(
+            os.path.join(TestActionsAPI.user_test,"demo1"),
+            server.User.users[TestActionsAPI.user_test].paths
+        )
+        self.assertEqual(os.path.isfile(os.path.join(
+            TestActionsAPI.root, "user_dirs", TestActionsAPI.user_test,"dest")), True)
+        self.assertNotIn(
+            os.path.join(TestActionsAPI.user_test,"dest/demo1"),
+            server.User.users[TestActionsAPI.user_test].paths
+        )
+
+        # try copy file with conflict
+        data = {"file_src": "demo1", "file_dest": "demo1"}
+        rv = self.tc.post(url,
+                     data=data,
+                     headers=self.headers)
+        self.assertEqual(rv.status_code, 409)
 
     # def test_actions_move(self):
     #     with server.app.test_client() as tc:
@@ -747,53 +738,53 @@ class TestUser(unittest.TestCase):
 #         rv, client_path, server_path = transfer("mv", False, False)
 #         self.assertEqual(rv.status_code, 404)
 
-#     def test_files_differences(self):
-#         client = TestClient(
-#             user="complex_user@gmail.com",
-#             psw="complex_password"
-#         )
-#         client.create_demo_user()
+    # def test_files_differences(self):
+    #     client = TestClient(
+    #         user="complex_user@gmail.com",
+    #         psw="complex_password"
+    #     )
+    #     client.create_demo_user()
 
-#         # first check: user created just now
-#         rv = client.call("get", "files/")
-#         self.assertEqual(rv.status_code, 200)
-#         snapshot1 = json.loads(rv.data)
-#         self.assertFalse(snapshot1["snapshot"])
+    #     # first check: user created just now
+    #     rv = client.call("get", "files/")
+    #     self.assertEqual(rv.status_code, 200)
+    #     snapshot1 = json.loads(rv.data)
+    #     self.assertFalse(snapshot1["snapshot"])
 
-#         # second check: insert some files
-#         some_paths = [
-#             "path1/cool_filename.txt",
-#             "path2/path3/yo.jpg"
-#         ]
-#         for p in some_paths:
-#             f = open(DEMO_FILE, "r")
-#             data = {"file_content": f}
-#             rv = client.call("post", "files/" + p, data)
-#             f.close()
-#             self.assertEqual(rv.status_code, 201)
+    #     # second check: insert some files
+    #     some_paths = [
+    #         "path1/cool_filename.txt",
+    #         "path2/path3/yo.jpg"
+    #     ]
+    #     for p in some_paths:
+    #         f = open(DEMO_FILE, "r")
+    #         data = {"file_content": f}
+    #         rv = client.call("post", "files/" + p, data)
+    #         f.close()
+    #         self.assertEqual(rv.status_code, 201)
 
-#         rv = client.call("get", "files/")
-#         self.assertEqual(rv.status_code, 200)
-#         snapshot2 = json.loads(rv.data)
-#         self.assertGreater(snapshot2["timestamp"], snapshot1["timestamp"])
-#         self.assertEqual(len(snapshot2["snapshot"]), 1)
-#         for s in snapshot2["snapshot"].values():
-#             self.assertEqual(len(s), 2)
+    #     rv = client.call("get", "files/")
+    #     self.assertEqual(rv.status_code, 200)
+    #     snapshot2 = json.loads(rv.data)
+    #     self.assertGreater(snapshot2["timestamp"], snapshot1["timestamp"])
+    #     self.assertEqual(len(snapshot2["snapshot"]), 1)
+    #     for s in snapshot2["snapshot"].values():
+    #         self.assertEqual(len(s), 2)
 
-#         # third check: delete a file
-#         data = {"path": some_paths[1]}
-#         rv = client.call("post", "actions/delete", data)
-#         self.assertEqual(rv.status_code, 200)
+    #     # third check: delete a file
+    #     data = {"path": some_paths[1]}
+    #     rv = client.call("post", "actions/delete", data)
+    #     self.assertEqual(rv.status_code, 200)
 
-#         rv = client.call("get", "files/")
-#         self.assertEqual(rv.status_code, 200)
+    #     rv = client.call("get", "files/")
+    #     self.assertEqual(rv.status_code, 200)
 
-#         snapshot3 = json.loads(rv.data)
-#         self.assertGreater(snapshot3["timestamp"], snapshot2["timestamp"])
-#         self.assertEqual(len(snapshot3["snapshot"]), 1)
+    #     snapshot3 = json.loads(rv.data)
+    #     self.assertGreater(snapshot3["timestamp"], snapshot2["timestamp"])
+    #     self.assertEqual(len(snapshot3["snapshot"]), 1)
 
-#         for s in snapshot3["snapshot"].values():
-#             self.assertEqual(len(s), 1)
+    #     for s in snapshot3["snapshot"].values():
+    #         self.assertEqual(len(s), 1)
 
 #     def test_user_class_init(self):
 #         # create a temporary directory and work on it
