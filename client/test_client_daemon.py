@@ -949,6 +949,34 @@ class DirSnapshotManagerTest(unittest.TestCase):
             self.snapshot_manager.last_status,
             expected_snap)
 
+    def test_find_file_md5(self):
+        #case true path of local snapshot
+        md5 = self.snapshot_manager.find_file_md5(self.true_snapshot, 'sub_dir_1/test_file_1.txt', False)
+        self.assertEqual(md5, 'fea80f2db003d4ebc4536023814aa885')
+
+        #case false path of local snapshot
+        md5 = self.snapshot_manager.find_file_md5(self.true_snapshot, 'sub_dir_1/test_file_1.txt_fake', False)
+        self.assertEqual(md5, None)
+
+        #case true path of server snapshot
+        mock_server_snap = {
+            '81bcb26fd4acfaa5d0acc7eef1d3013a': [
+                {'path': u'sub_dir_2/test_file_2.txt', 'timestamp': 123123}],
+            'd1e2ac797b8385e792ac1e31db4a81f9': [
+                {'path': u'sub_dir_2/test_file_3.txt', 'timestamp': 123123}],
+            'fea80f2db003d4ebc4536023814aa885': [
+                {'path': u'sub_dir_1/test_file_1.txt', 'timestamp': 123123}],
+        }
+        md5 = self.snapshot_manager.find_file_md5(mock_server_snap, 'sub_dir_1/test_file_1.txt', True)
+        self.assertEqual(md5, 'fea80f2db003d4ebc4536023814aa885')
+
+        #case false path of server snapshot
+        md5 = self.snapshot_manager.find_file_md5(mock_server_snap, 'sub_dir_1/test_file_1.txt_fake', True)
+        self.assertEqual(md5, None)
+
+    def test_check_files_timestamp(self):
+        pass
+
 
 class DirectoryEventHandlerTest(unittest.TestCase):
 
