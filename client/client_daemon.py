@@ -414,63 +414,63 @@ class FileSystemOperator(object):
 
 
 def load_config():
+
+    with open('config.json', 'r') as config_file:
+        config = json.load(config_file)
+    return config, False
+    config_ini = ConfigParser.ConfigParser()
+    config_ini.read(FILE_CONFIG)
+    user_exists = True
+    config = None
+
     try:
-        with open('config.json', 'r') as config_file:
-            config = json.load(config_file)
-        return config, False
-        config_ini = ConfigParser.ConfigParser()
-        config_ini.read(FILE_CONFIG)
-        user_exists = True
-        config = None
+        config = {
+            "server_url": "http://{}:{}/{}".format(
+                config_ini.get('daemon_communication', 'server_url'),
+                config_ini.get('daemon_communication', 'server_port'),
+                config_ini.get('daemon_communication', 'api_prefix')
+            ),
+            "dir_path": config_ini.get('daemon_communication', 'dir_path'),
+            "snapshot_file_path": config_ini.get('daemon_communication', 'snapshot_file_path')
+        }
+    except ConfigParser.NoSectionError:
+        dir_path = os.path.join(os.path.expanduser("~"), "RawBox")
+        config_ini.add_section('daemon_communication')
+        config_ini.set('daemon_communication', 'snapshot_file_path', 'snapshot_file.json')
+        config_ini.set('daemon_communication', 'dir_path', dir_path)
+        config_ini.set('daemon_communication', 'server_url', SERVER_URL)
+        config_ini.set('daemon_communication', 'server_port', SERVER_PORT)
+        config_ini.set('daemon_communication', 'api_prefix', API_PREFIX)
 
+        snapshot_file = config_ini.get('daemon_communication', 'snapshot_file_path')
+        config = {
+            "server_url": "http://{}:{}/{}".format(
+                config_ini.get('daemon_communication', 'server_url'),
+                config_ini.get('daemon_communication', 'server_port'),
+                config_ini.get('daemon_communication', 'api_prefix')
+            ),
+            "dir_path": config_ini.get('daemon_communication', 'dir_path'),
+            "snapshot_file_path": snapshot_file
+        }
         try:
-            config = {
-                "server_url": "http://{}:{}/{}".format(
-                    config_ini.get('daemon_communication', 'server_url'),
-                    config_ini.get('daemon_communication', 'server_port'),
-                    config_ini.get('daemon_communication', 'api_prefix')
-                ),
-                "dir_path": config_ini.get('daemon_communication', 'dir_path'),
-                "snapshot_file_path": config_ini.get('daemon_communication', 'snapshot_file_path')
-            }
-        except ConfigParser.NoSectionError:
-            dir_path = os.path.join(os.path.expanduser("~"), "RawBox")
-            config_ini.add_section('daemon_communication')
-            config_ini.set('daemon_communication', 'snapshot_file_path', 'snapshot_file.json')
-            config_ini.set('daemon_communication', 'dir_path', dir_path)
-            config_ini.set('daemon_communication', 'server_url', SERVER_URL)
-            config_ini.set('daemon_communication', 'server_port', SERVER_PORT)
-            config_ini.set('daemon_communication', 'api_prefix', API_PREFIX)
+            os.makedirs(dir_path)
+        except OSError:
+            pass
+        with open(snapshot_file, 'w') as snapshot:
+            json.dump({"timestamp": 0, "snapshot": ""}, snapshot)
 
-            snapshot_file = config_ini.get('daemon_communication', 'snapshot_file_path')
-            config = {
-                "server_url": "http://{}:{}/{}".format(
-                    config_ini.get('daemon_communication', 'server_url'),
-                    config_ini.get('daemon_communication', 'server_port'),
-                    config_ini.get('daemon_communication', 'api_prefix')
-                ),
-                "dir_path": config_ini.get('daemon_communication', 'dir_path'),
-                "snapshot_file_path": snapshot_file
-            }
-            try:
-                os.makedirs(dir_path)
-            except OSError:
-                pass
-            with open(snapshot_file, 'w') as snapshot:
-                json.dump({"timestamp": 0, "snapshot": ""}, snapshot)
+    try:
+        config["username"] = config_ini.get('daemon_user_data', 'username'),
+        config["password"] = config_ini.get('daemon_user_data', 'password')
+    except ConfigParser.NoSectionError:
+        user_exists = False
+        config_ini.add_section('daemon_user_data')
+        config_ini.set('daemon_user_data', 'username')
+        config_ini.set('daemon_user_data', 'password')
 
-        try:
-            config["username"] = config_ini.get('daemon_user_data', 'username'),
-            config["password"] = config_ini.get('daemon_user_data', 'password')
-        except ConfigParser.NoSectionError:
-            user_exists = False
-            config_ini.add_section('daemon_user_data')
-            config_ini.set('daemon_user_data', 'username')
-            config_ini.set('daemon_user_data', 'password')
-
-        with open(FILE_CONFIG, 'wb') as config_file:
-            config_ini.write(config_file)
-        return config, user_exists
+    with open(FILE_CONFIG, 'wb') as config_file:
+        config_ini.write(config_file)
+    return config, user_exists
 
 
 class DirectoryEventHandler(FileSystemEventHandler):
@@ -808,29 +808,61 @@ class CommandExecuter(object):
                         'delete': self.local.delete_a_file
                     }.get(command_type, error)(*(command_row[command]))
 
+server_com =""
+
+def wait_for_user(config, snapshot_manager):
+
+    def wrap_create(*args, **kwargs):
+        #print "args=", args
+        global server_com
+        server_com = ServerCommunicator(
+        server_url=config['server_url'],
+        username=args[0]['user'],
+        password=args[0]['psw'],
+        snapshot_manager = snapshot_manager)
+        
+        return server_com.create_user(*args, **kwargs)
+
+    def wrap_activate(*args, **kwargs):
+        #wait=False
+        global server_com
+        print "args=", args
+        response = server_com.activate_user(args[0]['user'],args[0]['code'])
+        print response
+        return response
+
+
+    cmd = {
+        'create_user': wrap_create,
+        'activate_user': wrap_activate
+    }
+
+    sock_server = CmdMessageServer(
+        config['cmd_host'],
+        int(config['cmd_port']),
+        cmd)
+    wait = True
+    while wait:
+        asyncore.poll(timeout=1)
+    
 
 def main():
-    config, is_new = load_config()
+    
     global CONFIG_DIR_PATH
+
+    config, user_exists = load_config()
     CONFIG_DIR_PATH = config['dir_path']
     snapshot_manager = DirSnapshotManager(config['snapshot_file_path'])
+    if not user_exists:
+        wait_for_user(config, snapshot_manager)
+        config, _ = load_config()
 
     server_com = ServerCommunicator(
         server_url=config['server_url'],
         username=config['username'],
         password=config['password'],
         snapshot_manager = snapshot_manager)
-
-    event_handler = DirectoryEventHandler(server_com, snapshot_manager)
-    file_system_op = FileSystemOperator(event_handler, server_com, snapshot_manager)
-    executer = CommandExecuter(file_system_op, server_com)
-    server_com.setExecuter(executer)
-    observer = Observer()
-    observer.schedule(event_handler, config['dir_path'], recursive=True)
-    if is_new:
-        server_com.create_user({"user":config['username'], "psw":config['password']})
-    observer.start()
-
+  
     client_command = {
         "create_user": server_com.create_user,
         "activate_user": server_com.activate_user,
@@ -840,6 +872,16 @@ def main():
         config['cmd_host'],
         int(config['cmd_port']),
         client_command)
+    
+
+    event_handler = DirectoryEventHandler(server_com, snapshot_manager)
+    file_system_op = FileSystemOperator(event_handler, server_com, snapshot_manager)
+    executer = CommandExecuter(file_system_op, server_com)
+    server_com.setExecuter(executer)
+    observer = Observer()
+    observer.schedule(event_handler, config['dir_path'], recursive=True)
+
+    observer.start()
 
     last_synk_time = 0
     try:
