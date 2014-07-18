@@ -209,19 +209,21 @@ class TestFilesAPI(unittest.TestCase):
         server_path = TestFilesAPI.test_file_name
 
         #fail authentication
-        rv = self.tc.get(server._API_PREFIX + url,
-                    headers=make_headers("fake_user",
-                                         TestFilesAPI.password_test))
-        self.assertEqual(rv.status_code, 401)
+        received = self.tc.get(
+            server._API_PREFIX + url,
+            headers=make_headers("fake_user", TestFilesAPI.password_test)
+        )
+        self.assertEqual(received.status_code, 401)
 
         #downloading file
-        rv = self.tc.get(server._API_PREFIX + url,
-                    headers=make_headers(TestFilesAPI.user_test,
-                                         TestFilesAPI.password_test))
-        self.assertEqual(rv.status_code, 200)
+        received = self.tc.get(
+            server._API_PREFIX + url,
+            headers=make_headers(
+                TestFilesAPI.user_test, TestFilesAPI.password_test
+        ))
+        self.assertEqual(received.status_code, 200)
         with open(server_path, "r") as f:
-            with open("random_file.txt", "r") as fp:
-                self.assertEqual(fp.read(), f.read())
+            self.assertEqual(json.loads(received.data), f.read())
 
         #try to download file not present
         url = "{}{}".format(TestFilesAPI.url_radix, "NO_SERVER_PATH")
