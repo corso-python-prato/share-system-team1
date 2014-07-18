@@ -16,21 +16,6 @@ from server_errors import *
 DEMO_FILE = os.path.join(os.path.dirname(__file__), "demo_test/demofile1.txt")
 DEMO_FILE2 = os.path.join(os.path.dirname(__file__), "demo_test/demofile2.txt")
 
-# TEST_DIRECTORY = "test_users_dirs/"
-# TEST_USER_DATA = "test_user_data.json"
-
-# DEMO_USER = "i_am_an_user@rawbox.it"
-# DEMO_PSW = "very_secret_password"
-# DEMO_FAKE_USER = "fake_usr"
-# DEMO_CLIENT = None
-
-# SHARE_CLIENTS = []
-
-# DEMO_CONTENT = "Hello my dear,\nit's a beautiful day here in Compiobbi."
-# DEMO_DEST_COPY_PATH = "new_cp"
-# DEMO_DEST_MOVE_PATH = "new_mv"
-# NO_SERVER_PATH = "marcoRegna"
-
 
 def make_headers(user, psw):
     return {
@@ -39,90 +24,31 @@ def make_headers(user, psw):
     }
 
 
-# def transfer(path, flag=True, test=True):
-#     client_path, server_path = set_tmp_params(path)
-#     if flag:
-#         func = "copy"
-#         new_path = "{}/{}".format(DEMO_DEST_COPY_PATH, path)
-#     else:
-#         func = "move"
-#         new_path = "{}/{}".format(DEMO_DEST_MOVE_PATH, path)\
+class TestExample(unittest.TestCase):
+    other_directory = os.path.join(
+        os.path.dirname(__file__),
+        "proppolo"
+    )
 
-#     if test:
-#         data = {
-#             "file_src": client_path,
-#             "file_dest": os.path.join(new_path, DEMO_FILE)
-#         }
-#         rv = DEMO_CLIENT.call("post", "actions/" + func, data)
-#     else:
-#         data = {
-#             "file_src": NO_SERVER_PATH,
-#             "file_dest": os.path.join(new_path, DEMO_FILE)
-#         }
-#         rv = DEMO_CLIENT.call("post", "actions/" + func, data)
+    def setUp(self):
+        server.SERVER_ROOT = TestExample.other_directory
+        server.server_setup()
 
-#     return rv, client_path, server_path
+    def test_setup_server(self):
+        self.assertEqual(
+            server.USERS_DIRECTORIES,
+            os.path.join(TestExample.other_directory, "user_dirs/")
+        )
+        self.assertEqual(
+            server.USERS_DATA,
+            os.path.join(TestExample.other_directory, "user_data.json")
+        )
+        self.assertTrue(
+            os.path.isdir(server.USERS_DIRECTORIES)
+        )
 
-
-# def set_tmp_params(father_dir):
-#     ''' Add a file in user's directory, in the path passed in argument
-#     Please, use path here with only a word (not "dir/subdir") '''
-#     client_path = os.path.join(father_dir, DEMO_FILE)
-#     server_path = os.path.join(TEST_DIRECTORY, DEMO_USER, client_path)
-#     os.makedirs(os.path.dirname(server_path))
-#     shutil.copy(DEMO_FILE, server_path)
-
-#     server_father_path = os.path.join(TEST_DIRECTORY, DEMO_USER, father_dir)
-#     u = server.User.users[DEMO_USER]
-#     u.paths[father_dir] = [server_father_path, 0, False]
-#     u.paths[client_path] = [server_path, 0, 0]
-
-#     return client_path, server_path
-
-
-# class TestClient(object):
-
-#     def __init__(self, user, psw):
-#         self.user = user
-#         self.psw = psw
-#         self.headers = {
-#             "Authorization": "Basic "
-#             + b64encode("{0}:{1}".format(user, psw))
-#         }
-#         self.tc = server.app.test_client()
-#         self.VERBS = {
-#             "post": self.tc.post,
-#             "get": self.tc.get,
-#             "put": self.tc.put,
-#             "delete": self.tc.delete
-#         }
-
-#     def call(self, HTTP_verb, url, data=None, auth=True):
-#         return self.VERBS[HTTP_verb](server._API_PREFIX + url,
-#                                      data=data,
-#                                      headers=self.headers if auth else None)
-
-#     def create_demo_user(self, flag=False):
-#         usr = "user"
-#         psw = "psw"
-#         if flag:
-#             usr = "fake_usr"
-#             psw = "fake_psw"
-
-#         data = {
-#             usr: self.user,
-#             psw: self.psw
-#         }
-#         return self.call("post", "create_user", data, auth=False)
-
-#     def set_fake_usr(self, flag=False):
-#         self.headers["Authorization"] = "".join((
-#             "Basic ",
-#             b64encode("{0}:{1}".format(
-#                 DEMO_FAKE_USER if flag else self.user,
-#                 self.psw
-#             ))
-#         ))
+    def tearDown(self):
+        shutil.rmtree(TestExample.other_directory)
 
 
 class TestFilesAPI(unittest.TestCase):
@@ -134,10 +60,7 @@ class TestFilesAPI(unittest.TestCase):
         "demo_test/test_file"
     )
     test_file_name = os.path.join(
-        root,
-        "user_dirs",
-        user_test,
-        "random_file.txt"
+        root, "user_dirs", user_test, "random_file.txt"
     )
 
     def setUp(self):
@@ -148,39 +71,47 @@ class TestFilesAPI(unittest.TestCase):
         )
         server.server_setup()
         self.tc = server.app.test_client()
+        self.headers = make_headers(
+            TestFilesAPI.user_test,
+            TestFilesAPI.password_test
+        )
 
     def tearDown(self):
         os.remove(os.path.join(TestFilesAPI.root, "user_data.json"))
 
     def test_post(self):
+        url = "{}{}".format(
+            TestFilesAPI.url_radix,
+            "upload_file.txt"
+        )
+
         #test fail authentication
         with open(DEMO_FILE, "r") as f:
             data = {"file_content": f}
-            url = "{}{}".format(TestFilesAPI.url_radix,
-                                "upload_file.txt")
-            rv = self.tc.post(server._API_PREFIX + url,
-                         data=data,
-                         headers=make_headers("fake_user",
-                                              TestFilesAPI.password_test))
+            rv = self.tc.post(
+                server._API_PREFIX + url,
+                data=data,
+                headers=make_headers("fake_user", "some_psw"))
             self.assertEqual(rv.status_code, 401)
 
         #correct upload
         with open(DEMO_FILE, "r") as f:
-
             data = {"file_content": f}
-            url = "{}{}".format(TestFilesAPI.url_radix,
-                                "upload_file.txt")
-            rv = self.tc.post(server._API_PREFIX + url,
-                         data=data,
-                         headers=make_headers(TestFilesAPI.user_test,
-                                              TestFilesAPI.password_test))
+            rv = self.tc.post(
+                server._API_PREFIX + url,
+                data=data,
+                headers=self.headers
+            )
             self.assertEqual(rv.status_code, 201)
 
-        with open(os.path.join(
-                TestFilesAPI.root,
-                "user_dirs",
-                TestFilesAPI.user_test,
-                "upload_file.txt")) as f:
+
+        uploaded_file = os.path.join(
+            TestFilesAPI.root,
+            "user_dirs",
+            TestFilesAPI.user_test,
+            "upload_file.txt"
+        )
+        with open(uploaded_file) as f:
             uploaded_content = f.read()
             with open(DEMO_FILE, "r") as fp:
                 self.assertEqual(fp.read(), uploaded_content)
@@ -188,40 +119,36 @@ class TestFilesAPI(unittest.TestCase):
         #try to re-upload the same file to check conflict error
         with open(DEMO_FILE, "r") as f:
             data = {"file_content": f}
-            url = "{}{}".format(TestFilesAPI.url_radix,
-                                "upload_file.txt")
-            rv = self.tc.post(server._API_PREFIX + url,
-                         data=data,
-                         headers=make_headers(TestFilesAPI.user_test,
-                                              TestFilesAPI.password_test))
+            rv = self.tc.post(
+                server._API_PREFIX + url,
+                data=data,
+                headers=self.headers
+            )
             self.assertEqual(rv.status_code, 409)
 
         # restore
-        os.remove(os.path.join(
-            TestFilesAPI.root,
-            "user_dirs",
-            TestFilesAPI.user_test,
-            "upload_file.txt")
-        )
+        os.remove(uploaded_file)
 
     def test_get(self):
         url = "{}{}".format(TestFilesAPI.url_radix, "random_file.txt")
         server_path = TestFilesAPI.test_file_name
 
         #fail authentication
-        rv = self.tc.get(server._API_PREFIX + url,
-                    headers=make_headers("fake_user",
-                                         TestFilesAPI.password_test))
-        self.assertEqual(rv.status_code, 401)
+        received = self.tc.get(
+            server._API_PREFIX + url,
+            headers=make_headers("fake_user", TestFilesAPI.password_test)
+        )
+        self.assertEqual(received.status_code, 401)
 
         #downloading file
-        rv = self.tc.get(server._API_PREFIX + url,
-                    headers=make_headers(TestFilesAPI.user_test,
-                                         TestFilesAPI.password_test))
-        self.assertEqual(rv.status_code, 200)
+        received = self.tc.get(
+            server._API_PREFIX + url,
+            headers=make_headers(
+                TestFilesAPI.user_test, TestFilesAPI.password_test
+        ))
+        self.assertEqual(received.status_code, 200)
         with open(server_path, "r") as f:
-            with open("random_file.txt", "r") as fp:
-                self.assertEqual(fp.read(), f.read())
+            self.assertEqual(json.loads(received.data), f.read())
 
         #try to download file not present
         url = "{}{}".format(TestFilesAPI.url_radix, "NO_SERVER_PATH")
@@ -290,7 +217,6 @@ class TestFilesAPI(unittest.TestCase):
                                              TestFilesAPI.password_test))
             self.assertEqual(rv.status_code, 404)
 
-
     def test_files_differences(self):
 
         data = { 
@@ -357,8 +283,6 @@ class TestFilesAPI(unittest.TestCase):
         shutil.rmtree(os.path.join(TestActionsAPI.root, "user_dirs", data["user"]))
 
 
-
-
 class TestActionsAPI(unittest.TestCase):
     user_test = "changeman"
     headers = make_headers(user_test, "password")
@@ -369,8 +293,6 @@ class TestActionsAPI(unittest.TestCase):
         os.path.dirname(__file__),
         "demo_test/test_actions"
     )
-    
-
 
     def transfer(path, flag=True, test=True):
         client_path, server_path = self.set_tmp_params(path)
@@ -461,7 +383,6 @@ class TestActionsAPI(unittest.TestCase):
         )
         self.assertEqual(rv.status_code, 404)
 
-
         # delete the last file and check if the user_directory is still alive
         data = {"path": "demo2"}
         rv = self.tc.post(
@@ -513,77 +434,47 @@ class TestActionsAPI(unittest.TestCase):
                      headers=self.headers)
         self.assertEqual(rv.status_code, 409)
 
-    # def test_actions_move(self):
-    #     with server.app.test_client() as tc:
-    #         f = open(TestActionsAPI.test_file, "r")
-    #         data = {"file_src": "src", "file_dest": "dest"}
-    #         url = "{}{}".format(TestActionsAPI.url_radix, "move",
-    #                             client_path)
-    #         rv = tc.post(server._API_PREFIX + url,
-    #                      data=data,
-    #                      headers=make_headers("fake_user",
-    #                                           TestActionsAPI.password_test))
-    #         f.close()
-    #         self.assertEqual(rv.status_code, 401)
+    def test_actions_move(self):
+        cls = TestActionsAPI
+        url = "{}{}{}".format(_API_PREFIX, cls.url_radix, "move")
+        data = {"file_src": "demo1", "file_dest": "mv/dest.txt"}
 
-    #     with server.app.test_client() as tc:
-    #         f = open(TestActionsAPI.test_file, "r")
-    #         data = {"file_src": "src", "file_dest": "dest"}
-    #         url = "{}{}".format(TestActionsAPI.url_radix, "move",
-    #                             TestActionsAPI.test_file_name)
-    #         rv = tc.post(server._API_PREFIX + url,
-    #                      data=data,
-    #                      headers=make_headers(TestActionsAPI.user_test,
-    #                                           TestActionsAPI.password_test))
-    #         f.close()
-    #         self.assertEqual(rv.status_code, 201)
-    #         self.assertEqual(os.path.isfile(server_path), False)
-    #         u = server.User.users[TestActionsAPI.user_test]
-    #         self.assertEqual("mv/{}".format(TestActionsAPI.test_file_name)
-    #                          in u.paths, False)
-    #         self.assertEqual(os.path.isfile(full_dest_path), True)
-    #         self.assertEqual("{}/mv/{}".format("new_mv",
-    #                                            TestActionsAPI.test_file_name)
-    #                          in u.paths, True)
-
-    #     with server.app.test_client() as tc:
-    #         f = open(TestActionsAPI.test_file, "r")
-    #         data = {"file_src": "src", "file_dest": "dest"}
-    #         url = "{}{}".format(TestActionsAPI.url_radix, "move",
-    #                             client_path)
-    #         rv = tc.post(server._API_PREFIX + url,
-    #                      data=data,
-    #                      headers=make_headers(TestActionsAPI.user_test,
-    #                                           TestActionsAPI.password_test))
-    #         f.close()
-    #         self.assertEqual(rv.status_code, 404)
-
-
-class NewRootTestExample(unittest.TestCase):
-    other_directory = os.path.join(
-        os.path.dirname(__file__),
-        "proppolo"
-    )
-
-    def setUp(self):
-        server.SERVER_ROOT = NewRootTestExample.other_directory
-        server.server_setup()
-
-    def test_setup_server(self):
-        self.assertEqual(
-            server.USERS_DIRECTORIES,
-            os.path.join(NewRootTestExample.other_directory, "user_dirs/")
+        # try to move something with a fake user
+        received = self.tc.post(
+            url, data=data, headers=make_headers("fake_user", "some_psw")
         )
-        self.assertEqual(
-            server.USERS_DATA,
-            os.path.join(NewRootTestExample.other_directory, "user_data.json")
+        self.assertEqual(received.status_code, 401)
+
+        # test the correct move action
+        received = self.tc.post(
+            url, data=data, headers=self.headers
         )
+        self.assertEqual(received.status_code, 201)
+        # check the disk
+        self.assertFalse(
+            os.path.isfile(
+                os.path.join(self.test_folder, "demo1")
+        ))
         self.assertTrue(
-            os.path.isdir(server.USERS_DIRECTORIES)
-        )
+            os.path.isdir(
+                os.path.join(self.test_folder, "mv")
+        ))
+        self.assertTrue(
+            os.path.isfile(
+                os.path.join(self.test_folder, "mv/dest.txt")
+        ))
+        # check the structure
+        user_paths = server.User.users[cls.user_test].paths
+        self.assertNotIn("demo1", user_paths)
+        self.assertIn("mv", user_paths)
+        self.assertIn("mv/dest.txt", user_paths)
 
-    def tearDown(self):
-        shutil.rmtree(NewRootTestExample.other_directory)
+        # test the status code returned when the source doesn't exist
+        data = {"file_src": "not_a_file", "file_dest": "mv/dest2.txt"}
+        received = self.tc.post(
+            url, data=data, headers=self.headers
+        )
+        self.assertEqual(received.status_code, 404)
 
 
 class TestUser(unittest.TestCase):
@@ -648,161 +539,6 @@ class TestUser(unittest.TestCase):
         self.assertFalse(server.to_md5(tmp_dir))
         os.rmdir(tmp_dir)
 
-
-# class TestSequenceFunctions(unittest.TestCase):
-
-#     @classmethod
-#     def setUpClass(cls):
-#         # set a test "USERS_DIRECTORIES"
-#         try:
-#             os.mkdir(TEST_DIRECTORY)
-#         except OSError:
-#             shutil.rmtree(TEST_DIRECTORY)
-#             os.mkdir(TEST_DIRECTORY)
-
-#         server.USERS_DIRECTORIES = TEST_DIRECTORY
-#         # set a test "USER_DATA" json
-#         open(TEST_USER_DATA, "w").close()
-#         server.USERS_DATA = TEST_USER_DATA
-
-#         # demo user configuration
-#         global DEMO_CLIENT
-#         DEMO_CLIENT = TestClient(DEMO_USER, DEMO_PSW)
-#         DEMO_CLIENT.create_demo_user()
-#         with open(DEMO_FILE, "w") as f:
-#             f.write(DEMO_CONTENT)
-
-#         # create some clients for share tests
-#         for i in range(5):
-#             random.seed(i)
-#             user = "".join(random.sample(string.letters, 7) +
-#                            ["@"] + random.sample(string.letters, 3)
-#                            + [".com"])
-#             random.seed(i + 40)
-#             psw = "".join(random.sample(string.letters, 10))
-#             u = TestClient(user, psw)
-#             u.create_demo_user()
-#             SHARE_CLIENTS.append(u)
-
-#     @classmethod
-#     def tearDownClass(cls):
-#         # restore previous status
-#         os.remove(DEMO_FILE)
-#         os.remove(TEST_USER_DATA)
-#         shutil.rmtree(TEST_DIRECTORY)
-
-#     def setUp(self):
-#         server.app.config.update(TESTING=True)
-#         server.app.testing = True
-
-#     def test_create_server_path(self):
-#         # check if aborts when you pass invalid paths:
-#         invalid_paths = [
-#             "../file.txt",
-#             "folder/../file.txt"
-#         ]
-
-#         for p in invalid_paths:
-#             f = open(DEMO_FILE, "r")
-#             data = {"file_content": f}
-#             rv = DEMO_CLIENT.call("post", "files/" + p, data)
-#             f.close()
-
-#             self.assertEqual(rv.status_code, 400)
-#         # TODO: other tests here?
-
-#     def test_actions_delete(self):
-#         client_path, server_path = set_tmp_params("dlt")
-#         full_server_path = os.path.join(server_path, DEMO_FILE)
-
-#         data = {"path": client_path}
-#         DEMO_CLIENT.set_fake_usr(True)
-#         rv = DEMO_CLIENT.call("post", "actions/delete", data)
-#         self.assertEqual(rv.status_code, 401)
-
-#         DEMO_CLIENT.set_fake_usr(False)
-#         rv = DEMO_CLIENT.call("post", "actions/delete", data)
-#         self.assertEqual(rv.status_code, 200)
-#         self.assertFalse(os.path.isfile(full_server_path))
-#         #check if the file is correctly removed from the dictionary
-#         self.assertFalse(server_path in server.User.users[DEMO_USER].paths)
-
-#         data = {"path": NO_SERVER_PATH}
-#         rv = DEMO_CLIENT.call("post", "actions/delete", data)
-#         self.assertEqual(rv.status_code, 404)
-
-#         rv = DEMO_CLIENT.call("post", "actions/destroy", data)
-#         self.assertEqual(rv.status_code, 404)
-
-#     def test_last_file_delete_in_root(self):
-#         # create a demo user
-#         user = "emilio"
-#         client = TestClient(user, "passw")
-#         client.create_demo_user()
-
-#         # upload a file
-#         path = "filename.txt"
-#         f = open(DEMO_FILE, "r")
-#         data = {"file_content": f}
-#         rv = client.call("post", "files/" + path, data)
-#         f.close()
-#         self.assertEqual(rv.status_code, 201)
-
-#         # delete the file
-#         data = {"path": path}
-#         rv = client.call("post", "actions/delete", data)
-#         self.assertEqual(rv.status_code, 200)
-
-#         user_root = os.path.join(server.USERS_DIRECTORIES, user)
-#         self.assertTrue(os.path.isdir(user_root))
-
-#     def test_actions_copy(self):
-#         DEMO_CLIENT.set_fake_usr(True)
-#         data = {"file_src": "src", "file_dest": "dest"}
-#         rv = DEMO_CLIENT.call("post", "actions/copy", data)
-#         self.assertEqual(rv.status_code, 401)
-#         DEMO_CLIENT.set_fake_usr(False)
-#         rv, client_path, server_path = transfer("cp", True)
-#         self.assertEqual(rv.status_code, 201)
-
-#         full_dest_path = os.path.join(TEST_DIRECTORY,
-#                                       DEMO_USER,
-#                                       DEMO_DEST_COPY_PATH,
-#                                       client_path)
-#         self.assertEqual(os.path.isfile(server_path), True)
-
-#         u = server.User.users[DEMO_USER]
-#         self.assertEqual("cp/{}".format(DEMO_FILE) in u.paths, True)
-#         self.assertEqual(os.path.isfile(full_dest_path), True)
-#         self.assertEqual("{}/cp/{}".format(DEMO_DEST_COPY_PATH,
-#                                            DEMO_FILE) in u.paths, True)
-#         client_path, server_path = set_tmp_params("prova")
-#         data = {"file_src": client_path, "file_dest": client_path}
-#         rv = DEMO_CLIENT.call("post", "actions/copy", data)
-#         self.assertEqual(rv.status_code, 409)
-
-#     def test_actions_move(self):
-#         DEMO_CLIENT.set_fake_usr(True)
-#         data = {"file_src": "src", "file_dest": "dest"}
-#         rv = DEMO_CLIENT.call("post", "actions/move", data)
-#         self.assertEqual(rv.status_code, 401)
-#         DEMO_CLIENT.set_fake_usr(False)
-#         rv, client_path, server_path = transfer("mv", False)
-#         self.assertEqual(rv.status_code, 201)
-
-#         full_dest_path = os.path.join(TEST_DIRECTORY,
-#                                       DEMO_USER,
-#                                       DEMO_DEST_MOVE_PATH,
-#                                       client_path)
-#         self.assertEqual(os.path.isfile(server_path), False)
-
-#         u = server.User.users[DEMO_USER]
-#         self.assertEqual("mv/{}".format(DEMO_FILE) in u.paths, False)
-#         self.assertEqual(os.path.isfile(full_dest_path), True)
-#         self.assertEqual("{}/mv/{}".format(DEMO_DEST_MOVE_PATH,
-#                                            DEMO_FILE) in u.paths, True)
-#         rv, client_path, server_path = transfer("mv", False, False)
-#         self.assertEqual(rv.status_code, 404)
 
     # def test_files_differences(self):
     #     client = TestClient(
