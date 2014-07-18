@@ -291,6 +291,72 @@ class TestFilesAPI(unittest.TestCase):
             self.assertEqual(rv.status_code, 404)
 
 
+    def test_files_differences(self):
+
+        data = { 
+            "user": "complex_user@gmail.com",
+            "psw": "complex_password"
+        }
+        headers=make_headers(data["user"], data["psw"])
+
+        def get_diff():
+            rv = self.tc.get(server._API_PREFIX + self.url_radix,
+            headers=headers)
+            self.assertEqual(rv.status_code, 200) 
+            return json.loads(rv.data)
+
+        rv = self.tc.post(
+            server._API_PREFIX + "create_user",
+            data=data
+        )
+        self.assertEqual(rv.status_code, 201)
+
+
+        # first check: user created just now
+        snapshot1 = get_diff()
+        #the user has got only an empty folder and
+        #the diff method lists only files
+        self.assertEqual(snapshot1["snapshot"], {})
+
+        # second check: insert some files
+        some_paths = [
+            "path1/cool_filename.txt",
+            "path2/path3/yo.jpg"
+        ]
+        for p in some_paths:
+            with open(DEMO_FILE, "r") as f:
+                data_local = {"file_content": f}
+                rv = self.tc.post("{}{}{}".format(server._API_PREFIX, self.url_radix, p),
+                         data=data_local,
+                         headers=headers)
+            self.assertEqual(rv.status_code, 201)
+
+        snapshot2 = get_diff()
+        self.assertGreater(snapshot2["timestamp"], snapshot1["timestamp"])
+        self.assertEqual(len(snapshot2["snapshot"]), 1)
+        for s in snapshot2["snapshot"].values():
+            self.assertEqual(len(s), 2)
+
+        # third check: delete a file
+        data1 = {"path": some_paths[1]}
+        rv = self.tc.post(
+            server._API_PREFIX + "actions/delete",
+            data=data1,
+            headers=headers
+        )
+        self.assertEqual(rv.status_code, 200)
+
+        snapshot3 = get_diff()
+        self.assertGreater(snapshot3["timestamp"], snapshot2["timestamp"])
+        self.assertEqual(len(snapshot3["snapshot"]), 1)
+
+        for s in snapshot3["snapshot"].values():
+            self.assertEqual(len(s), 1)
+
+        #restore
+        shutil.rmtree(os.path.join(TestActionsAPI.root, "user_dirs", data["user"]))
+
+
 
 
 class TestActionsAPI(unittest.TestCase):
