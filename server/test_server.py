@@ -280,7 +280,7 @@ class TestFilesAPI(unittest.TestCase):
             self.assertEqual(len(s), 1)
 
         #restore
-        shutil.rmtree(os.path.join(TestActionsAPI.root, "user_dirs", data["user"]))
+        shutil.rmtree(os.path.join(TestFilesAPI.root, "user_dirs", data["user"]))
 
 
 class TestActionsAPI(unittest.TestCase):
