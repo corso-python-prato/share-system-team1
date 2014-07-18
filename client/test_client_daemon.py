@@ -728,7 +728,7 @@ class DirSnapshotManagerTest(unittest.TestCase):
         self.assertEqual(result, expected_result)
 
         #Case: deamon internal conflicts == timestamp
-        self.snapshot_manager.last_status['snapshot'] = "21451512512512512"
+        self.snapshot_manager.last_status['snapshot'] = '21451512512512512'
         expected_result = [
             {'remote_delete': ['sub_dir_2/test_file_4.txt']},
             {'remote_delete': ['sub_dir_1/test_file_2.txt']},
@@ -739,10 +739,26 @@ class DirSnapshotManagerTest(unittest.TestCase):
             server_timestamp=sinked_timestamp,
             server_snapshot=unsinked_server_snap)
         self.assertEqual(result, expected_result)
+        self.assertEqual(
+            self.snapshot_manager.last_status['snapshot'],
+            '21451512512512512')
 
-        #Case: no deamon internal conflicts != timestamp
+        #Case: deamon internal conflicts != timestamp
+        unsinked_server_snap['81bcb26fd4acfaa5d0acc7eef1d3013a'].append(
+            {'path': u'sub_dir_1/test_file_del.txt', 'timestamp': 123122})
+        open(''.join([self.test_file_2, 'copy']), 'w').write('Java is evil')
+
+        self.true_snapshot['829c5c86163b667a3d9684b24ceca967'] = [
+            'sub_dir_2/test_file_2.txtcopy'
+        ]
+        self.snapshot_manager.local_full_snapshot = self.true_snapshot
+        unsinked_server_snap['829c5c86453b667a3d9684b24ceca967'] = [
+            {'path': u'sub_dir_2/test_file_2.txtcopy', 'timestamp': 123122}]
+
+        self.snapshot_manager.last_status['snapshot'] = "2145151251251dsf"
         expected_result = [
             {'local_download': ['sub_dir_2/test_file_4.txt']},
+            {'remote_delete': ['sub_dir_1/test_file_del.txt']},
             {'local_copy': [
                 'sub_dir_2/test_file_2.txt',
                 'sub_dir_1/test_file_2.txt']},
@@ -750,6 +766,7 @@ class DirSnapshotManagerTest(unittest.TestCase):
                 'sub_dir_1/test_file_1.txt',
                 'sub_dir_1/test_file_1.txt.conflicted']},
             {'remote_upload': ['sub_dir_1/test_file_1.txt.conflicted']},
+            {'remote_upload': ['sub_dir_2/test_file_2.txtcopy']},
             {'remote_delete': ['sub_dir_2/test_file_3.txt']},
         ]
         result = self.snapshot_manager.syncronize_dispatcher(
