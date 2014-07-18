@@ -160,12 +160,12 @@ class ServerCommunicator(object):
         success_log = "file moved! " + dst_path
 
         server_url = "{}/actions/move".format(self.server_url)
-        src_path = self.get_url_relpath(src_path)
-        dst_path = self.get_url_relpath(dst_path)
-
         request = {
             "url": server_url,
-            "data": {"file_src": src_path, "file_dest": dst_path}
+            "data": {
+                "file_src": self.get_url_relpath(src_path),
+                "file_dest": self.get_url_relpath(dst_path),
+            }
         }
         
         r = self._try_request(requests.post, success_log, error_log, **request)
@@ -182,12 +182,13 @@ class ServerCommunicator(object):
         success_log = "file copied! " + dst_path
 
         server_url = "{}/actions/copy".format(self.server_url)
-        src_path = self.get_url_relpath(src_path)
-        dst_path = self.get_url_relpath(dst_path)
 
         request = {
             "url": server_url,
-            "data": {"file_src": src_path, "file_dest": dst_path}
+            "data": {
+                "file_src": self.get_url_relpath(src_path),
+                "file_dest": self.get_url_relpath(dst_path),
+            }
         }
         r = self._try_request(requests.post, success_log, error_log, **request)
         if r.status_code == 404:
