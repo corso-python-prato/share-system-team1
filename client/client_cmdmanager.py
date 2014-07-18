@@ -148,8 +148,11 @@ class RawBoxCmd(cmd.Cmd):
         cmd.Cmd.__init__(self)
         self.executer = executer
 
-    def error(self, *args):
-        print "hum... unknown command, please type help"
+    def error(self, message=None):
+        if message:
+            print message
+        else:
+            print "hum... unknown command, please type help"
 
     def do_create(self, line):
         """
