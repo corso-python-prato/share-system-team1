@@ -371,7 +371,7 @@ class TestActionsAPI(unittest.TestCase):
             server._API_PREFIX, cls.url_radix, "copy"
         )
 
-        #try copy with a fake user
+        # try copy with a fake user
         rv = self.tc.post(
             url,
             data=data,
@@ -386,6 +386,7 @@ class TestActionsAPI(unittest.TestCase):
             headers=self.headers
         )
         self.assertEqual(rv.status_code, 201)
+
         self.assertTrue(
             os.path.isfile(
                 os.path.join(cls.root, "user_dirs", cls.user_test, "demo1")
