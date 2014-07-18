@@ -30,11 +30,11 @@ class RawBoxExecuter(object):
         command_type = 'create_user'
 
         if not username:
-            username = take_input('insert your username: ')
+            username = take_input('insert your email: ')
         email_regex = re.compile('[^@]+@[^@]+\.[^@]+')
         while not email_regex.match(username):
             Message('WARNING', 'invalid email')
-            username = take_input('insert your username: ')
+            username = take_input('insert your email: ')
 
         password = take_input('insert your password: ', password=True)
         rpt_password = take_input('Repeat your password: ', password=True)
@@ -56,11 +56,11 @@ class RawBoxExecuter(object):
         command_type = 'activate_user'
 
         if not username:
-            username = take_input('insert your username: ')
+            username = take_input('insert your email: ')
         email_regex = re.compile('[^@]+@[^@]+\.[^@]+')
         while not email_regex.match(username):
             Message('WARNING', 'invalid email')
-            username = take_input('insert your username: ')
+            username = take_input('insert your email: ')
 
         if not code:
             code = take_input('insert your code: ')
@@ -81,11 +81,11 @@ class RawBoxExecuter(object):
         command_type = 'delete_user'
 
         if not username:
-            username = take_input('insert your username: ')
+            username = take_input('insert your email: ')
         email_regex = re.compile('[^@]+@[^@]+\.[^@]+')
         while not email_regex.match(username):
             Message('WARNING', 'invalid email')
-            username = take_input('insert your username: ')
+            username = take_input('insert your email: ')
         param = {
             'user': username
         }
