@@ -96,7 +96,28 @@ class ServerCommunicatorTest(unittest.TestCase):
                 self.server_timestamp = timestamp
 
             def update_snapshot_delete(self, body):
+                self.delete = body
+
+            def update_snapshot_update(self, body):
                 self.update = body
+
+            def update_snapshot_upload(self, body):
+                self.upload = body
+
+            def update_snapshot_move(self, body):
+                self.move = body
+
+            def update_snapshot_copy(self, body):
+                self.copy = body
+
+        class _try_request(object):
+            status_code = 200
+            text = 'timestamp'
+
+            def __init__(self, *args, **kwargs):
+                pass
+
+        self.mock_try_request = _try_request
 
         httpretty.enable()
         httpretty.register_uri(
@@ -254,6 +275,37 @@ class ServerCommunicatorTest(unittest.TestCase):
         filepath = "not/corret/path"
         self.assertFalse(self.server_comm.upload_file(filepath))
 
+        self.server_comm._try_request = self.mock_try_request
+
+        #Case: 409 status
+        self.server_comm._try_request.status_code = 409
+        self.server_comm.upload_file(self.file_path, put_file)
+
+        #Case: 201 status put_file == False
+        self.server_comm._try_request.status_code = 201
+        self.server_comm._try_request.text = 'upload'
+        self.server_comm.upload_file(self.file_path, put_file)
+        self.assertEqual(
+            self.server_comm.snapshot_manager.upload,
+            {"src_path": self.file_path})
+        self.assertEqual(
+            self.server_comm.snapshot_manager.timestamp,
+            'upload')
+
+        #Case: 201 status put_file == True
+        put_file = True
+        self.server_comm._try_request.status_code = 201
+        self.server_comm._try_request.text = 'update'
+        self.server_comm.upload_file(self.file_path, put_file)
+        self.assertEqual(
+            self.server_comm.snapshot_manager.update,
+            {"src_path": self.file_path})
+
+        self.assertEqual(
+            self.server_comm.snapshot_manager.timestamp,
+            'update')
+
+
     def test_download(self):
         mock_auth_user = ":".join([self.username, self.password])
         response = self.server_comm.download_file(self.file_path)
@@ -302,8 +354,18 @@ class ServerCommunicatorTest(unittest.TestCase):
         #check if methods are equal
         self.assertEqual(method, 'POST')
         self.assertEqual(
-            self.server_comm.snapshot_manager.update,
+            self.server_comm.snapshot_manager.delete,
             {"src_path": self.file_path})
+
+        #reset variable
+        self.server_comm.snapshot_manager.delete = False
+
+        self.server_comm._try_request = self.mock_try_request
+
+        #Case: 404 error
+        self.server_comm._try_request.status_code = 404
+        self.server_comm.delete_file(self.file_path)
+        self.assertFalse(self.server_comm.snapshot_manager.delete)
 
     def test_move_file(self):
         mock_auth_user = ":".join([self.username, self.password])
@@ -322,6 +384,22 @@ class ServerCommunicatorTest(unittest.TestCase):
         #check if methods are equal
         self.assertEqual(method, 'POST')
 
+        self.server_comm._try_request = self.mock_try_request
+
+        #Case: 404 error
+        self.server_comm._try_request.status_code = 404
+        self.server_comm.move_file(self.file_path, self.another_path)
+
+        #Case: 201 status
+        self.server_comm._try_request.status_code = 201
+        self.server_comm.move_file(self.file_path, self.another_path)
+        self.assertEqual(
+            self.server_comm.snapshot_manager.move,
+            {"src_path": self.file_path, "dst_path": self.another_path})
+        self.assertEqual(
+            self.server_comm.snapshot_manager.timestamp,
+            'timestamp')
+
     def test_copy_file(self):
         mock_auth_user = ":".join([self.username, self.password])
         self.server_comm.copy_file(self.file_path, self.another_path)
@@ -338,6 +416,22 @@ class ServerCommunicatorTest(unittest.TestCase):
         self.assertEqual(host, '127.0.0.1:5000')
         #check if methods are equal
         self.assertEqual(method, 'POST')
+
+        self.server_comm._try_request = self.mock_try_request
+
+        #Case: 404 error
+        self.server_comm._try_request.status_code = 404
+        self.server_comm.copy_file(self.file_path, self.another_path)
+
+        #Case: 201 status
+        self.server_comm._try_request.status_code = 201
+        self.server_comm.copy_file(self.file_path, self.another_path)
+        self.assertEqual(
+            self.server_comm.snapshot_manager.copy,
+            {"src_path": self.file_path, "dst_path": self.another_path})
+        self.assertEqual(
+            self.server_comm.snapshot_manager.timestamp,
+            'timestamp')
 
     def test_create_user(self):
         test_username = "test_username"
@@ -357,6 +451,16 @@ class ServerCommunicatorTest(unittest.TestCase):
         self.assertEqual(host, '127.0.0.1:5000')
         #check if methods are equal
         self.assertEqual(method, 'POST')
+
+        self.server_comm._try_request = self.mock_try_request
+
+        #Case: 409 error
+        self.server_comm._try_request.status_code = 409
+        self.server_comm.create_user(test_username, test_password)
+
+        #Case: another status
+        self.server_comm._try_request.status_code = 501
+        self.server_comm.create_user(test_username, test_password)
     
     def test_syncronize(self):
         def my_try_request(*args, **kwargs):
