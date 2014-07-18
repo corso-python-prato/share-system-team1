@@ -9,6 +9,7 @@
 from watchdog.observers.polling import PollingObserver as Observer
 from watchdog.events import FileSystemEventHandler
 from requests.auth import HTTPBasicAuth
+import ConfigParser
 import requests
 import hashlib
 import shutil
@@ -23,6 +24,7 @@ SERVER_URL = "localhost"
 SERVER_PORT = "5000"
 API_PREFIX = "API/v1"
 CONFIG_DIR_PATH = ""
+FILE_CONFIG = "config.ini"
 
 
 def get_relpath(abs_path):
@@ -416,35 +418,59 @@ def load_config():
         with open('config.json', 'r') as config_file:
             config = json.load(config_file)
         return config, False
-    except IOError:
-        dir_path = os.path.join(os.path.expanduser("~"), "RawBox")
+        config_ini = ConfigParser.ConfigParser()
+        config_ini.read(FILE_CONFIG)
+        user_exists = True
+        config = None
+
         try:
-            os.makedirs(dir_path)
-        except OSError:
-            pass
+            config = {
+                "server_url": "http://{}:{}/{}".format(
+                    config_ini.get('daemon_communication', 'server_url'),
+                    config_ini.get('daemon_communication', 'server_port'),
+                    config_ini.get('daemon_communication', 'api_prefix')
+                ),
+                "dir_path": config_ini.get('daemon_communication', 'dir_path'),
+                "snapshot_file_path": config_ini.get('daemon_communication', 'snapshot_file_path')
+            }
+        except ConfigParser.NoSectionError:
+            dir_path = os.path.join(os.path.expanduser("~"), "RawBox")
+            config_ini.add_section('daemon_communication')
+            config_ini.set('daemon_communication', 'snapshot_file_path', 'snapshot_file.json')
+            config_ini.set('daemon_communication', 'dir_path', dir_path)
+            config_ini.set('daemon_communication', 'server_url', SERVER_URL)
+            config_ini.set('daemon_communication', 'server_port', SERVER_PORT)
+            config_ini.set('daemon_communication', 'api_prefix', API_PREFIX)
 
-        # TODO: ask to cmd_manager to create a new user
-        user = "username"
-        psw = "password"
+            snapshot_file = config_ini.get('daemon_communication', 'snapshot_file_path')
+            config = {
+                "server_url": "http://{}:{}/{}".format(
+                    config_ini.get('daemon_communication', 'server_url'),
+                    config_ini.get('daemon_communication', 'server_port'),
+                    config_ini.get('daemon_communication', 'api_prefix')
+                ),
+                "dir_path": config_ini.get('daemon_communication', 'dir_path'),
+                "snapshot_file_path": snapshot_file
+            }
+            try:
+                os.makedirs(dir_path)
+            except OSError:
+                pass
+            with open(snapshot_file, 'w') as snapshot:
+                json.dump({"timestamp": 0, "snapshot": ""}, snapshot)
 
-        config = {
-            "server_url": "http://{}:{}/{}".format(
-                SERVER_URL,
-                SERVER_PORT,
-                API_PREFIX
-            ),
-            "dir_path": dir_path,
-            "snapshot_file_path": 'snapshot_file.json',
-            "cmd_host": "localhost",
-            "cmd_port": "6666",
-            "username": user,
-            "password": psw
-        }
-        with open('snapshot_file.json', 'w') as snapshot_file:
-            json.dump({"timestamp": 0, "snapshot": ""}, snapshot_file)
-        with open('config.json', 'w') as config_file:
-            json.dump(config, config_file)
-        return config, True
+        try:
+            config["username"] = config_ini.get('daemon_user_data', 'username'),
+            config["password"] = config_ini.get('daemon_user_data', 'password')
+        except ConfigParser.NoSectionError:
+            user_exists = False
+            config_ini.add_section('daemon_user_data')
+            config_ini.set('daemon_user_data', 'username')
+            config_ini.set('daemon_user_data', 'password')
+
+        with open(FILE_CONFIG, 'wb') as config_file:
+            config_ini.write(config_file)
+        return config, user_exists
 
 
 class DirectoryEventHandler(FileSystemEventHandler):
