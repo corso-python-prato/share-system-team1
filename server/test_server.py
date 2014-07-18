@@ -273,6 +273,22 @@ class TestFilesAPI(unittest.TestCase):
             os.path.join(TestFilesAPI.root, "user_dirs", data["user"])
         )
 
+    def test_create_server_path(self):
+        # check if aborts when you pass invalid paths:
+        invalid_paths = [
+            "../file.txt",
+            "folder/../file.txt"
+        ]
+
+        for p in invalid_paths:
+            with open(DEMO_FILE, "r") as f:
+                rv = self.tc.post(
+                    "{}{}{}".format(_API_PREFIX, TestFilesAPI.url_radix, p),
+                    data={"file_content": f},
+                    headers=self.headers
+                )
+            self.assertEqual(rv.status_code, 400)
+
 
 class TestActionsAPI(unittest.TestCase):
     user_test = "changeman"
