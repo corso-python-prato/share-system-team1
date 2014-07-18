@@ -721,17 +721,13 @@ def logger_init(crash_repo_path, stdout_level, file_level, disabled = False):
         logging.disable(logging.CRITICAL)
 
 
-def args_parse_init(stdout_level, file_level, report_file):
-    parser = argparse.ArgumentParser(description='RawBox client daemon')
-    parser.add_argument("--std-log-level", required=False, help="set the logging level to std out. this argument accept:\n\tDEBUG\n\tINFO\n\tWARNING\n\tERROR\n\tCRITICAL, by default is " + stdout_level, default=stdout_level)
-    parser.add_argument("--file-log-level", required=False, help="set the logging level to file. this argument accept:\n\tDEBUG\n\tINFO\n\tWARNING\n\tERROR\n\tCRITICAL, by default is" + file_level, default=file_level)
-    parser.add_argument("--no-log" , action="store_true", required=False, help="disable all log, by default is false", default=False)
-    parser.add_argument("--no-repo", action="store_true", required=False, help="disable the creation of a crash file, by default is false", default=False)
+def args_parse_init(stdout_level, file_level):
+    parser = argparse.ArgumentParser(description='RawBox client daemon', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("--std-log-level", required=False, help="set the logging level to std out. this argument accept:\n\tDEBUG\n\tINFO\n\tWARNING\n\tERROR\n\tCRITICAL", default=stdout_level)
+    parser.add_argument("--file-log-level", required=False, help="set the logging level to file. this argument accept:\n\tDEBUG\n\tINFO\n\tWARNING\n\tERROR\n\tCRITICAL", default=file_level)
+    parser.add_argument("--no-log" , action="store_true", required=False, help="disable all log", default=False)
+    parser.add_argument("--no-repo", action="store_true", required=False, help="disable the creation of a crash file", default=False)
     args = parser.parse_args()
-    if not args.no_repo:
-        args.no_repo = report_file
-    else:
-        args.no_repo = False
     return args
 
 
@@ -742,11 +738,12 @@ def main():
     args = args_parse_init(
         stdout_level=config['stdout_log_level'],
         file_level=config['file_log_level'],
-        report_file=config['crash_repo_path'],
     )
-
+    report_file = config['crash_repo_path']
+    if args.no_repo:
+        report_file = False
     logger_init(
-        crash_repo_path=args.no_repo,
+        crash_repo_path=report_file,
         stdout_level=args.std_log_level,
         file_level=args.file_log_level,
         disabled=args.no_log,
