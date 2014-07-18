@@ -301,12 +301,12 @@ class FileSystemOperator(object):
         self.add_event_to_ignore(get_abspath(dst_path))
         dst_path = get_abspath(dst_path)
         if os.path.isdir(dst_path):
+            shutil.rmtree(dst_path)
+        else:
             try:
-                shutil.rmtree(dst_path)
+                os.remove(dst_path)
             except IOError:
                 pass
-        else:
-            os.remove(dst_path)
         self.snapshot_manager.update_snapshot_delete({"src_path": get_abspath(dst_path)})
 
 
