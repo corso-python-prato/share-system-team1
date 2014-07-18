@@ -652,6 +652,32 @@ class DirSnapshotManagerTest(unittest.TestCase):
         self.assertEqual(['sub_dir_2/test_file_4.txt'], new_server)
         self.assertEqual(['sub_dir_1/test_file_1.txt'], equal)
 
+    def test_check_files_timestamp(self):
+        #server snapshot unsinket with local path:
+        #   sub_dir_1/test_file_1.txt unmodified
+        #   sub_dir_1/test_file_2.txt older then snap timestamp
+        unsinked_server_snap = {
+            'fea80f2db003d4ebc4536023814aa885': [
+                {'path': u'sub_dir_1/test_file_1.txt', 'timestamp': 123123}],
+            '81bcb26fd4acfaa5d0acc7eef1d3013a': [
+                {'path': u'sub_dir_2/test_file_2.txt', 'timestamp': 123122}],
+        }
+
+        #Case: file sinked
+        response = self.snapshot_manager.check_files_timestamp(
+            unsinked_server_snap, 'sub_dir_1/test_file_1.txt')
+        self.assertFalse(response)
+
+        #Case: file older than snapshot timestamp
+        response = self.snapshot_manager.check_files_timestamp(
+            unsinked_server_snap, 'sub_dir_2/test_file_2.txt')
+        self.assertTrue(response)
+
+        #Case: error path
+        response = self.snapshot_manager.check_files_timestamp(
+            unsinked_server_snap, 'error/path')
+        self.assertEqual(response, None)
+
     def test_syncronize_dispatcher(self):
         #server snapshot sinked with local path
         sinked_server_snap = {
