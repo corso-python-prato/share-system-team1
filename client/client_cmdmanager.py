@@ -157,7 +157,7 @@ class RawBoxCmd(cmd.Cmd):
     def do_create(self, line):
         """
         create a new RawBox user
-        create user <username>
+        create user <email>
         """
         if line:
             command = line.split()[0]
@@ -171,7 +171,7 @@ class RawBoxCmd(cmd.Cmd):
     def do_activate(self, line):
         """
         activate a new RawBox user previously created
-        activate <username> code=<code>
+        activate <email> <code>
         """
         if line:
             user = line.split()[0]
