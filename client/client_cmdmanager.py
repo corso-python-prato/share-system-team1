@@ -2,13 +2,15 @@
 #-*- coding: utf-8 -*-
 
 from communication_system import CmdMessageClient
-from client_daemon import load_config
 from colorMessage import Message
+import ConfigParser
 import platform
 import getpass
 import cmd
 import re
 import os
+
+FILE_CONFIG = "config.ini"
 
 
 def take_input(message, password=False):
@@ -202,8 +204,11 @@ def main():
     else:
         os.system('clear')
 
-    conf, is_new = load_config()
-    comm_sock = CmdMessageClient(conf['cmd_host'], int(conf['cmd_port']))
+    config = ConfigParser.ConfigParser()
+    config.read(FILE_CONFIG)
+    host = config.get('cmd', 'host')
+    port = config.get('cmd', 'port')
+    comm_sock = CmdMessageClient(host, int(port))
     try:
         RawBoxCmd(RawBoxExecuter(comm_sock)).cmdloop()
     except KeyboardInterrupt:
