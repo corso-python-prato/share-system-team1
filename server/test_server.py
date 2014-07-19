@@ -20,6 +20,11 @@ def make_headers(user, psw):
         + b64encode("{0}:{1}".format(user, psw))
     }
 
+def compare_file_content(first_file, second_file):
+    with open(first_file, "r") as ff:
+        with open(second_file, "r") as sf:
+            return ff.read() == sf.read()
+
 
 class TestSetupServer(unittest.TestCase):
     other_directory = os.path.join(
@@ -107,10 +112,7 @@ class TestFilesAPI(unittest.TestCase):
             TestFilesAPI.user_test,
             "upload_file.txt"
         )
-        with open(uploaded_file) as f:
-            uploaded_content = f.read()
-            with open(DEMO_FILE, "r") as fp:
-                self.assertEqual(fp.read(), uploaded_content)
+        self.assertTrue(compare_file_content(uploaded_file, DEMO_FILE))
 
         # try to re-upload the same file to check conflict error
         with open(DEMO_FILE, "r") as f:
@@ -183,9 +185,7 @@ class TestFilesAPI(unittest.TestCase):
             )
             self.assertEqual(rv.status_code, 201)
 
-        with open(cls.test_file_name, "r") as f:
-            with open(DEMO_FILE, "r") as fp:
-                self.assertEqual(fp.read(), f.read())
+        self.assertTrue(compare_file_content(cls.test_file_name, DEMO_FILE))
 
         #restore
         shutil.move(
