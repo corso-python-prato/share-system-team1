@@ -1,1 +1,25 @@
-{"users": {"changeman": {"paths": {"": ["changeman", null, 1405678807.523496], "demo2": ["changeman/demo2", "c347c507269ce43d7b50dec23d411912", 1405678922.315954], "demo1": ["changeman/demo1", "bb80d836bfdfaa7292766022a176f0fc", 1405678911.285372]}, "psw": "$5$rounds=110000$9Klk2Z12y2pVMWU8$m6hFm.JEWQNVAIHcMMaSugMAD6UNFHwwyteh/gR5n33", "timestamp": 1405678922.315954}}}
+{
+    "users": {
+        "changeman": {
+            "paths": {
+                "": [
+                    "changeman",
+                    null,
+                    1405678807.523496
+                ],
+                "demo2": [
+                    "changeman/demo2",
+                    "c347c507269ce43d7b50dec23d411912",
+                    1405678922.315954
+                ],
+                "demo1": [
+                    "changeman/demo1",
+                    "bb80d836bfdfaa7292766022a176f0fc",
+                    1405678911.285372
+                ]
+            },
+            "psw": "$5$rounds=110000$9Klk2Z12y2pVMWU8$m6hFm.JEWQNVAIHcMMaSugMAD6UNFHwwyteh/gR5n33",
+            "timestamp": 1405678922.315954
+        }
+    }
+}
