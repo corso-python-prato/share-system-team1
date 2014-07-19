@@ -58,7 +58,8 @@ def can_write(username, server_path):
 class User(object):
     """
     Maintaining two dictionaries:
-        · paths     = { client_path : [server_path, md5] }
+        · paths     = { client_path : [server_path, md5/None, timestamp] }
+        None instead of the md5 means that the path is a directory.
         · shared_resources: { server_path : [owner, ben1, ben2, ...] }
     The full path to access to the file is a join between USERS_DIRECTORIES and
     the server_path.
