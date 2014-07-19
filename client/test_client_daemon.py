@@ -1310,11 +1310,12 @@ class FunctionTest(unittest.TestCase):
             "snapshot": "",
         }
         config, is_new = load_config()
+        abspath = os.path.dirname(os.path.abspath(__file__))
         self.assertTrue(is_new)
-        self.assertTrue(os.path.exists('config.json'))
+        self.assertTrue(os.path.exists(os.path.join(abspath, 'config.json')))
         self.assertEqual(config, expected_conf)
-        self.assertTrue(os.path.exists('snapshot_file.json'))
-        snap = json.loads(open('snapshot_file.json').read())
+        self.assertTrue(os.path.exists(os.path.join(abspath, 'snapshot_file.json')))
+        snap = json.loads(open(os.path.join(abspath, 'snapshot_file.json')).read())
         self.assertEqual(snap, expected_snap)
 
 
