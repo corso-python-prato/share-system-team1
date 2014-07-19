@@ -32,9 +32,16 @@ parser = reqparse.RequestParser()
 parser.add_argument("task", type=str)
 
 
-def to_md5(path, block_size=2 ** 20):
+def to_md5(path=False, block_size=2 ** 20, file_object=False):
     """ if path is a file, return a md5;
-    if path is a directory, return False """
+    if path is a directory, return False
+    if file_object is defined file_object content md5"""
+    if file_object:
+        m = hashlib.md5()
+        for chunk in iter(lambda: file_object.read(block_size), b''):
+            m.update(chunk)
+        return m.hexdigest()
+
     if os.path.isdir(path):
         return False
 
@@ -395,8 +402,12 @@ class Files(Resource):
             abort(HTTP_FORBIDDEN)
 
         f = request.files["file_content"]
-        f.save(server_path)
 
+        if request.form["file_md5"] != to_md5(file_object=f):
+            abort(HTTP_BAD_REQUEST)
+
+        f.seek(0)
+        f.save(server_path)
         u.push_path(client_path, server_path, only_modify=True)
         return u.timestamp, HTTP_CREATED
 
@@ -421,8 +432,12 @@ class Files(Resource):
             abort(HTTP_FORBIDDEN)
 
         f = request.files["file_content"]
-        f.save(server_path)
 
+        if request.form["file_md5"] != to_md5(file_object=f):
+            abort(HTTP_BAD_REQUEST)
+
+        f.seek(0)
+        f.save(server_path)
         u.push_path(client_path, server_path)
         return u.timestamp, HTTP_CREATED
 
