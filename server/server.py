@@ -11,7 +11,6 @@ import shutil
 import time
 import json
 import os
-import re
 
 
 HTTP_OK = 200
@@ -53,10 +52,7 @@ def can_write(username, server_path):
     Check if an user is the owner of a file (or father directory).
     (the server_path begins with his name)
     """
-    if re.match("^{}(\/.)?".format(username), server_path):
-        return True
-    else:
-        return False
+    return server_path.split('/')[0] == username
 
 
 class User(object):
