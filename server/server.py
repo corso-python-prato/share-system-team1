@@ -36,7 +36,7 @@ def to_md5(full_path, block_size=2 ** 20):
     """ if server_ path is a file, return a md5;
     if server_path is a directory, return False """
     if os.path.isdir(full_path):
-        return False
+        return None
 
     m = hashlib.md5()
     with open(full_path, 'rb') as f:
@@ -308,7 +308,7 @@ class User(object):
         # same. If modified, the both are update.
         ben.paths[new_client_path] = self.paths[client_path]
 
-        if self.paths[client_path][1] is False:
+        if self.paths[client_path][1] is None:
             # If client_path is a directory, add to the beneficiary's paths
             # every file and folder in the shared folder
             for path, value in self.paths.items():
@@ -333,7 +333,7 @@ class Files(Resource):
         u = User.get_user(auth.username())
         tree = {}
         for p, v in u.paths.items():
-            if v[1] is False:
+            if v[1] is None:
                 # the path p is a directory
                 continue
 
