@@ -110,7 +110,7 @@ class ServerCommunicator(object):
 
         file_content = ''
         try:
-            file_content = open(dst_path, 'rb')
+            file_content = open(get_abspath(dst_path), 'rb')
         except IOError:
             return False  # Atomic create and delete error!
 
