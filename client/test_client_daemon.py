@@ -150,7 +150,20 @@ class ServerCommunicatorTest(unittest.TestCase):
         httpretty.reset()
     
     def test_upload(self):
+        class  Fake_response(object):
+            status_code = 201
+            text = 123131232
+
+        self.fake_response = Fake_response()
+        def fake_try_request(*args, **kwargs):
+            self.request = kwargs
+            self.server_comm._try_request = self.true_try_request
+            return self.server_comm._try_request(*args ,**kwargs)
+
+        self.true_try_request = self.server_comm._try_request
+
         put_file=True
+        self.server_comm._try_request = fake_try_request
         mock_auth_user = ":".join([self.username, self.password])
         self.server_comm.upload_file(self.file_path, put_file)
         encoded = httpretty.last_request().headers['authorization'].split()[1]
@@ -158,6 +171,7 @@ class ServerCommunicatorTest(unittest.TestCase):
         path = httpretty.last_request().path
         host = httpretty.last_request().headers['host']
         method = httpretty.last_request().method
+        mocked_file_md5 = hashlib.md5(open(self.file_path, 'rb').read()).hexdigest()
 
         #check if authorizations are equal
         self.assertEqual(authorization_decoded, mock_auth_user)
@@ -165,8 +179,11 @@ class ServerCommunicatorTest(unittest.TestCase):
         self.assertEqual(path, '/API/v1/files/f_for_cdaemon_test.txt')
         self.assertEqual(host, '127.0.0.1:5000')
         self.assertEqual(method, 'PUT')
+        #check if check md5 is equal
+        self.assertEqual(self.request['data']['file_md5'], mocked_file_md5)
 
         put_file = False
+        self.server_comm._try_request = fake_try_request
         mock_auth_user = ":".join([self.username, self.password])
         self.server_comm.upload_file(self.file_path, put_file)
         encoded = httpretty.last_request().headers['authorization'].split()[1]
@@ -181,6 +198,8 @@ class ServerCommunicatorTest(unittest.TestCase):
         self.assertEqual(path, '/API/v1/files/f_for_cdaemon_test.txt')
         self.assertEqual(host, '127.0.0.1:5000')
         self.assertEqual(method, 'POST')
+        #check if check md5 is equal
+        self.assertEqual(self.request['data']['file_md5'], mocked_file_md5)
 
     def test_download(self):
         mock_auth_user = ":".join([self.username, self.password])
