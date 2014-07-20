@@ -150,11 +150,6 @@ class ServerCommunicatorTest(unittest.TestCase):
         httpretty.reset()
     
     def test_upload(self):
-        class  Fake_response(object):
-            status_code = 201
-            text = 123131232
-
-        self.fake_response = Fake_response()
         def fake_try_request(*args, **kwargs):
             self.request = kwargs
             self.server_comm._try_request = self.true_try_request
