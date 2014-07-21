@@ -478,11 +478,14 @@ def load_config():
     try:
         config["username"] = config_ini.get('daemon_user_data', 'username')
         config["password"] = config_ini.get('daemon_user_data', 'password')
+        config_ini.get('daemon_user_data', 'active')
     except ConfigParser.NoSectionError:
         user_exists = False
         config_ini.add_section('daemon_user_data')
         config_ini.set('daemon_user_data', 'username')
         config_ini.set('daemon_user_data', 'password')
+    except ConfigParser.NoOptionError:
+        user_exists = False  # in this case the user is created but not activated
 
     with open(FILE_CONFIG, 'wb') as config_file:
         config_ini.write(config_file)
