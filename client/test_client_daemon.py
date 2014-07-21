@@ -632,6 +632,9 @@ class DirSnapshotManagerTest(unittest.TestCase):
         self.environment = TestEnvironment()
         self.test_main_path, self.test_share_dir, self.test_folder_1, self.test_folder_2, self.test_file_1, self.test_file_2, self.test_file_3, self.true_snapshot, self.md5_snapshot, self.conf_snap_path, self.conf_snap_gen = self.environment.create()
         client_daemon.CONFIG_DIR_PATH = self.test_share_dir
+        self.sinked_timestamp = 123123
+        self.unsinked_timestamp = 123125
+        self.old_timestamp = 123122
 
         self.snapshot_manager = DirSnapshotManager(self.conf_snap_path)
 
@@ -659,8 +662,18 @@ class DirSnapshotManagerTest(unittest.TestCase):
         #   sub_dir_2/test_file_4.txt added
         #   sub_dir_2/test_file_3.txt deleted
         unsinked_server_snap = {
-            'fea80f2db004d4ebc4536023814aa885': [{'path': u'sub_dir_1/test_file_1.txt', 'timestamp': 123124}],
-            '456jk3b334bb33463463fbhj4b3534t3': [{'path': u'sub_dir_2/test_file_4.txt', 'timestamp': 123125}],
+            'fea80f2db004d4ebc4536023814aa885': [
+                {
+                    'path': u'sub_dir_1/test_file_1.txt',
+                    'timestamp': self.unsinked_timestamp,
+                }
+            ],
+            '456jk3b334bb33463463fbhj4b3534t3': [
+                {
+                    'path': u'sub_dir_2/test_file_4.txt',
+                    'timestamp': self.unsinked_timestamp,
+                }
+            ],
         }
 
         new_client, new_server, equal = self.snapshot_manager.diff_snapshot_paths(self.true_snapshot, unsinked_server_snap)
@@ -677,9 +690,17 @@ class DirSnapshotManagerTest(unittest.TestCase):
         #   sub_dir_1/test_file_2.txt older then snap timestamp
         unsinked_server_snap = {
             'fea80f2db003d4ebc4536023814aa885': [
-                {'path': u'sub_dir_1/test_file_1.txt', 'timestamp': 123123}],
+                {
+                    'path': u'sub_dir_1/test_file_1.txt',
+                    'timestamp': self.sinked_timestamp,
+                }
+            ],
             '81bcb26fd4acfaa5d0acc7eef1d3013a': [
-                {'path': u'sub_dir_2/test_file_2.txt', 'timestamp': 123122}],
+                {
+                    'path': u'sub_dir_2/test_file_2.txt',
+                    'timestamp': self.old_timestamp,
+                }
+            ],
         }
 
         #Case: file sinked
@@ -701,11 +722,20 @@ class DirSnapshotManagerTest(unittest.TestCase):
         #server snapshot sinked with local path
         sinked_server_snap = {
             '81bcb26fd4acfaa5d0acc7eef1d3013a': [
-                {'path': u'sub_dir_2/test_file_2.txt', 'timestamp': 123123}],
+                {
+                    'path': u'sub_dir_2/test_file_2.txt',
+                    'timestamp': self.sinked_timestamp,
+                }],
             'd1e2ac797b8385e792ac1e31db4a81f9': [
-                {'path': u'sub_dir_2/test_file_3.txt', 'timestamp': 123123}],
+                {
+                    'path': u'sub_dir_2/test_file_3.txt',
+                    'timestamp': self.sinked_timestamp,
+                }],
             'fea80f2db003d4ebc4536023814aa885': [
-                {'path': u'sub_dir_1/test_file_1.txt', 'timestamp': 123123}],
+                {
+                    'path': u'sub_dir_1/test_file_1.txt',
+                    'timestamp': self.sinked_timestamp,
+                }],
         }
         #server snapshot unsinket with local path:
         #   sub_dir_1/test_file_1.txt modified
@@ -714,21 +744,30 @@ class DirSnapshotManagerTest(unittest.TestCase):
         #   sub_dir_2/test_file_3.txt deleted
         unsinked_server_snap = {
             '81bcb26fd4acfaa5d0acc7eef1d3013a': [
-                {'path': u'sub_dir_2/test_file_2.txt', 'timestamp': 123123},
-                {'path': u'sub_dir_1/test_file_2.txt', 'timestamp': 123123}],
+                {
+                    'path': u'sub_dir_2/test_file_2.txt',
+                    'timestamp': self.sinked_timestamp,
+                },
+                {
+                    'path': u'sub_dir_1/test_file_2.txt',
+                    'timestamp': self.sinked_timestamp,
+                }],
             'fea80f2db004d4ebc4536023814aa885': [
-                {'path': u'sub_dir_1/test_file_1.txt', 'timestamp': 123124}],
+                {
+                    'path': u'sub_dir_1/test_file_1.txt',
+                    'timestamp': self.unsinked_timestamp,
+                }],
             '456jk3b334bb33463463fbhj4b3534t3': [
-                {'path': u'sub_dir_2/test_file_4.txt', 'timestamp': 123125}],
+                {
+                    'path': u'sub_dir_2/test_file_4.txt',
+                    'timestamp': self.unsinked_timestamp,
+                }],
         }
-
-        sinked_timestamp = 123123
-        unsinked_timestamp = 123125
 
         #Case: no deamon internal conflicts == timestamp
         expected_result = []
         result = self.snapshot_manager.syncronize_dispatcher(
-            server_timestamp=sinked_timestamp,
+            server_timestamp=self.sinked_timestamp,
             server_snapshot=sinked_server_snap)
         self.assertEqual(result, expected_result)
 
@@ -742,7 +781,7 @@ class DirSnapshotManagerTest(unittest.TestCase):
             {'local_delete': ['sub_dir_2/test_file_3.txt']}
         ]
         result = self.snapshot_manager.syncronize_dispatcher(
-            server_timestamp=unsinked_timestamp,
+            server_timestamp=self.unsinked_timestamp,
             server_snapshot=unsinked_server_snap)
         self.assertEqual(result, expected_result)
 
@@ -755,7 +794,7 @@ class DirSnapshotManagerTest(unittest.TestCase):
             {'remote_upload': ['sub_dir_2/test_file_3.txt']}
         ]
         result = self.snapshot_manager.syncronize_dispatcher(
-            server_timestamp=sinked_timestamp,
+            server_timestamp=self.sinked_timestamp,
             server_snapshot=unsinked_server_snap)
         self.assertEqual(result, expected_result)
         self.assertEqual(
@@ -764,7 +803,10 @@ class DirSnapshotManagerTest(unittest.TestCase):
 
         #Case: deamon internal conflicts != timestamp
         unsinked_server_snap['81bcb26fd4acfaa5d0acc7eef1d3013a'].append(
-            {'path': u'sub_dir_1/test_file_del.txt', 'timestamp': 123122})
+            {
+                'path': u'sub_dir_1/test_file_del.txt',
+                'timestamp': self.old_timestamp,
+            })
         open(''.join([self.test_file_2, 'copy']), 'w').write('Java is evil')
 
         self.true_snapshot['829c5c86163b667a3d9684b24ceca967'] = [
@@ -772,7 +814,10 @@ class DirSnapshotManagerTest(unittest.TestCase):
         ]
         self.snapshot_manager.local_full_snapshot = self.true_snapshot
         unsinked_server_snap['829c5c86453b667a3d9684b24ceca967'] = [
-            {'path': u'sub_dir_2/test_file_2.txtcopy', 'timestamp': 123122}]
+            {
+                'path': u'sub_dir_2/test_file_2.txtcopy',
+                'timestamp': self.old_timestamp
+            }]
 
         self.snapshot_manager.last_status['snapshot'] = "2145151251251dsf"
         expected_result = [
@@ -789,7 +834,7 @@ class DirSnapshotManagerTest(unittest.TestCase):
             {'remote_delete': ['sub_dir_2/test_file_3.txt']},
         ]
         result = self.snapshot_manager.syncronize_dispatcher(
-            server_timestamp=unsinked_timestamp,
+            server_timestamp=self.unsinked_timestamp,
             server_snapshot=unsinked_server_snap)
         self.cmdListAsserEqual(result, expected_result)
 
@@ -806,10 +851,13 @@ class DirSnapshotManagerTest(unittest.TestCase):
         self.assertTrue(self.snapshot_manager.local_check())
 
     def test_is_syncro(self):
-        test_srv_timestamp = 123123
-        self.assertTrue(self.snapshot_manager.is_syncro(test_srv_timestamp))
-        test_srv_timestamp = 123124
-        self.assertFalse(self.snapshot_manager.is_syncro(test_srv_timestamp))
+        #Case: syncronized timestamp
+        self.assertTrue(
+            self.snapshot_manager.is_syncro(self.sinked_timestamp))
+
+        #Case: unsyncronized timestamp
+        self.assertFalse(
+            self.snapshot_manager.is_syncro(self.unsinked_timestamp))
 
     def test_load_status(self):
         self.snapshot_manager._load_status()
@@ -945,23 +993,21 @@ class DirSnapshotManagerTest(unittest.TestCase):
         self.assertEqual(self.snapshot_manager.local_full_snapshot, original_snapshot)
 
     def test_save_timestamp(self):
-        #Case: timestamp not correct
-        test_timestamp = 123122
+        #Case: timestamp not correct: older than synked one
         expected_snap = self.conf_snap_gen
-        self.snapshot_manager.save_timestamp(test_timestamp)
+        self.snapshot_manager.save_timestamp(self.old_timestamp)
         new_snap_conf = json.load(open(self.conf_snap_path))
         self.assertEqual(new_snap_conf, expected_snap)
         self.assertEqual(
             self.snapshot_manager.last_status,
             self.conf_snap_gen)
 
-        #Case: timestamp correct
-        test_timestamp = 123124
+        #Case: timestamp correct: newer than synked one
         expected_snap = {
-            "timestamp": 123124,
+            "timestamp": self.unsinked_timestamp,
             "snapshot": self.md5_snapshot
         }
-        self.snapshot_manager.save_timestamp(test_timestamp)
+        self.snapshot_manager.save_timestamp(self.unsinked_timestamp)
         new_snap_conf = json.load(open(self.conf_snap_path))
         self.assertEqual(new_snap_conf, expected_snap)
         self.assertEqual(
@@ -980,11 +1026,20 @@ class DirSnapshotManagerTest(unittest.TestCase):
         #case true path of server snapshot
         mock_server_snap = {
             '81bcb26fd4acfaa5d0acc7eef1d3013a': [
-                {'path': u'sub_dir_2/test_file_2.txt', 'timestamp': 123123}],
+                {
+                    'path': u'sub_dir_2/test_file_2.txt',
+                    'timestamp': self.sinked_timestamp,
+                }],
             'd1e2ac797b8385e792ac1e31db4a81f9': [
-                {'path': u'sub_dir_2/test_file_3.txt', 'timestamp': 123123}],
+                {
+                    'path': u'sub_dir_2/test_file_3.txt',
+                    'timestamp': self.sinked_timestamp,
+                }],
             'fea80f2db003d4ebc4536023814aa885': [
-                {'path': u'sub_dir_1/test_file_1.txt', 'timestamp': 123123}],
+                {
+                    'path': u'sub_dir_1/test_file_1.txt',
+                    'timestamp': self.sinked_timestamp,
+                }],
         }
         md5 = self.snapshot_manager.find_file_md5(mock_server_snap, 'sub_dir_1/test_file_1.txt', True)
         self.assertEqual(md5, 'fea80f2db003d4ebc4536023814aa885')
