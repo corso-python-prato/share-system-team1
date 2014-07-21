@@ -8,6 +8,7 @@ import server
 import shutil
 import json
 import os
+import time
 
 from server import _API_PREFIX
 
@@ -119,12 +120,18 @@ class TestFilesAPI(unittest.TestCase):
         # correct upload
         with open(TestFilesAPI.demo_file1, "r") as f:
             data = {"file_content": f}
+            start = time.time()
             rv = self.tc.post(
                 _API_PREFIX + url,
                 data=data,
                 headers=self.headers
             )
+            end = time.time()
+            response = float(rv.get_data())
+            self.assertLessEqual(start, response)  
+            self.assertGreaterEqual(end, response)          
             self.assertEqual(rv.status_code, 201)
+            
 
         uploaded_file = os.path.join(
             TestFilesAPI.root,
@@ -202,11 +209,16 @@ class TestFilesAPI(unittest.TestCase):
         with open(cls.demo_file1, "r") as f:
             data = {"file_content": f}
             url = "{}{}".format(cls.url_radix, "random_file.txt")
+            start = time.time()
             rv = self.tc.put(
                 _API_PREFIX + url,
                 data=data,
                 headers=self.headers
             )
+            end = time.time()
+            response = float(rv.get_data())
+            self.assertLessEqual(start, response)  
+            self.assertGreaterEqual(end, response)
             self.assertEqual(rv.status_code, 201)
 
         self.assertTrue(
@@ -415,11 +427,16 @@ class TestActionsAPI(unittest.TestCase):
         data = {"path": "demo1"}
 
         #try correct delete
+        start = time.time()
         rv = self.tc.post(
             url,
             data=data,
             headers=self.headers
         )
+        end = time.time()
+        response = float(rv.get_data())
+        self.assertLessEqual(start, response)  
+        self.assertGreaterEqual(end, response)
         self.assertEqual(rv.status_code, 200)
         self.assertFalse(os.path.isfile(cls.full_path1))
         #check if the file is correctly removed from the dictionary
@@ -472,11 +489,16 @@ class TestActionsAPI(unittest.TestCase):
         )
 
         # try correct copy
+        start = time.time()
         rv = self.tc.post(
             url,
             data=data,
             headers=self.headers
         )
+        end = time.time()
+        response = float(rv.get_data())
+        self.assertLessEqual(start, response)  
+        self.assertGreaterEqual(end, response)
         self.assertEqual(rv.status_code, 201)
 
         self.assertTrue(
@@ -524,9 +546,14 @@ class TestActionsAPI(unittest.TestCase):
         data = {"file_src": "demo1", "file_dest": "mv/dest.txt"}
 
         # test the correct move action
+        start = time.time()
         received = self.tc.post(
             url, data=data, headers=self.headers
         )
+        end = time.time()
+        response = float(received.get_data())
+        self.assertLessEqual(start, response)  
+        self.assertGreaterEqual(end, response)
         self.assertEqual(received.status_code, 201)
         # check the disk
         self.assertFalse(
