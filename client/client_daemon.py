@@ -476,7 +476,7 @@ def load_config():
             json.dump({"timestamp": 0, "snapshot": ""}, snapshot)
 
     try:
-        config["username"] = config_ini.get('daemon_user_data', 'username'),
+        config["username"] = config_ini.get('daemon_user_data', 'username')
         config["password"] = config_ini.get('daemon_user_data', 'password')
     except ConfigParser.NoSectionError:
         user_exists = False
