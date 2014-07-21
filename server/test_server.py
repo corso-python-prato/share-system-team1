@@ -20,6 +20,7 @@ def make_headers(user, psw):
         + b64encode("{0}:{1}".format(user, psw))
     }
 
+
 def compare_file_content(first_file, second_file):
     with open(first_file, "r") as ff:
         with open(second_file, "r") as sf:
@@ -89,7 +90,7 @@ class TestFilesAPI(unittest.TestCase):
                 _API_PREFIX + TestFilesAPI.url_radix + "something",
                 data=data,
                 headers=make_headers("fake_user", "some_psw"))
-            self.assertEqual(rv.status_code, 401) 
+            self.assertEqual(rv.status_code, 401)
 
     def test_post(self):
         url = "{}{}".format(
@@ -158,7 +159,7 @@ class TestFilesAPI(unittest.TestCase):
         self.assertEqual(rv.status_code, 404)
 
     def test_fail_auth_put(self):
-        #fail authentication
+        # fail authentication
         with open(DEMO_FILE, "r") as f:
             data = {"file_content": f}
             url = "{}{}".format(TestFilesAPI.url_radix, "random_file.txt")
@@ -170,14 +171,14 @@ class TestFilesAPI(unittest.TestCase):
             self.assertEqual(rv.status_code, 401)
 
     def test_put(self):
-        #set-up
+        # set-up
         cls = TestFilesAPI
         backup = os.path.join(
             cls.root, "user_dirs", cls.user_test, "backup_random_file.txt"
         )
         shutil.copy(cls.test_file_name, backup)
 
-        #correct put
+        # correct put
         with open(DEMO_FILE, "r") as f:
             data = {"file_content": f}
             url = "{}{}".format(cls.url_radix, "random_file.txt")
@@ -190,13 +191,13 @@ class TestFilesAPI(unittest.TestCase):
 
         self.assertTrue(compare_file_content(cls.test_file_name, DEMO_FILE))
 
-        #restore
+        # restore
         shutil.move(
             backup,
             cls.test_file_name
         )
 
-        #wrong path
+        # wrong path
         with open(DEMO_FILE, "r") as f:
             data = {"file_content": f}
             url = "{}{}".format(cls.url_radix, "NO_SERVER_PATH")
@@ -221,6 +222,14 @@ class TestFilesAPI(unittest.TestCase):
             )
             self.assertEqual(rv.status_code, 200)
             return json.loads(rv.data)
+
+        try:
+            # sometimes, due to an old failed test, theres is yet the user dir
+            shutil.rmtree(
+                os.path.join(TestFilesAPI.root, "user_dirs", data["user"])
+            )
+        except OSError:
+            pass
 
         rv = self.tc.post(
             _API_PREFIX + "create_user",
@@ -451,7 +460,6 @@ class TestActionsAPI(unittest.TestCase):
             url, data=data, headers=make_headers("fake_user", "some_psw")
         )
         self.assertEqual(received.status_code, 401)
-
 
     def test_actions_move(self):
         cls = TestActionsAPI
