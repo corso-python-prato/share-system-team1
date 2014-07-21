@@ -441,6 +441,8 @@ def load_config():
 
     try:
         config = {
+            "host": config_ini.get('cmd', 'host'),
+            "port": config_ini.get('cmd', 'port'),
             "server_url": "http://{}:{}/{}".format(
                 config_ini.get('daemon_communication', 'server_url'),
                 config_ini.get('daemon_communication', 'server_port'),
@@ -844,8 +846,8 @@ def main():
         "delete_user": server_com.delete_user
     }
     sock_server = CmdMessageServer(
-        config['cmd_host'],
-        int(config['cmd_port']),
+        config['host'],
+        int(config['port']),
         client_command)
     
 
