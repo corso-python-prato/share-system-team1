@@ -840,6 +840,9 @@ def main():
     server_com = ServerCommunicator(
         server_url=config['server_url'],
         username=None,
+        password=None,
+        snapshot_manager=snapshot_manager)
+
     client_command = {
         "create_user": server_com.create_user,
         "activate_user": server_com.activate_user,
