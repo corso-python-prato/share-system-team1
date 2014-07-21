@@ -12,6 +12,7 @@ from watchdog.events import DirDeletedEvent
 from watchdog.events import DirModifiedEvent
 from watchdog.events import DirCreatedEvent
 from watchdog.events import DirMovedEvent
+import ConfigParser
 import client_daemon
 import httpretty
 import unittest
@@ -307,7 +308,7 @@ class ServerCommunicatorTest(unittest.TestCase):
         code = "qwerty12345"
         msg1 = self.server_comm.activate_user({"user":self.username, "code":code})
         self.assertEqual(msg1["result"], 201)
-        self.assertEqual(msg1["details"][0], "User activated")
+        self.assertEqual(msg1["details"][0], "You have now entered RawBox")
         msg2 = self.server_comm.activate_user({"user":self.username, "code":code})
         self.assertEqual(msg2["result"], 404)
         self.assertEqual(msg2["details"][0], "User not found")
@@ -425,6 +426,105 @@ class FileSystemOperatorTest(unittest.TestCase):
         self.assertFalse(os.path.exists(source_path))
         #check if only source_path is added by delete_a_file in the 2 tested case
         self.assertEqual([file_to_delete.name, source_path], self.event_handler.paths_ignored)
+
+
+class LoadConfigTest(unittest.TestCase):
+
+    CONFIG_ONLY_CMD_SECTION = "test_config_only_cmd_section.ini"
+    CONFIG_WITH_DAEMON_SECTION = "test_config_with_daemon_section.ini"
+    CONFIG_WITH_USER_SECTION = "test_config_with_user_conf.ini"
+    DIR_PATH = os.path.join(os.path.expanduser("~"), "RawBox")
+
+    def setUp(self):
+
+        config_only_cmd = ConfigParser.ConfigParser()
+        config_only_cmd.add_section("cmd")
+        config_only_cmd.set("cmd", "host", "localhost")
+        config_only_cmd.set("cmd", "port", "6666")
+        with open(self.CONFIG_ONLY_CMD_SECTION, 'wb') as config_file:
+            config_only_cmd.write(config_file)
+        self.config_only_cmd = {
+            "host": config_only_cmd.get("cmd", "host"),
+            "port": config_only_cmd.get("cmd", "port"),
+            "server_url": "http://{}:{}/{}".format(
+                    client_daemon.SERVER_URL,
+                    client_daemon.SERVER_PORT,
+                    client_daemon.API_PREFIX),
+            "dir_path":self.DIR_PATH,
+            "snapshot_file_path": "snapshot_file.json"
+
+        }
+
+        config_with_daemon_conf = ConfigParser.ConfigParser()
+        config_with_daemon_conf.add_section("cmd")
+        config_with_daemon_conf.add_section("daemon_communication")
+        config_with_daemon_conf.set("cmd", "host", "localhost")
+        config_with_daemon_conf.set("cmd", "port", "6666")
+        config_with_daemon_conf.set('daemon_communication', 'snapshot_file_path', 'snapshot_file.json')
+        config_with_daemon_conf.set('daemon_communication', 'dir_path', "example/dir/path")
+        config_with_daemon_conf.set('daemon_communication', 'server_url', "example/server/url")
+        config_with_daemon_conf.set('daemon_communication', 'server_port', "example_port")
+        config_with_daemon_conf.set('daemon_communication', 'api_prefix', "example/api/prefix")
+        with open(self.CONFIG_WITH_DAEMON_SECTION, 'wb') as config_file:
+            config_with_daemon_conf.write(config_file)
+        self.config_with_daemon_conf = {
+            "host": config_with_daemon_conf.get("cmd", "host"),
+            "port": config_with_daemon_conf.get("cmd", "port"),
+            "server_url": "http://{}:{}/{}".format(
+                    config_with_daemon_conf.get("daemon_communication", "server_url"),
+                    config_with_daemon_conf.get("daemon_communication", "server_port"),
+                    config_with_daemon_conf.get("daemon_communication", "api_prefix")),
+            "dir_path": config_with_daemon_conf.get("daemon_communication", "dir_path"),
+            "snapshot_file_path": config_with_daemon_conf.get("daemon_communication", "snapshot_file_path")
+        }
+
+        config_with_user_conf = ConfigParser.ConfigParser()
+        config_with_user_conf.add_section("cmd")
+        config_with_user_conf.add_section("daemon_communication")
+        config_with_user_conf.add_section("daemon_user_data")
+        config_with_user_conf.set("cmd", "host", "localhost")
+        config_with_user_conf.set("cmd", "port", "6666")
+        config_with_user_conf.set('daemon_communication', 'snapshot_file_path', 'snapshot_file.json')
+        config_with_user_conf.set('daemon_communication', 'dir_path', "example/dir/path")
+        config_with_user_conf.set('daemon_communication', 'server_url', "example/server/url")
+        config_with_user_conf.set('daemon_communication', 'server_port', "example_port")
+        config_with_user_conf.set('daemon_communication', 'api_prefix', "example/api/prefix")
+        config_with_user_conf.set('daemon_user_data', 'username', "example_username")
+        config_with_user_conf.set('daemon_user_data', 'password', "example_password")
+        config_with_user_conf.set('daemon_user_data', 'active', True)
+        with open(self.CONFIG_WITH_USER_SECTION, 'wb') as config_file:
+            config_with_user_conf.write(config_file)
+        self.config_with_user_conf = {
+            "host": config_with_user_conf.get("cmd", "host"),
+            "port": config_with_user_conf.get("cmd", "port"),
+            "server_url": "http://{}:{}/{}".format(
+                    config_with_user_conf.get("daemon_communication", "server_url"),
+                    config_with_user_conf.get("daemon_communication", "server_port"),
+                    config_with_user_conf.get("daemon_communication", "api_prefix")),
+            "dir_path": config_with_user_conf.get("daemon_communication", "dir_path"),
+            "snapshot_file_path": config_with_user_conf.get("daemon_communication", "snapshot_file_path"),
+            "username": config_with_user_conf.get("daemon_user_data", "username"),
+            "password": config_with_user_conf.get("daemon_user_data", "password")
+        }
+
+    def tearDown(self):
+        os.remove(self.CONFIG_ONLY_CMD_SECTION)
+        os.remove(self.CONFIG_WITH_DAEMON_SECTION)
+        os.remove(self.CONFIG_WITH_USER_SECTION)
+
+    def test_load_config(self):
+        client_daemon.FILE_CONFIG = self.CONFIG_ONLY_CMD_SECTION
+        conf, user = client_daemon.load_config()
+        self.assertEqual(self.config_only_cmd, conf)
+        self.assertFalse(user)
+        client_daemon.FILE_CONFIG = self.CONFIG_WITH_DAEMON_SECTION
+        conf, user = client_daemon.load_config()
+        self.assertEqual(self.config_with_daemon_conf, conf)
+        self.assertFalse(user)
+        client_daemon.FILE_CONFIG = self.CONFIG_WITH_USER_SECTION
+        conf, user = client_daemon.load_config()
+        self.assertEqual(self.config_with_user_conf, conf)
+        self.assertTrue(user)
 
 
 class DirSnapshotManagerTest(unittest.TestCase):
