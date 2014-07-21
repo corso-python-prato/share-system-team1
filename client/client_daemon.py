@@ -42,7 +42,10 @@ def get_abspath(rel_path):
 class ServerCommunicator(object):
 
     def __init__(self, server_url, username, password, snapshot_manager):
-        self.auth = HTTPBasicAuth(username, password)
+        if username and password:
+            self.auth = HTTPBasicAuth(username, password)
+        else:
+            self.auth = None
         self.server_url = server_url
         self.snapshot_manager = snapshot_manager
         self.msg = {
