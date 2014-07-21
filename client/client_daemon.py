@@ -76,7 +76,7 @@ class ServerCommunicator(object):
         
         if sync.status_code != 401:
             server_snapshot = sync.json()['snapshot']
-            server_timestamp = sync.json()['timestamp']
+            server_timestamp = float(sync.json()['timestamp'])
             logger.debug("".format("SERVER SAY: ", server_snapshot, server_timestamp ,"\n"))
             command_list = self.snapshot_manager.syncronize_dispatcher(server_timestamp, server_snapshot)
             self.executer.syncronize_executer(command_list)
@@ -346,7 +346,7 @@ def load_config():
             "dir_path": dir_path,
             "snapshot_file_path": snapshot_path,
             "cmd_host": "localhost",
-            "cmd_port": "6666",
+            "cmd_port": 6666,
             "username": user,
             "password": psw,
             "crash_repo_path": crash_log_path,
@@ -470,8 +470,8 @@ class DirSnapshotManager(object):
 
     def is_syncro(self, server_timestamp):
         """ check if daemon timestamp is synchronized with server timestamp"""
-        server_timestamp = float(server_timestamp)
-        client_timestamp = float(self.last_status['timestamp'])
+        server_timestamp = server_timestamp
+        client_timestamp = self.last_status['timestamp']
         return server_timestamp == client_timestamp
 
     def _load_status(self):
@@ -563,8 +563,7 @@ class DirSnapshotManager(object):
             save timestamp to file only if getfile
             timestamp is < than the last timestamp saved
         """
-
-        if float(self.last_status['timestamp']) < float(timestamp):
+        if self.last_status['timestamp'] < timestamp:
             self.last_status['timestamp'] = timestamp
             with open(self.snapshot_file_path, 'w') as f:
                 f.write(json.dumps(self.last_status, f))

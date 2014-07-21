@@ -806,9 +806,9 @@ class DirSnapshotManagerTest(unittest.TestCase):
         self.assertTrue(self.snapshot_manager.local_check())
 
     def test_is_syncro(self):
-        test_srv_timestamp = '123123'
+        test_srv_timestamp = 123123
         self.assertTrue(self.snapshot_manager.is_syncro(test_srv_timestamp))
-        test_srv_timestamp = '123124'
+        test_srv_timestamp = 123124
         self.assertFalse(self.snapshot_manager.is_syncro(test_srv_timestamp))
 
     def test_load_status(self):
@@ -1316,7 +1316,7 @@ class FunctionTest(unittest.TestCase):
             "file_log_level": "ERROR",
             "stdout_log_level": "DEBUG",
             "cmd_host": "localhost",
-            "cmd_port": "6666",
+            "cmd_port": 6666,
             "username": 'username',
             "password": 'password',
         }
