@@ -27,6 +27,8 @@ auth = HTTPBasicAuth()
 _API_PREFIX = "/API/v1/"
 
 SERVER_ROOT = os.path.dirname(__file__)
+USERS_DIRECTORIES = os.path.join(SERVER_ROOT, "user_dirs/")
+USERS_DATA = os.path.join(SERVER_ROOT, "user_data.json")
 
 parser = reqparse.RequestParser()
 parser.add_argument("task", type=str)
@@ -64,7 +66,6 @@ class User(object):
     The full path to access to the file is a join between USERS_DIRECTORIES and
     the server_path.
     """
-
     users = {}
     shared_resources = {}
 
@@ -593,18 +594,10 @@ def create_user():
             return "user created", HTTP_CREATED
 
 
-def server_setup():
-    global USERS_DIRECTORIES
-    USERS_DIRECTORIES = os.path.join(SERVER_ROOT, "user_dirs/")
-    global USERS_DATA
-    USERS_DATA = os.path.join(SERVER_ROOT, "user_data.json")
+def main():
     if not os.path.isdir(USERS_DIRECTORIES):
         os.makedirs(USERS_DIRECTORIES)
     User.user_class_init()
-
-
-def main():
-    server_setup()
     app.run(host="0.0.0.0", debug=True)         # TODO: remove debug=True
 
 

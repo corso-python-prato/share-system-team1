@@ -13,6 +13,15 @@ import time
 from server import _API_PREFIX
 
 
+def server_setup(root):
+    server.SERVER_ROOT = root
+    server.USERS_DIRECTORIES = os.path.join(root, "user_dirs/")
+    server.USERS_DATA = os.path.join(root, "user_data.json")
+    if not os.path.isdir(server.USERS_DIRECTORIES):
+        os.makedirs(server.USERS_DIRECTORIES)
+    server.User.user_class_init()
+
+
 def make_headers(user, psw):
     return {
         "Authorization": "Basic "
@@ -43,8 +52,7 @@ class TestSetupServer(unittest.TestCase):
     )
 
     def setUp(self):
-        server.SERVER_ROOT = TestSetupServer.other_directory
-        server.server_setup()
+        server_setup(TestSetupServer.other_directory)
 
     def test_setup_server(self):
         self.assertEqual(
@@ -86,12 +94,11 @@ class TestFilesAPI(unittest.TestCase):
         os.unlink(cls.demo_file1)
 
     def setUp(self):
-        server.SERVER_ROOT = TestFilesAPI.root
         shutil.copy(
             os.path.join(TestFilesAPI.root, "demo_user_data.json"),
             os.path.join(TestFilesAPI.root, "user_data.json")
         )
-        server.server_setup()
+        server_setup(TestFilesAPI.root)
         self.tc = server.app.test_client()
         self.headers = make_headers(
             TestFilesAPI.user_test,
@@ -386,7 +393,6 @@ class TestActionsAPI(unittest.TestCase):
 
     def setUp(self):
         cls = TestActionsAPI
-        server.SERVER_ROOT = cls.root
 
         def setup_the_file_on_disk():
             os.makedirs(cls.test_folder)
@@ -402,7 +408,7 @@ class TestActionsAPI(unittest.TestCase):
             self.tearDown()
             setup_the_file_on_disk()
 
-        server.server_setup()
+        server_setup(cls.root)
         self.tc = server.app.test_client()
 
     def tearDown(self):
@@ -591,8 +597,7 @@ class TestUser(unittest.TestCase):
     )
 
     def setUp(self):
-        server.SERVER_ROOT = TestUser.root
-        server.server_setup()
+        server_setup(TestUser.root)
 
     def tearDown(self):
         try:
@@ -641,12 +646,11 @@ class TestShare(unittest.TestCase):
         os.unlink(cls.demo_file1)
 
     def setUp(self):
-        server.SERVER_ROOT = TestShare.root
         shutil.copy(
             os.path.join(TestShare.root, "demo_user_data.json"),
             os.path.join(TestShare.root, "user_data.json")
         )
-        server.server_setup()
+        server_setup(TestShare.root)
         self.tc = server.app.test_client()
 
         # this class comes with some users
