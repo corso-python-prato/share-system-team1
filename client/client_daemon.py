@@ -824,44 +824,6 @@ class CommandExecuter(object):
                         'delete': self.local.delete_a_file
                     }.get(command_type, error)(*(command_row[command]))
 
-server_com =""
-
-def wait_for_user(config, snapshot_manager):
-
-    def wrap_create(*args, **kwargs):
-        #print "args=", args
-        global server_com
-        server_com = ServerCommunicator(
-        server_url=config['server_url'],
-        username=args[0]['user'],
-        password=args[0]['psw'],
-        snapshot_manager = snapshot_manager)
-        
-        return server_com.create_user(*args, **kwargs)
-
-    def wrap_activate(*args, **kwargs):
-        #wait=False
-        global server_com
-        print "args=", args
-        response = server_com.activate_user(args[0]['user'],args[0]['code'])
-        print response
-        return response
-
-
-    cmd = {
-        'create_user': wrap_create,
-        'activate_user': wrap_activate
-    }
-
-    sock_server = CmdMessageServer(
-        config['cmd_host'],
-        int(config['cmd_port']),
-        cmd)
-    wait = True
-    while wait:
-        asyncore.poll(timeout=1)
-    
-
 def main():
     
     global CONFIG_DIR_PATH
@@ -869,16 +831,10 @@ def main():
     config, user_exists = load_config()
     CONFIG_DIR_PATH = config['dir_path']
     snapshot_manager = DirSnapshotManager(config['snapshot_file_path'])
-    if not user_exists:
-        wait_for_user(config, snapshot_manager)
-        config, _ = load_config()
 
     server_com = ServerCommunicator(
         server_url=config['server_url'],
-        username=config['username'],
-        password=config['password'],
-        snapshot_manager = snapshot_manager)
-  
+        username=None,
     client_command = {
         "create_user": server_com.create_user,
         "activate_user": server_com.activate_user,
