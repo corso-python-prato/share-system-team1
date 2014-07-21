@@ -20,6 +20,11 @@ def make_headers(user, psw):
         + b64encode("{0}:{1}".format(user, psw))
     }
 
+def compare_file_content(first_file, second_file):
+    with open(first_file, "r") as ff:
+        with open(second_file, "r") as sf:
+            return ff.read() == sf.read()
+
 
 class TestSetupServer(unittest.TestCase):
     other_directory = os.path.join(
@@ -76,20 +81,21 @@ class TestFilesAPI(unittest.TestCase):
     def tearDown(self):
         os.remove(os.path.join(TestFilesAPI.root, "user_data.json"))
 
+    def test_fail_auth_post(self):
+        # test fail authentication
+        with open(DEMO_FILE, "r") as f:
+            data = {"file_content": f}
+            rv = self.tc.post(
+                _API_PREFIX + TestFilesAPI.url_radix + "something",
+                data=data,
+                headers=make_headers("fake_user", "some_psw"))
+            self.assertEqual(rv.status_code, 401) 
+
     def test_post(self):
         url = "{}{}".format(
             TestFilesAPI.url_radix,
             "upload_file.txt"
         )
-
-        # test fail authentication
-        with open(DEMO_FILE, "r") as f:
-            data = {"file_content": f}
-            rv = self.tc.post(
-                _API_PREFIX + url,
-                data=data,
-                headers=make_headers("fake_user", "some_psw"))
-            self.assertEqual(rv.status_code, 401)
 
         # correct upload
         with open(DEMO_FILE, "r") as f:
@@ -107,10 +113,7 @@ class TestFilesAPI(unittest.TestCase):
             TestFilesAPI.user_test,
             "upload_file.txt"
         )
-        with open(uploaded_file) as f:
-            uploaded_content = f.read()
-            with open(DEMO_FILE, "r") as fp:
-                self.assertEqual(fp.read(), uploaded_content)
+        self.assertTrue(compare_file_content(uploaded_file, DEMO_FILE))
 
         # try to re-upload the same file to check conflict error
         with open(DEMO_FILE, "r") as f:
@@ -125,16 +128,17 @@ class TestFilesAPI(unittest.TestCase):
         # restore
         os.remove(uploaded_file)
 
-    def test_get(self):
-        url = "{}{}".format(TestFilesAPI.url_radix, "random_file.txt")
-        server_path = TestFilesAPI.test_file_name
-
+    def test_fail_auth_get(self):
         # fail authentication
         received = self.tc.get(
-            _API_PREFIX + url,
+            _API_PREFIX + TestFilesAPI.url_radix + "something",
             headers=make_headers("fake_user", TestFilesAPI.password_test)
         )
         self.assertEqual(received.status_code, 401)
+
+    def test_get(self):
+        url = "{}{}".format(TestFilesAPI.url_radix, "random_file.txt")
+        server_path = TestFilesAPI.test_file_name
 
         # downloading file
         received = self.tc.get(
@@ -153,6 +157,18 @@ class TestFilesAPI(unittest.TestCase):
         )
         self.assertEqual(rv.status_code, 404)
 
+    def test_fail_auth_put(self):
+        #fail authentication
+        with open(DEMO_FILE, "r") as f:
+            data = {"file_content": f}
+            url = "{}{}".format(TestFilesAPI.url_radix, "random_file.txt")
+            rv = self.tc.put(
+                _API_PREFIX + url,
+                data=data,
+                headers=make_headers("fake_user", TestFilesAPI.password_test)
+            )
+            self.assertEqual(rv.status_code, 401)
+
     def test_put(self):
         #set-up
         cls = TestFilesAPI
@@ -160,17 +176,6 @@ class TestFilesAPI(unittest.TestCase):
             cls.root, "user_dirs", cls.user_test, "backup_random_file.txt"
         )
         shutil.copy(cls.test_file_name, backup)
-
-        #fail authentication
-        with open(DEMO_FILE, "r") as f:
-            data = {"file_content": f}
-            url = "{}{}".format(cls.url_radix, "random_file.txt")
-            rv = self.tc.put(
-                _API_PREFIX + url,
-                data=data,
-                headers=make_headers("fake_user", cls.password_test)
-            )
-            self.assertEqual(rv.status_code, 401)
 
         #correct put
         with open(DEMO_FILE, "r") as f:
@@ -183,9 +188,7 @@ class TestFilesAPI(unittest.TestCase):
             )
             self.assertEqual(rv.status_code, 201)
 
-        with open(cls.test_file_name, "r") as f:
-            with open(DEMO_FILE, "r") as fp:
-                self.assertEqual(fp.read(), f.read())
+        self.assertTrue(compare_file_content(cls.test_file_name, DEMO_FILE))
 
         #restore
         shutil.move(
@@ -330,19 +333,20 @@ class TestActionsAPI(unittest.TestCase):
         shutil.rmtree(self.test_folder)
         os.remove(os.path.join(TestActionsAPI.root, "user_data.json"))
 
+    def test_fail_auth_actions_delete(self):
+        #try delete with fake_user
+        rv = self.tc.post(
+            "{}{}{}".format(_API_PREFIX, TestActionsAPI.url_radix, "delete"),
+            headers=make_headers("fake_user", "p"),
+            data={"path": "something"}
+        )
+        self.assertEqual(rv.status_code, 401)
+
     def test_actions_delete(self):
         url = "{}{}{}".format(
             _API_PREFIX, TestActionsAPI.url_radix, "delete"
         )
         data = {"path": "demo1"}
-
-        #try delete with fake_user
-        rv = self.tc.post(
-            url,
-            headers=make_headers("fake_user", "p"),
-            data=data
-        )
-        self.assertEqual(rv.status_code, 401)
 
         #try correct delete
         rv = self.tc.post(
@@ -380,20 +384,26 @@ class TestActionsAPI(unittest.TestCase):
         )
         self.assertTrue(os.path.isdir(user_dir))
 
-    def test_actions_copy(self):
+    def test_fail_auth_actions_copy(self):
+         # try copy with a fake user
         cls = TestActionsAPI
         data = {"file_src": "demo1", "file_dest": "dest"}
         url = "{}{}{}".format(
             _API_PREFIX, cls.url_radix, "copy"
         )
-
-        # try copy with a fake user
         rv = self.tc.post(
             url,
             data=data,
             headers=make_headers("fake_user", "fail_pass")
         )
         self.assertEqual(rv.status_code, 401)
+
+    def test_actions_copy(self):
+        cls = TestActionsAPI
+        data = {"file_src": "demo1", "file_dest": "dest"}
+        url = "{}{}{}".format(
+            _API_PREFIX, cls.url_radix, "copy"
+        )
 
         # try correct copy
         rv = self.tc.post(
@@ -431,7 +441,7 @@ class TestActionsAPI(unittest.TestCase):
         )
         self.assertEqual(rv.status_code, 409)
 
-    def test_actions_move(self):
+    def test_fail_auth_actions_move(self):
         cls = TestActionsAPI
         url = "{}{}{}".format(_API_PREFIX, cls.url_radix, "move")
         data = {"file_src": "demo1", "file_dest": "mv/dest.txt"}
@@ -441,6 +451,12 @@ class TestActionsAPI(unittest.TestCase):
             url, data=data, headers=make_headers("fake_user", "some_psw")
         )
         self.assertEqual(received.status_code, 401)
+
+
+    def test_actions_move(self):
+        cls = TestActionsAPI
+        url = "{}{}{}".format(_API_PREFIX, cls.url_radix, "move")
+        data = {"file_src": "demo1", "file_dest": "mv/dest.txt"}
 
         # test the correct move action
         received = self.tc.post(

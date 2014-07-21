@@ -4,7 +4,7 @@
             "paths": {
                 "": [
                     "Ben1@me.too",
-                    false,
+                    null,
                     1405081776.030658
                 ],
                 "my_file.txt": [
@@ -20,7 +20,7 @@
             "paths": {
                 "": [
                     "Ben2@me.too",
-                    false,
+                    null,
                     1405081778.432248
                 ]
             },
@@ -31,7 +31,7 @@
             "paths": {
                 "": [
                     "NotAllowedUser@not.it",
-                    false,
+                    null,
                     1405076852.871647
                 ]
             },
@@ -42,12 +42,12 @@
             "paths": {
                 "": [
                     "Emilio@me.it",
-                    false,
+                    null,
                     1405076390.847102
                 ],
                 "can_write": [
                     "Emilio@me.it/can_write",
-                    false,
+                    null,
                     1405081550.914278
                 ],
                 "can_write/parole.txt": [
@@ -57,7 +57,7 @@
                 ],
                 "changing": [
                     "Emilio@me.it/changing",
-                    false,
+                    null,
                     1405081550.914278
                 ],
                 "changing/changing_file.txt": [
@@ -82,7 +82,7 @@
                 ],
                 "shared_directory": [
                     "Emilio@me.it/shared_directory",
-                    false,
+                    null,
                     1405082012.752381
                 ],
                 "shared_directory/interesting_file.txt": [
