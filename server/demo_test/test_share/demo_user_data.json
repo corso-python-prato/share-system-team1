@@ -1,0 +1,98 @@
+{
+    "users": {
+        "Ben1@me.too": {
+            "paths": {
+                "": [
+                    "Ben1@me.too",
+                    null,
+                    1405081776.030658
+                ],
+                "my_file.txt": [
+                    "Ben1@me.too/my_file.txt",
+                    "63ddb04460aab66acdd6101db6cd6ce7",
+                    1405076398.984682
+                ]
+            },
+            "psw": "$5$rounds=110000$7a1FtXsfwrFISw92$wJKPhrQA1MpO3FvAGEY9SrVE2ltDjt96zP/1CARXwS7",
+            "timestamp": 1405081776.030585
+        },
+        "Ben2@me.too": {
+            "paths": {
+                "": [
+                    "Ben2@me.too",
+                    null,
+                    1405081778.432248
+                ]
+            },
+            "psw": "$5$rounds=110000$VZMLf3NPun.YqHRT$3TuYDKT18pcU6TLWeQhpRqZ4WvmccmjKotbPuZMyoj9",
+            "timestamp": 1405081778.432202
+        },
+        "NotAllowedUser@not.it": {
+            "paths": {
+                "": [
+                    "NotAllowedUser@not.it",
+                    null,
+                    1405076852.871647
+                ]
+            },
+            "psw": "$5$rounds=110000$8cwqjOZbVL5zA1Ly$OOgJCC4QZ0wwTqg035XWCuVfUbolW35ENZ.fA68.iN.",
+            "timestamp": 1405076852.871599
+        },
+        "Emilio@me.it": {
+            "paths": {
+                "": [
+                    "Emilio@me.it",
+                    null,
+                    1405076390.847102
+                ],
+                "can_write": [
+                    "Emilio@me.it/can_write",
+                    null,
+                    1405081550.914278
+                ],
+                "can_write/parole.txt": [
+                    "Emilio@me.it/can_write/parole.txt",
+                    "7e472e7ebe19872a2e241efe3e2b0848",
+                    1405081550.915353
+                ],
+                "changing": [
+                    "Emilio@me.it/changing",
+                    null,
+                    1405081550.914278
+                ],
+                "changing/changing_file.txt": [
+                    "Emilio@me.it/changing/changing_file.txt",
+                    "7e472e7ebe19872a2e241efe3e2b0848",
+                    1405081550.915353
+                ],
+                "ciao.txt": [
+                    "Emilio@me.it/ciao.txt",
+                    "6186badadb5fbb0416cd29a04e2d92d7",
+                    1405076398.984682
+                ],
+                "not_shared_file.txt": [
+                    "Emilio@me.it/not_shared_file.txt",
+                    "6186badadb5fbb0416cd29a14e2d92d7",
+                    1405086398.984682
+                ],
+                "shared_with_two_bens.txt": [
+                    "Emilio@me.it/shared_with_two_bens.txt",
+                    "6186badadb5fbb0416cd29a04e2d92d7",
+                    1405076408.984682
+                ],
+                "shared_directory": [
+                    "Emilio@me.it/shared_directory",
+                    null,
+                    1405082012.752381
+                ],
+                "shared_directory/interesting_file.txt": [
+                    "Emilio@me.it/shared_directory/interesting_file.txt",
+                    "c887ee892f5c3f7e01d876c3b7778818",
+                    1405082012.753577
+                ]
+            },
+            "psw": "$5$rounds=110000$OVjTsVyPuEZKz6A9$4NVQSGn0w143dy4IvV.1Ky52Se5kCD2MGQDEsSMWSN6",
+            "timestamp": 1405082012.753577
+        }
+    }
+}

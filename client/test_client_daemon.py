@@ -15,6 +15,7 @@ from watchdog.events import DirMovedEvent
 import client_daemon
 import httpretty
 import unittest
+import logging
 import hashlib
 import base64
 import shutil
@@ -22,6 +23,9 @@ import json
 import os
 
 class TestEnvironment(object):
+
+    def __init__(self):
+        logging.disable(logging.CRITICAL)
 
     def create(self):
         self.test_main_path = os.path.join(os.path.expanduser('~'), 'test_path')
