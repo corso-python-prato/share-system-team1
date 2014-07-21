@@ -2,6 +2,7 @@
 #-*- coding: utf-8 -*-
 
 from base64 import b64encode
+import tempfile
 import unittest
 import server
 import shutil
@@ -9,9 +10,6 @@ import json
 import os
 
 from server import _API_PREFIX
-
-DEMO_FILE = os.path.join(os.path.dirname(__file__), "demo_test/demofile1.txt")
-DEMO_FILE2 = os.path.join(os.path.dirname(__file__), "demo_test/demofile2.txt")
 
 
 def make_headers(user, psw):
@@ -25,6 +23,16 @@ def compare_file_content(first_file, second_file):
     with open(first_file, "r") as ff:
         with open(second_file, "r") as sf:
             return ff.read() == sf.read()
+
+
+def create_temporary_file(content=None):
+    tmp = tempfile.NamedTemporaryFile(delete=False)
+    if content:
+        tmp.write(content)
+    else:
+        tmp.write("Hello my dear,\nit's a beautiful day here in Compiobbi.")
+    tmp.close()
+    return tmp.name
 
 
 class TestSetupServer(unittest.TestCase):
@@ -66,6 +74,16 @@ class TestFilesAPI(unittest.TestCase):
         root, "user_dirs", user_test, "random_file.txt"
     )
 
+    @classmethod
+    def setUpClass(cls):
+        cls.demo_file1 = create_temporary_file()
+        cls.demo_file2 = create_temporary_file("ps, something new.")
+
+    @classmethod
+    def tearDownClass(cls):
+        os.unlink(cls.demo_file2)
+        os.unlink(cls.demo_file1)
+
     def setUp(self):
         server.SERVER_ROOT = TestFilesAPI.root
         shutil.copy(
@@ -84,7 +102,7 @@ class TestFilesAPI(unittest.TestCase):
 
     def test_fail_auth_post(self):
         # test fail authentication
-        with open(DEMO_FILE, "r") as f:
+        with open(TestFilesAPI.demo_file1, "r") as f:
             data = {"file_content": f}
             rv = self.tc.post(
                 _API_PREFIX + TestFilesAPI.url_radix + "something",
@@ -99,7 +117,7 @@ class TestFilesAPI(unittest.TestCase):
         )
 
         # correct upload
-        with open(DEMO_FILE, "r") as f:
+        with open(TestFilesAPI.demo_file1, "r") as f:
             data = {"file_content": f}
             rv = self.tc.post(
                 _API_PREFIX + url,
@@ -114,10 +132,12 @@ class TestFilesAPI(unittest.TestCase):
             TestFilesAPI.user_test,
             "upload_file.txt"
         )
-        self.assertTrue(compare_file_content(uploaded_file, DEMO_FILE))
+        self.assertTrue(
+            compare_file_content(uploaded_file, TestFilesAPI.demo_file1)
+        )
 
         # try to re-upload the same file to check conflict error
-        with open(DEMO_FILE, "r") as f:
+        with open(TestFilesAPI.demo_file1, "r") as f:
             data = {"file_content": f}
             rv = self.tc.post(
                 _API_PREFIX + url,
@@ -160,7 +180,7 @@ class TestFilesAPI(unittest.TestCase):
 
     def test_fail_auth_put(self):
         # fail authentication
-        with open(DEMO_FILE, "r") as f:
+        with open(TestFilesAPI.demo_file1, "r") as f:
             data = {"file_content": f}
             url = "{}{}".format(TestFilesAPI.url_radix, "random_file.txt")
             rv = self.tc.put(
@@ -179,7 +199,7 @@ class TestFilesAPI(unittest.TestCase):
         shutil.copy(cls.test_file_name, backup)
 
         # correct put
-        with open(DEMO_FILE, "r") as f:
+        with open(cls.demo_file1, "r") as f:
             data = {"file_content": f}
             url = "{}{}".format(cls.url_radix, "random_file.txt")
             rv = self.tc.put(
@@ -189,7 +209,9 @@ class TestFilesAPI(unittest.TestCase):
             )
             self.assertEqual(rv.status_code, 201)
 
-        self.assertTrue(compare_file_content(cls.test_file_name, DEMO_FILE))
+        self.assertTrue(
+            compare_file_content(cls.test_file_name, cls.demo_file1)
+        )
 
         # restore
         shutil.move(
@@ -198,7 +220,7 @@ class TestFilesAPI(unittest.TestCase):
         )
 
         # wrong path
-        with open(DEMO_FILE, "r") as f:
+        with open(cls.demo_file1, "r") as f:
             data = {"file_content": f}
             url = "{}{}".format(cls.url_radix, "NO_SERVER_PATH")
             rv = self.tc.put(
@@ -207,6 +229,29 @@ class TestFilesAPI(unittest.TestCase):
                 headers=self.headers
             )
             self.assertEqual(rv.status_code, 404)
+
+    def test_to_md5(self):
+        cls = TestFilesAPI
+        # setup
+        demo_file1_copy = os.path.join(cls.root, "demofile1_copy.txt")
+        shutil.copy(cls.demo_file1, demo_file1_copy)
+
+        # check if two files with the same content have the same md5
+        first_md5 = server.to_md5(cls.demo_file1)
+        first_copy_md5 = server.to_md5(demo_file1_copy)
+        self.assertEqual(first_md5, first_copy_md5)
+
+        # tear down
+        os.remove(demo_file1_copy)
+
+        # check if two different files have different md5
+        second_md5 = server.to_md5(cls.demo_file2)
+        self.assertNotEqual(first_md5, second_md5)
+
+        # check if, for a directory, returns False
+        tmp_dir = tempfile.mkdtemp()
+        self.assertFalse(server.to_md5(tmp_dir))
+        os.rmdir(tmp_dir)
 
     def test_files_differences(self):
         data = {
@@ -249,7 +294,7 @@ class TestFilesAPI(unittest.TestCase):
             "path2/path3/yo.jpg"
         ]
         for p in some_paths:
-            with open(DEMO_FILE, "r") as f:
+            with open(TestFilesAPI.demo_file1, "r") as f:
                 data_local = {"file_content": f}
                 rv = self.tc.post(
                     "{}{}{}".format(_API_PREFIX, self.url_radix, p),
@@ -293,7 +338,7 @@ class TestFilesAPI(unittest.TestCase):
         ]
 
         for p in invalid_paths:
-            with open(DEMO_FILE, "r") as f:
+            with open(TestFilesAPI.demo_file1, "r") as f:
                 rv = self.tc.post(
                     "{}{}{}".format(_API_PREFIX, TestFilesAPI.url_radix, p),
                     data={"file_content": f},
@@ -312,22 +357,33 @@ class TestActionsAPI(unittest.TestCase):
         os.path.dirname(__file__),
         "demo_test/test_actions"
     )
+    test_folder = os.path.join(
+        root, "user_dirs", user_test
+    )
+    full_path1 = os.path.join(test_folder, "demo1")
+    full_path2 = os.path.join(test_folder, "demo2")
+
+    @classmethod
+    def setUpClass(cls):
+        cls.demo_file1 = create_temporary_file()
+        cls.demo_file2 = create_temporary_file("ps, something new.")
+
+    @classmethod
+    def tearDownClass(cls):
+        os.unlink(cls.demo_file2)
+        os.unlink(cls.demo_file1)
 
     def setUp(self):
-        server.SERVER_ROOT = TestActionsAPI.root
-        self.test_folder = os.path.join(
-            TestActionsAPI.root, "user_dirs", TestActionsAPI.user_test
-        )
-        self.full_path1 = os.path.join(self.test_folder, "demo1")
-        self.full_path2 = os.path.join(self.test_folder, "demo2")
+        cls = TestActionsAPI
+        server.SERVER_ROOT = cls.root
 
         def setup_the_file_on_disk():
-            os.makedirs(self.test_folder)
-            shutil.copy(DEMO_FILE, self.full_path1)
-            shutil.copy(DEMO_FILE2, self.full_path2)
+            os.makedirs(cls.test_folder)
+            shutil.copy(cls.demo_file1, cls.full_path1)
+            shutil.copy(cls.demo_file2, cls.full_path2)
             shutil.copy(
-                os.path.join(TestActionsAPI.root, "demo_user_data.json"),
-                os.path.join(TestActionsAPI.root, "user_data.json")
+                os.path.join(cls.root, "demo_user_data.json"),
+                os.path.join(cls.root, "user_data.json")
             )
         try:
             setup_the_file_on_disk()
@@ -339,7 +395,7 @@ class TestActionsAPI(unittest.TestCase):
         self.tc = server.app.test_client()
 
     def tearDown(self):
-        shutil.rmtree(self.test_folder)
+        shutil.rmtree(TestActionsAPI.test_folder)
         os.remove(os.path.join(TestActionsAPI.root, "user_data.json"))
 
     def test_fail_auth_actions_delete(self):
@@ -352,6 +408,7 @@ class TestActionsAPI(unittest.TestCase):
         self.assertEqual(rv.status_code, 401)
 
     def test_actions_delete(self):
+        cls = TestActionsAPI
         url = "{}{}{}".format(
             _API_PREFIX, TestActionsAPI.url_radix, "delete"
         )
@@ -364,11 +421,11 @@ class TestActionsAPI(unittest.TestCase):
             headers=self.headers
         )
         self.assertEqual(rv.status_code, 200)
-        self.assertFalse(os.path.isfile(self.full_path1))
+        self.assertFalse(os.path.isfile(cls.full_path1))
         #check if the file is correctly removed from the dictionary
         self.assertNotIn(
-            os.path.join(TestActionsAPI.user_test, "demo1"),
-            server.User.users[TestActionsAPI.user_test].paths
+            os.path.join(cls.user_test, "demo1"),
+            server.User.users[cls.user_test].paths
         )
 
         #try to delete a not present file
@@ -389,7 +446,7 @@ class TestActionsAPI(unittest.TestCase):
         )
         self.assertEqual(rv.status_code, 200)
         user_dir = os.path.join(
-            TestActionsAPI.root, "user_dirs/", TestActionsAPI.user_test
+            cls.root, "user_dirs/", cls.user_test
         )
         self.assertTrue(os.path.isdir(user_dir))
 
@@ -474,17 +531,17 @@ class TestActionsAPI(unittest.TestCase):
         # check the disk
         self.assertFalse(
             os.path.isfile(
-                os.path.join(self.test_folder, "demo1")
+                os.path.join(cls.test_folder, "demo1")
             )
         )
         self.assertTrue(
             os.path.isdir(
-                os.path.join(self.test_folder, "mv")
+                os.path.join(cls.test_folder, "mv")
             )
         )
         self.assertTrue(
             os.path.isfile(
-                os.path.join(self.test_folder, "mv/dest.txt")
+                os.path.join(cls.test_folder, "mv/dest.txt")
             )
         )
         # check the structure
@@ -540,35 +597,22 @@ class TestUser(unittest.TestCase):
             received = tc.post(_API_PREFIX + "create_user", data=data)
         self.assertEqual(received.status_code, server.HTTP_CONFLICT)
 
-    def test_to_md5(self):
-        # setup
-        demo_file1_copy = os.path.join(TestUser.root, "demofile1_copy.txt")
-        shutil.copy(DEMO_FILE, demo_file1_copy)
-
-        # check if two files with the same content have the same md5
-        first_md5 = server.to_md5(DEMO_FILE)
-        first_copy_md5 = server.to_md5(demo_file1_copy)
-        self.assertEqual(first_md5, first_copy_md5)
-
-        # tear down
-        os.remove(demo_file1_copy)
-
-        # check if two different files have different md5
-        second_md5 = server.to_md5(DEMO_FILE2)
-        self.assertNotEqual(first_md5, second_md5)
-
-        # check if, for a directory, returns False
-        tmp_dir = "aloha"
-        os.mkdir(tmp_dir)
-        self.assertFalse(server.to_md5(tmp_dir))
-        os.rmdir(tmp_dir)
-
 
 class TestShare(unittest.TestCase):
     root = os.path.join(
         os.path.dirname(__file__),
         "demo_test/test_share"
     )
+
+    @classmethod
+    def setUpClass(cls):
+        cls.demo_file1 = create_temporary_file()
+        cls.demo_file2 = create_temporary_file("ps, something new.")
+
+    @classmethod
+    def tearDownClass(cls):
+        os.unlink(cls.demo_file2)
+        os.unlink(cls.demo_file1)
 
     def setUp(self):
         server.SERVER_ROOT = TestShare.root
@@ -647,7 +691,7 @@ class TestShare(unittest.TestCase):
         destination = os.path.join(
             "shares", self.owner, "can_write", "new_file.txt"
         )
-        with open(DEMO_FILE, "r") as f:
+        with open(TestShare.demo_file1, "r") as f:
             data = {"file_content": f}
             received = self.tc.post(
                 "{}files/{}".format(_API_PREFIX, destination),
@@ -660,7 +704,7 @@ class TestShare(unittest.TestCase):
         destination = os.path.join(
             "shares", self.owner, "can_write", "parole.txt"
         )
-        with open(DEMO_FILE, "r") as f:
+        with open(TestShare.demo_file1, "r") as f:
             data = {"file_content": f}
             received = self.tc.put(
                 "{}files/{}".format(_API_PREFIX, destination),
@@ -803,7 +847,7 @@ class TestShare(unittest.TestCase):
         except OSError:
             shutil.rmtree(sub_path)
             os.mkdir(sub_path)
-        shutil.copy2(DEMO_FILE, os.path.join(sub_path, filename))
+        shutil.copy2(TestShare.demo_file1, os.path.join(sub_path, filename))
 
         # share subdir with beneficiary
         # TODO: load this from json when the shares will be saved on file
@@ -817,7 +861,7 @@ class TestShare(unittest.TestCase):
 
         # update a shared file and check if it's ok
         owner_timestamp = server.User.users[self.owner].timestamp
-        with open(DEMO_FILE2, "r") as f:
+        with open(TestShare.demo_file2, "r") as f:
             received = self.tc.put(
                 "{}files/{}/{}".format(
                     _API_PREFIX, subdir, filename
@@ -833,7 +877,7 @@ class TestShare(unittest.TestCase):
         self.assertEqual(owner_new_timestamp, ben_timestamp)
 
         # upload a new file in shared directory and check
-        with open(DEMO_FILE, "r") as f:
+        with open(TestShare.demo_file1, "r") as f:
             received = self.tc.post(
                 "{}files/{}/{}".format(
                     _API_PREFIX, subdir, "other_subdir/new_file"
