@@ -462,6 +462,8 @@ def load_config():
 
         snapshot_file = config_ini.get('daemon_communication', 'snapshot_file_path')
         config = {
+            "host": config_ini.get('cmd', 'host'),
+            "port": config_ini.get('cmd', 'port'),
             "server_url": "http://{}:{}/{}".format(
                 config_ini.get('daemon_communication', 'server_url'),
                 config_ini.get('daemon_communication', 'server_port'),
