@@ -638,6 +638,21 @@ class DirSnapshotManagerTest(unittest.TestCase):
     def tearDown(self):
         self.environment.remove()
 
+    def snapshotAsserEqual(self, snap1, snap2):
+        for item1, item2 in zip(snap1, snap2):
+            snap1[item1].sort()
+            snap2[item2].sort()
+        self.assertEqual(snap1, snap2)
+
+    def cmdListAsserEqual(self, snap1, snap2):
+        snap1.sort()
+        snap2.sort()
+        for item1, item2 in zip(snap1, snap2):
+            for key1, key2 in zip(item1, item2):
+                item1[key1].sort()
+                item2[key2].sort()
+        self.assertEqual(snap1, snap2)
+
     def test_diff_snapshot_paths(self):
         #server snapshot unsinket with local path:
         #   sub_dir_1/test_file_1.txt modified
@@ -776,7 +791,7 @@ class DirSnapshotManagerTest(unittest.TestCase):
         result = self.snapshot_manager.syncronize_dispatcher(
             server_timestamp=unsinked_timestamp,
             server_snapshot=unsinked_server_snap)
-        self.assertEqual(result, expected_result)
+        self.cmdListAsserEqual(result, expected_result)
 
     def test_local_check(self):
         #Case: regular check
@@ -815,11 +830,11 @@ class DirSnapshotManagerTest(unittest.TestCase):
     def test_instant_snapshot(self):
         shutil.copy(self.test_file_1, self.test_folder_2)
         self.true_snapshot['fea80f2db003d4ebc4536023814aa885'] = [
-            'sub_dir_2/test_file_1.txt',
             'sub_dir_1/test_file_1.txt',
+            'sub_dir_2/test_file_1.txt',
         ]
         instant_snapshot = self.snapshot_manager.instant_snapshot()
-        self.assertEqual(instant_snapshot, self.true_snapshot)
+        self.snapshotAsserEqual(instant_snapshot, self.true_snapshot)
 
     def test_save_snapshot(self):
         test_timestamp = '1234'
@@ -883,7 +898,7 @@ class DirSnapshotManagerTest(unittest.TestCase):
                 'sub_dir_1/test_file_1.txt'
                 ]
         }
-        self.assertEqual(self.snapshot_manager.local_full_snapshot, mock_snapshot)
+        self.snapshotAsserEqual(self.snapshot_manager.local_full_snapshot, mock_snapshot)
 
     def test_update_snapshot_copy(self):
         mock_snapshot = copy.deepcopy(self.snapshot_manager.local_full_snapshot)
