@@ -81,7 +81,7 @@ class User(object):
         except ValueError:      # invalid json
             os.remove(USERS_DATA)
         else:
-            for u, v in saved["users"].items():
+            for u, v in saved["users"].iteritems():
                 User(u, None, from_dict=v)
 
     @classmethod
@@ -92,7 +92,7 @@ class User(object):
         to_save = {
             "users": {}
         }
-        for u, v in cls.users.items():
+        for u, v in cls.users.iteritems():
             to_save["users"][u] = v.to_dict()
 
         with open(filename, "w") as f:
@@ -206,7 +206,7 @@ class User(object):
         Search a shared father for the resource. If it exists, return the
         shared resource name and the ben_path, else return False.
         """
-        for shared_server_path, beneficiaries in User.shared_resources.items():
+        for shared_server_path, beneficiaries in User.shared_resources.iteritems():
             if server_path.startswith(shared_server_path):
                 ben_path = server_path.replace(
                     shared_server_path,
@@ -312,7 +312,7 @@ class User(object):
         if self.paths[client_path][1] is None:
             # If client_path is a directory, add to the beneficiary's paths
             # every file and folder in the shared folder
-            for path, value in self.paths.items():
+            for path, value in self.paths.iteritems():
                 if path.startswith(client_path):
                     to_insert = path.replace(client_path, new_client_path, 1)
                     ben.paths[to_insert] = value
@@ -333,7 +333,7 @@ class Files(Resource):
         Expected GET method without path """
         u = User.get_user(auth.username())
         tree = {}
-        for p, v in u.paths.items():
+        for p, v in u.paths.iteritems():
             if v[1] is None:
                 # the path p is a directory
                 continue
