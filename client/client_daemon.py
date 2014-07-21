@@ -434,9 +434,6 @@ class FileSystemOperator(object):
 
 def load_config():
 
-    with open('config.json', 'r') as config_file:
-        config = json.load(config_file)
-    return config, False
     config_ini = ConfigParser.ConfigParser()
     config_ini.read(FILE_CONFIG)
     user_exists = True
