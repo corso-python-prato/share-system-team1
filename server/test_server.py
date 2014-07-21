@@ -128,10 +128,9 @@ class TestFilesAPI(unittest.TestCase):
             )
             end = time.time()
             response = float(rv.get_data())
-            self.assertLessEqual(start, response)  
-            self.assertGreaterEqual(end, response)          
+            self.assertLessEqual(start, response)
+            self.assertGreaterEqual(end, response)
             self.assertEqual(rv.status_code, 201)
-            
 
         uploaded_file = os.path.join(
             TestFilesAPI.root,
@@ -217,7 +216,7 @@ class TestFilesAPI(unittest.TestCase):
             )
             end = time.time()
             response = float(rv.get_data())
-            self.assertLessEqual(start, response)  
+            self.assertLessEqual(start, response)
             self.assertGreaterEqual(end, response)
             self.assertEqual(rv.status_code, 201)
 
@@ -435,7 +434,7 @@ class TestActionsAPI(unittest.TestCase):
         )
         end = time.time()
         response = float(rv.get_data())
-        self.assertLessEqual(start, response)  
+        self.assertLessEqual(start, response)
         self.assertGreaterEqual(end, response)
         self.assertEqual(rv.status_code, 200)
         self.assertFalse(os.path.isfile(cls.full_path1))
@@ -497,7 +496,7 @@ class TestActionsAPI(unittest.TestCase):
         )
         end = time.time()
         response = float(rv.get_data())
-        self.assertLessEqual(start, response)  
+        self.assertLessEqual(start, response)
         self.assertGreaterEqual(end, response)
         self.assertEqual(rv.status_code, 201)
 
@@ -552,7 +551,7 @@ class TestActionsAPI(unittest.TestCase):
         )
         end = time.time()
         response = float(received.get_data())
-        self.assertLessEqual(start, response)  
+        self.assertLessEqual(start, response)
         self.assertGreaterEqual(end, response)
         self.assertEqual(received.status_code, 201)
         # check the disk

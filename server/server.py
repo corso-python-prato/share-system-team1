@@ -206,7 +206,8 @@ class User(object):
         Search a shared father for the resource. If it exists, return the
         shared resource name and the ben_path, else return False.
         """
-        for shared_server_path, beneficiaries in User.shared_resources.iteritems():
+        for shared_server_path, beneficiaries in \
+                User.shared_resources.iteritems():
             if server_path.startswith(shared_server_path):
                 ben_path = server_path.replace(
                     shared_server_path,
