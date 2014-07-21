@@ -33,11 +33,13 @@ def get_relpath(abs_path):
         return abs_path[len(CONFIG_DIR_PATH) + 1:]
     return abs_path
 
+
 def get_abspath(rel_path):
     """form relative path return relative absolute """
     if not rel_path.startswith(CONFIG_DIR_PATH):
         return "/".join([CONFIG_DIR_PATH, rel_path])
     return rel_path
+
 
 class ServerCommunicator(object):
 
@@ -52,6 +54,18 @@ class ServerCommunicator(object):
             "result": "",
             "details": []
         }
+
+    def write_user_data(self, user=None, psw=None, activate=False):
+        config_ini = ConfigParser.ConfigParser()
+        config_ini.read(FILE_CONFIG)
+        if not activate:
+            config_ini.set("daemon_user_data", "username", user)
+            config_ini.set("daemon_user_data", "password", psw)
+
+        else:
+            config_ini.set("daemon_user_data", "active", True)
+        with open(FILE_CONFIG, "wb") as config_file:
+            config_ini.write(config_file)
 
     def setExecuter(self, executer):
         self.executer = executer
@@ -234,6 +248,7 @@ class ServerCommunicator(object):
         if response.status_code == 201:
             self.msg["details"].append(
                 "Check your email for the activation code")
+            self.write_user_data(param["user"], param["psw"], activate=False)
         elif response.status_code == 409:
             self.msg["details"].append("User already exists")
         else:
@@ -320,7 +335,8 @@ class ServerCommunicator(object):
         self.msg["result"] = response.status_code
 
         if response.status_code == 201:
-            self.msg["details"].append("User activated")
+            self.write_user_data(activate=True)
+            self.msg["details"].append("You have now entered RawBox")
         elif response.status_code == 404:
             self.msg["details"].append("User not found")
         else:
