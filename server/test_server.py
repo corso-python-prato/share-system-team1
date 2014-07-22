@@ -595,6 +595,13 @@ class TestActionsAPI(unittest.TestCase):
         )
         self.assertEqual(received.status_code, 404)
 
+    def test_invalid_command(self):
+        received = self.tc.post(
+            "{}actions/{}".format(_API_PREFIX, "not_a_command"),
+            headers=self.headers
+        )
+        self.assertEqual(received.status_code, 404)
+
 
 class TestUser(unittest.TestCase):
     root = os.path.join(
