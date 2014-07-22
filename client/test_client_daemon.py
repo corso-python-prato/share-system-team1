@@ -2,6 +2,10 @@ from client_daemon import DirSnapshotManager
 from client_daemon import DirectoryEventHandler
 from client_daemon import ServerCommunicator
 from client_daemon import FileSystemOperator
+from client_daemon import CommandExecuter
+from client_daemon import get_abspath
+from client_daemon import get_relpath
+from client_daemon import load_config
 
 #Watchdog event import for event_handler test
 from watchdog.events import FileDeletedEvent
@@ -14,11 +18,13 @@ from watchdog.events import DirCreatedEvent
 from watchdog.events import DirMovedEvent
 import client_daemon
 import httpretty
+import requests
 import unittest
 import logging
 import hashlib
 import base64
 import shutil
+import copy
 import json
 import os
 
@@ -39,15 +45,27 @@ class TestEnvironment(object):
         os.makedirs(self.test_folder_2)
         self.test_file_1 = os.path.join(self.test_share_dir, 'sub_dir_1', 'test_file_1.txt')
         self.test_file_2 = os.path.join(self.test_share_dir, 'sub_dir_2', 'test_file_2.txt')
+        self.test_file_3 = os.path.join(self.test_share_dir, 'sub_dir_2', 'test_file_3.txt')
         open(self.test_file_1, 'w').write('Lorem ipsum dolor sit amet')
         open(self.test_file_2, 'w').write('Integer non tincidunt dolor')
+        open(self.test_file_3, 'w').write('Nam rutrum urna facilisis molestie')
 
+        self.true_snapshot = {
+            '81bcb26fd4acfaa5d0acc7eef1d3013a': ['sub_dir_2/test_file_2.txt'],
+            'd1e2ac797b8385e792ac1e31db4a81f9': ['sub_dir_2/test_file_3.txt'],
+            'fea80f2db003d4ebc4536023814aa885': ['sub_dir_1/test_file_1.txt'],
+        }
+
+        self.md5_snapshot = '2b829f9fd20451aa44d144e5ec0f00af'
         self.conf_snap_path = os.path.join(self.test_main_path, 'snapshot_file.json')
-        self.conf_snap_gen = {"timestamp": 123123, "snapshot": "ab8d6b3c332aa253bb2b471c57b73e27"}
+        self.conf_snap_gen = {
+            "timestamp": 123123,
+            "snapshot": self.md5_snapshot,
+        }
 
         open(self.conf_snap_path, 'w').write(json.dumps(self.conf_snap_gen))
 
-        return self.test_main_path, self.test_share_dir, self.test_folder_1, self.test_folder_2, self.test_file_1, self.test_file_2, self.conf_snap_path, self.conf_snap_gen
+        return self.test_main_path, self.test_share_dir, self.test_folder_1, self.test_folder_2, self.test_file_1, self.test_file_2, self.test_file_3, self.true_snapshot, self.md5_snapshot, self.conf_snap_path, self.conf_snap_gen
 
 
     def remove(self):
@@ -71,9 +89,6 @@ class ServerCommunicatorTest(unittest.TestCase):
                 self.server_snapshot = server_snapshot
                 return ['command']
 
-            def syncronize_executer(self, command_list):
-                self.command_list = command_list
-
             def save_snapshot(self, timestamp):
                 self.timestamp = timestamp
 
@@ -84,6 +99,29 @@ class ServerCommunicatorTest(unittest.TestCase):
             def save_timestamp(self, timestamp):
                 self.server_timestamp = timestamp
 
+            def update_snapshot_delete(self, body):
+                self.delete = body
+
+            def update_snapshot_update(self, body):
+                self.update = body
+
+            def update_snapshot_upload(self, body):
+                self.upload = body
+
+            def update_snapshot_move(self, body):
+                self.move = body
+
+            def update_snapshot_copy(self, body):
+                self.copy = body
+
+        class _try_request(object):
+            status_code = 200
+            text = 'timestamp'
+
+            def __init__(self, *args, **kwargs):
+                pass
+
+        self.mock_try_request = _try_request
 
         httpretty.enable()
         httpretty.register_uri(
@@ -148,7 +186,62 @@ class ServerCommunicatorTest(unittest.TestCase):
     def tearDown(self):
         httpretty.disable()
         httpretty.reset()
-    
+
+    def test_try_request(self):
+        class Callback(object):
+            status_code = 200
+            exc = False
+
+            def __init__(self, auth, *args, **kwargs):
+                self.auth = auth
+                if Callback.exc:
+                    Callback.exc = False
+                    raise requests.exceptions.RequestException()
+
+        #Case: success
+        result = self.server_comm._try_request(Callback)
+        self.assertEqual(
+            result.auth,
+            self.server_comm.auth)
+        self.assertEqual(result.status_code, 200)
+
+        #Case: error 401
+        Callback.status_code = 401
+        result = self.server_comm._try_request(Callback)
+        self.assertEqual(
+            result.auth,
+            self.server_comm.auth)
+        self.assertEqual(result.status_code, 401)
+
+        #Case: request exception
+        Callback.exc = True
+        result = self.server_comm._try_request(Callback)
+        self.assertEqual(
+            result.auth,
+            self.server_comm.auth)
+        self.assertEqual(result.status_code, 401)
+
+    def test_setexecuter(self):
+        executer = "executer"
+        self.server_comm.setExecuter(executer)
+        self.assertEqual(
+            self.server_comm.executer,
+            executer)
+
+    def test_get_url_relpath(self):
+        #Case: rigth separator
+        os.path.sep = '/'
+        test_path = "/test/path"
+        result = self.server_comm.get_url_relpath(test_path)
+        self.assertEqual(result, test_path)
+
+        #Case: other os separator
+        os.path.sep = "-"
+        test_path = "-test-path"
+        expected_result = "/test/path"
+        result = self.server_comm.get_url_relpath(test_path)
+        self.assertEqual(result, expected_result)
+
     def test_upload(self):
         put_file=True
         mock_auth_user = ":".join([self.username, self.password])
@@ -182,6 +275,41 @@ class ServerCommunicatorTest(unittest.TestCase):
         self.assertEqual(host, '127.0.0.1:5000')
         self.assertEqual(method, 'POST')
 
+        #Case: IOError for file
+        filepath = "not/corret/path"
+        self.assertFalse(self.server_comm.upload_file(filepath))
+
+        self.server_comm._try_request = self.mock_try_request
+
+        #Case: 409 status
+        self.server_comm._try_request.status_code = 409
+        self.server_comm.upload_file(self.file_path, put_file)
+
+        #Case: 201 status put_file == False
+        self.server_comm._try_request.status_code = 201
+        self.server_comm._try_request.text = 'upload'
+        self.server_comm.upload_file(self.file_path, put_file)
+        self.assertEqual(
+            self.server_comm.snapshot_manager.upload,
+            {"src_path": self.file_path})
+        self.assertEqual(
+            self.server_comm.snapshot_manager.timestamp,
+            'upload')
+
+        #Case: 201 status put_file == True
+        put_file = True
+        self.server_comm._try_request.status_code = 201
+        self.server_comm._try_request.text = 'update'
+        self.server_comm.upload_file(self.file_path, put_file)
+        self.assertEqual(
+            self.server_comm.snapshot_manager.update,
+            {"src_path": self.file_path})
+
+        self.assertEqual(
+            self.server_comm.snapshot_manager.timestamp,
+            'update')
+
+
     def test_download(self):
         mock_auth_user = ":".join([self.username, self.password])
         response = self.server_comm.download_file(self.file_path)
@@ -201,6 +329,18 @@ class ServerCommunicatorTest(unittest.TestCase):
         #check response's body
         self.assertEqual(response[1], u'[{"title": "Test"}]')
 
+        #Case: server bad request
+        def _try_request(self, *args, **kwargs):
+            class Response(object):
+                def __init__(self):
+                    self.status_code = 400
+            response = Response()
+            return response
+
+        self.server_comm._try_request = _try_request
+        response = self.server_comm.download_file(self.file_path)
+        self.assertEqual(response, (False, False))
+
     def test_delete_file(self):
         mock_auth_user = ":".join([self.username, self.password])
         self.server_comm.delete_file(self.file_path)
@@ -217,6 +357,19 @@ class ServerCommunicatorTest(unittest.TestCase):
         self.assertEqual(host, '127.0.0.1:5000')
         #check if methods are equal
         self.assertEqual(method, 'POST')
+        self.assertEqual(
+            self.server_comm.snapshot_manager.delete,
+            {"src_path": self.file_path})
+
+        #reset variable
+        self.server_comm.snapshot_manager.delete = False
+
+        self.server_comm._try_request = self.mock_try_request
+
+        #Case: 404 error
+        self.server_comm._try_request.status_code = 404
+        self.server_comm.delete_file(self.file_path)
+        self.assertFalse(self.server_comm.snapshot_manager.delete)
 
     def test_move_file(self):
         mock_auth_user = ":".join([self.username, self.password])
@@ -235,6 +388,22 @@ class ServerCommunicatorTest(unittest.TestCase):
         #check if methods are equal
         self.assertEqual(method, 'POST')
 
+        self.server_comm._try_request = self.mock_try_request
+
+        #Case: 404 error
+        self.server_comm._try_request.status_code = 404
+        self.server_comm.move_file(self.file_path, self.another_path)
+
+        #Case: 201 status
+        self.server_comm._try_request.status_code = 201
+        self.server_comm.move_file(self.file_path, self.another_path)
+        self.assertEqual(
+            self.server_comm.snapshot_manager.move,
+            {"src_path": self.file_path, "dst_path": self.another_path})
+        self.assertEqual(
+            self.server_comm.snapshot_manager.timestamp,
+            'timestamp')
+
     def test_copy_file(self):
         mock_auth_user = ":".join([self.username, self.password])
         self.server_comm.copy_file(self.file_path, self.another_path)
@@ -251,6 +420,22 @@ class ServerCommunicatorTest(unittest.TestCase):
         self.assertEqual(host, '127.0.0.1:5000')
         #check if methods are equal
         self.assertEqual(method, 'POST')
+
+        self.server_comm._try_request = self.mock_try_request
+
+        #Case: 404 error
+        self.server_comm._try_request.status_code = 404
+        self.server_comm.copy_file(self.file_path, self.another_path)
+
+        #Case: 201 status
+        self.server_comm._try_request.status_code = 201
+        self.server_comm.copy_file(self.file_path, self.another_path)
+        self.assertEqual(
+            self.server_comm.snapshot_manager.copy,
+            {"src_path": self.file_path, "dst_path": self.another_path})
+        self.assertEqual(
+            self.server_comm.snapshot_manager.timestamp,
+            'timestamp')
 
     def test_create_user(self):
         test_username = "test_username"
@@ -270,6 +455,16 @@ class ServerCommunicatorTest(unittest.TestCase):
         self.assertEqual(host, '127.0.0.1:5000')
         #check if methods are equal
         self.assertEqual(method, 'POST')
+
+        self.server_comm._try_request = self.mock_try_request
+
+        #Case: 409 error
+        self.server_comm._try_request.status_code = 409
+        self.server_comm.create_user(test_username, test_password)
+
+        #Case: another status
+        self.server_comm._try_request.status_code = 501
+        self.server_comm.create_user(test_username, test_password)
     
     def test_syncronize(self):
         def my_try_request(*args, **kwargs):
@@ -299,9 +494,24 @@ class ServerCommunicatorTest(unittest.TestCase):
 class FileSystemOperatorTest(unittest.TestCase):
 
     def setUp(self):
-        #Generate test folder tree and configuration file
-        self.environment = TestEnvironment()
-        self.test_main_path, self.shared_dir, self.test_folder_1, self.test_folder_2, self.test_file_1, self.test_file_2, self.conf_snap_path, self.conf_snap_gen = self.environment.create()
+        class DirSnapshotManager(object):
+            def __init__(self):
+                self.delete = False
+                self.move = False
+                self.copy = False
+                self.upload = False
+
+            def update_snapshot_delete(self, body):
+                self.delete = body
+
+            def update_snapshot_move(self, body):
+                self.move = body
+
+            def update_snapshot_copy(self, body):
+                self.copy = body
+
+            def update_snapshot_upload(self, body):
+                self.upload = body
 
         self.client_path = '/tmp/user_dir'
         client_daemon.CONFIG_DIR_PATH = self.client_path
@@ -312,7 +522,7 @@ class FileSystemOperatorTest(unittest.TestCase):
         httpretty.register_uri(httpretty.GET, 'http://localhost/api/v1/files/{}'.format(self.filename),
             body='this is a test',
             content_type='text/plain')
-        self.snapshot_manager = DirSnapshotManager(self.conf_snap_path)
+        self.snapshot_manager = DirSnapshotManager()
         self.server_com = ServerCommunicator(
             server_url='http://localhost/api/v1',
             username='usernameFarlocco',
@@ -325,26 +535,49 @@ class FileSystemOperatorTest(unittest.TestCase):
 
     def tearDown(self):
         httpretty.disable()
-        self.environment.remove()
+
+    def test_add_event_to_ignore(self):
+        test_path = "/test/path"
+        self.file_system_op.add_event_to_ignore(test_path)
+        self.assertEqual(
+            self.event_handler.paths_ignored,
+            [test_path])
 
     def test_write_a_file(self):
         source_path = '{}/{}'.format(self.client_path, self.filename)
         self.file_system_op.write_a_file(source_path)
         written_file = open('{}/{}'.format(self.client_path,self.filename), 'rb').read()
         self.assertEqual('this is a test', written_file)
+        self.assertEqual(
+            self.snapshot_manager.upload,
+            {"src_path": source_path})
         #check if source isadded by write_a_file
         self.assertEqual([source_path], self.event_handler.paths_ignored)
 
+        #reset variable
+        self.snapshot_manager.upload = False
+        self.event_handler.paths_ignored = []
+
+        #Case: file not found on server
+        def download_file(path):
+            return None, None
+        self.server_com.download_file = download_file
+        self.file_system_op.write_a_file(source_path)
+        self.assertFalse(self.snapshot_manager.upload)
+        self.assertEqual(self.event_handler.paths_ignored, [])
     def test_move_a_file(self):
         f_name = 'file_to_move.txt'
         file_to_move = open('{}/{}'.format(self.client_path, f_name), 'w')
         file_to_move.write('this is a test')
         source_path = file_to_move.name
-        dest_path = '{}/dir1/{}'.format(self.client_path, f_name)
+        dest_path = '{}/{}.moved'.format(self.client_path, f_name)
         file_to_move.close()
         self.file_system_op.move_a_file(source_path, dest_path)
         written_file = open(dest_path, 'rb').read()
         self.assertEqual('this is a test', written_file)
+        self.assertEqual(
+            self.snapshot_manager.move,
+            {"src_path": source_path, "dst_path": dest_path})
         #check if source and dest path are added by move_a_file
         self.assertEqual([source_path, dest_path], self.event_handler.paths_ignored)
 
@@ -353,11 +586,14 @@ class FileSystemOperatorTest(unittest.TestCase):
         file_to_copy = open('{}/{}'.format(self.client_path, f_name), 'w')
         file_to_copy.write('this is a test')
         source_path = file_to_copy.name
-        dest_path = '{}/copy_dir/{}'.format(self.client_path, f_name)
+        dest_path = '{}/{}.copy'.format(self.client_path, f_name)
         file_to_copy.close()
         self.file_system_op.copy_a_file(source_path, dest_path)
         copied_file = open(dest_path, 'rb').read()
         self.assertEqual('this is a test', copied_file)
+        self.assertEqual(
+            self.snapshot_manager.copy,
+            {"src_path": source_path, "dst_path": dest_path})
         #check if only dest_path is added by copy_a_file
         self.assertEqual([dest_path], self.event_handler.paths_ignored)
 
@@ -374,122 +610,279 @@ class FileSystemOperatorTest(unittest.TestCase):
         self.assertTrue(os.path.exists(file_to_delete.name))
         self.file_system_op.delete_a_file(file_to_delete.name)
         self.assertFalse(os.path.exists(file_to_delete.name))
+        self.assertEqual(
+            self.snapshot_manager.delete,
+            {"src_path": file_to_delete.name})
 
         self.file_system_op.delete_a_file(source_path)
         self.assertFalse(os.path.exists(source_path))
+        self.assertEqual(
+            self.snapshot_manager.delete,
+            {"src_path": source_path})
         #check if only source_path is added by delete_a_file in the 2 tested case
         self.assertEqual([file_to_delete.name, source_path], self.event_handler.paths_ignored)
+
+        #Case: wrong path
+        self.file_system_op.delete_a_file('wrong/path')
 
 
 class DirSnapshotManagerTest(unittest.TestCase):
     def setUp(self):
         #Generate test folder tree and configuration file
         self.environment = TestEnvironment()
-        self.test_main_path, self.test_share_dir, self.test_folder_1, self.test_folder_2, self.test_file_1, self.test_file_2, self.conf_snap_path, self.conf_snap_gen = self.environment.create()
+        self.test_main_path, self.test_share_dir, self.test_folder_1, self.test_folder_2, self.test_file_1, self.test_file_2, self.test_file_3, self.true_snapshot, self.md5_snapshot, self.conf_snap_path, self.conf_snap_gen = self.environment.create()
         client_daemon.CONFIG_DIR_PATH = self.test_share_dir
+        self.sinked_timestamp = 123123
+        self.unsinked_timestamp = 123125
+        self.old_timestamp = 123122
 
-        self.true_snapshot= {
-            '81bcb26fd4acfaa5d0acc7eef1d3013a': ['sub_dir_2/test_file_2.txt'],
-            'fea80f2db003d4ebc4536023814aa885': ['sub_dir_1/test_file_1.txt'],
-        }
-        self.md5_snapshot = 'ab8d6b3c332aa253bb2b471c57b73e27'
         self.snapshot_manager = DirSnapshotManager(self.conf_snap_path)
 
     def tearDown(self):
         self.environment.remove()
 
+    def snapshotAsserEqual(self, snap1, snap2):
+        for item1, item2 in zip(snap1, snap2):
+            snap1[item1].sort()
+            snap2[item2].sort()
+        self.assertEqual(snap1, snap2)
+
+    def cmdListAsserEqual(self, snap1, snap2):
+        snap1.sort()
+        snap2.sort()
+        for item1, item2 in zip(snap1, snap2):
+            for key1, key2 in zip(item1, item2):
+                item1[key1].sort()
+                item2[key2].sort()
+        self.assertEqual(snap1, snap2)
+
     def test_diff_snapshot_paths(self):
         #server snapshot unsinket with local path:
         #   sub_dir_1/test_file_1.txt modified
-        #   sub_dir_2/test_file_3.txt added
+        #   sub_dir_2/test_file_4.txt added
         #   sub_dir_2/test_file_3.txt deleted
         unsinked_server_snap = {
-            'fea80f2db004d4ebc4536023814aa885': [{'path': u'sub_dir_1/test_file_1.txt', 'timestamp': 123124}],
-            '456jk3b334bb33463463fbhj4b3534t3': [{'path': u'sub_dir_2/test_file_3.txt', 'timestamp': 123125}],
+            'fea80f2db004d4ebc4536023814aa885': [
+                {
+                    'path': u'sub_dir_1/test_file_1.txt',
+                    'timestamp': self.unsinked_timestamp,
+                }
+            ],
+            '456jk3b334bb33463463fbhj4b3534t3': [
+                {
+                    'path': u'sub_dir_2/test_file_4.txt',
+                    'timestamp': self.unsinked_timestamp,
+                }
+            ],
         }
 
         new_client, new_server, equal = self.snapshot_manager.diff_snapshot_paths(self.true_snapshot, unsinked_server_snap)
 
-        self.assertEqual(['sub_dir_2/test_file_2.txt'], new_client)
-        self.assertEqual(['sub_dir_2/test_file_3.txt'], new_server)
+        self.assertEqual(
+            ['sub_dir_2/test_file_3.txt', 'sub_dir_2/test_file_2.txt'],
+            new_client)
+        self.assertEqual(['sub_dir_2/test_file_4.txt'], new_server)
         self.assertEqual(['sub_dir_1/test_file_1.txt'], equal)
 
-    # def test_syncronize_dispatcher(self):
-    #     #server snapshot sinked with local path
-    #     sinked_server_snap = {
-    #         '81bcb26fd4acfaa5d0acc7eef1d3013a': [{'path': u'sub_dir_2/test_file_2.txt', 'timestamp': 123123}],
-    #         'fea80f2db003d4ebc4536023814aa885': [{'path': u'sub_dir_1/test_file_1.txt', 'timestamp': 123123}],
-    #     }
-    #     #server snapshot unsinket with local path:
-    #     #   sub_dir_1/test_file_1.txt modified
-    #     #   sub_dir_2/test_file_1.txt added
-    #     unsinked_server_snap = {
-    #         '81bcb26fd4acfaa5d0acc7eef1d3013a': [{'path': u'sub_dir_2/test_file_2.txt', 'timestamp': 123123}],
-    #         'fea80f2db004d4ebc4536023814aa885': [{'path': u'sub_dir_1/test_file_1.txt', 'timestamp': 123124}],
-    #         '456jk3b334bb33463463fbhj4b3534t3': [{'path': u'sub_dir_2/test_file_3.txt', 'timestamp': 123125}],
-    #     }
+    def test_check_files_timestamp(self):
+        #server snapshot unsinket with local path:
+        #   sub_dir_1/test_file_1.txt unmodified
+        #   sub_dir_1/test_file_2.txt older then snap timestamp
+        unsinked_server_snap = {
+            'fea80f2db003d4ebc4536023814aa885': [
+                {
+                    'path': u'sub_dir_1/test_file_1.txt',
+                    'timestamp': self.sinked_timestamp,
+                }
+            ],
+            '81bcb26fd4acfaa5d0acc7eef1d3013a': [
+                {
+                    'path': u'sub_dir_2/test_file_2.txt',
+                    'timestamp': self.old_timestamp,
+                }
+            ],
+        }
 
-    #     sinked_timestamp = 123123
-    #     unsinked_timestamp = 123125
+        #Case: file sinked
+        response = self.snapshot_manager.check_files_timestamp(
+            unsinked_server_snap, 'sub_dir_1/test_file_1.txt')
+        self.assertFalse(response)
 
-    #     #Case: no deamon internal conflicts == timestamp
-    #     expected_result = []
-    #     result = self.snapshot_manager.syncronize_dispatcher(
-    #         server_timestamp = sinked_timestamp,
-    #         server_snapshot = sinked_server_snap)
-    #     self.assertEqual(result, expected_result)
+        #Case: file older than snapshot timestamp
+        response = self.snapshot_manager.check_files_timestamp(
+            unsinked_server_snap, 'sub_dir_2/test_file_2.txt')
+        self.assertTrue(response)
 
-    #     #Case: no deamon internal conflicts != timestamp
-    #     expected_result = [
-    #         {'sub_dir_2/test_file_3.txt': 'remote_download'},
-    #         {'sub_dir_1/test_file_1.txt': 'remote_download'},
-    #     ]
-    #     result = self.snapshot_manager.syncronize_dispatcher(
-    #         server_timestamp = unsinked_timestamp,
-    #         server_snapshot = unsinked_server_snap)
-    #     self.assertEqual(result, expected_result)
+        #Case: error path
+        response = self.snapshot_manager.check_files_timestamp(
+            unsinked_server_snap, 'error/path')
+        self.assertEqual(response, None)
 
-    #     #Case: deamon internal conflicts == timestamp
-    #     self.snapshot_manager.last_status['snapshot'] = "21451512512512512"
-    #     expected_result = []
-    #     result = self.snapshot_manager.syncronize_dispatcher(
-    #         server_timestamp = sinked_timestamp,
-    #         server_snapshot = sinked_server_snap)
-    #     self.assertEqual(result, expected_result)
+    def test_syncronize_dispatcher(self):
+        #server snapshot sinked with local path
+        sinked_server_snap = {
+            '81bcb26fd4acfaa5d0acc7eef1d3013a': [
+                {
+                    'path': u'sub_dir_2/test_file_2.txt',
+                    'timestamp': self.sinked_timestamp,
+                }],
+            'd1e2ac797b8385e792ac1e31db4a81f9': [
+                {
+                    'path': u'sub_dir_2/test_file_3.txt',
+                    'timestamp': self.sinked_timestamp,
+                }],
+            'fea80f2db003d4ebc4536023814aa885': [
+                {
+                    'path': u'sub_dir_1/test_file_1.txt',
+                    'timestamp': self.sinked_timestamp,
+                }],
+        }
+        #server snapshot unsinket with local path:
+        #   sub_dir_1/test_file_1.txt modified
+        #   sub_dir_2/test_file_4.txt added
+        #   sub_dir_1/test_file_2.txt copied
+        #   sub_dir_2/test_file_3.txt deleted
+        unsinked_server_snap = {
+            '81bcb26fd4acfaa5d0acc7eef1d3013a': [
+                {
+                    'path': u'sub_dir_2/test_file_2.txt',
+                    'timestamp': self.sinked_timestamp,
+                },
+                {
+                    'path': u'sub_dir_1/test_file_2.txt',
+                    'timestamp': self.sinked_timestamp,
+                }],
+            'fea80f2db004d4ebc4536023814aa885': [
+                {
+                    'path': u'sub_dir_1/test_file_1.txt',
+                    'timestamp': self.unsinked_timestamp,
+                }],
+            '456jk3b334bb33463463fbhj4b3534t3': [
+                {
+                    'path': u'sub_dir_2/test_file_4.txt',
+                    'timestamp': self.unsinked_timestamp,
+                }],
+        }
 
-    #     #Case: no deamon internal conflicts != timestamp
-    #     expected_result = [
-    #         {'sub_dir_2/test_file_3.txt': 'remote_download'},
-    #         {'sub_dir_1/test_file_1.txt.conflicted': 'remote_upload'},
-    #         {'sub_dir_1/test_file_1.txt': 'local_copy_and_rename:sub_dir_1/test_file_1.txt.conflicted'},
-    #     ]
-    #     result = self.snapshot_manager.syncronize_dispatcher(
-    #         server_timestamp = unsinked_timestamp,
-    #         server_snapshot = unsinked_server_snap)
-    #     self.assertEqual(result, expected_result)
+        #Case: no deamon internal conflicts == timestamp
+        expected_result = []
+        result = self.snapshot_manager.syncronize_dispatcher(
+            server_timestamp=self.sinked_timestamp,
+            server_snapshot=sinked_server_snap)
+        self.assertEqual(result, expected_result)
+
+        #Case: no deamon internal conflicts != timestamp
+        expected_result = [
+            {'local_download': ['sub_dir_2/test_file_4.txt']},
+            {'local_copy': [
+                'sub_dir_2/test_file_2.txt',
+                'sub_dir_1/test_file_2.txt']},
+            {'local_download': ['sub_dir_1/test_file_1.txt']},
+            {'local_delete': ['sub_dir_2/test_file_3.txt']}
+        ]
+        result = self.snapshot_manager.syncronize_dispatcher(
+            server_timestamp=self.unsinked_timestamp,
+            server_snapshot=unsinked_server_snap)
+        self.assertEqual(result, expected_result)
+
+        #Case: deamon internal conflicts == timestamp
+        self.snapshot_manager.last_status['snapshot'] = '21451512512512512'
+        expected_result = [
+            {'remote_delete': ['sub_dir_2/test_file_4.txt']},
+            {'remote_delete': ['sub_dir_1/test_file_2.txt']},
+            {'remote_update': ['sub_dir_1/test_file_1.txt', True]},
+            {'remote_upload': ['sub_dir_2/test_file_3.txt']}
+        ]
+        result = self.snapshot_manager.syncronize_dispatcher(
+            server_timestamp=self.sinked_timestamp,
+            server_snapshot=unsinked_server_snap)
+        self.assertEqual(result, expected_result)
+        self.assertEqual(
+            self.snapshot_manager.last_status['snapshot'],
+            '21451512512512512')
+
+        #Case: deamon internal conflicts != timestamp
+        unsinked_server_snap['81bcb26fd4acfaa5d0acc7eef1d3013a'].append(
+            {
+                'path': u'sub_dir_1/test_file_del.txt',
+                'timestamp': self.old_timestamp,
+            })
+        open(''.join([self.test_file_2, 'copy']), 'w').write('Java is evil')
+
+        self.true_snapshot['829c5c86163b667a3d9684b24ceca967'] = [
+            'sub_dir_2/test_file_2.txtcopy'
+        ]
+        self.snapshot_manager.local_full_snapshot = self.true_snapshot
+        unsinked_server_snap['829c5c86453b667a3d9684b24ceca967'] = [
+            {
+                'path': u'sub_dir_2/test_file_2.txtcopy',
+                'timestamp': self.old_timestamp
+            }]
+
+        self.snapshot_manager.last_status['snapshot'] = "2145151251251dsf"
+        expected_result = [
+            {'local_download': ['sub_dir_2/test_file_4.txt']},
+            {'remote_delete': ['sub_dir_1/test_file_del.txt']},
+            {'local_copy': [
+                'sub_dir_2/test_file_2.txt',
+                'sub_dir_1/test_file_2.txt']},
+            {'local_copy': [
+                'sub_dir_1/test_file_1.txt',
+                'sub_dir_1/test_file_1.txt.conflicted']},
+            {'remote_upload': ['sub_dir_1/test_file_1.txt.conflicted']},
+            {'remote_upload': ['sub_dir_2/test_file_2.txtcopy']},
+            {'remote_delete': ['sub_dir_2/test_file_3.txt']},
+        ]
+        result = self.snapshot_manager.syncronize_dispatcher(
+            server_timestamp=self.unsinked_timestamp,
+            server_snapshot=unsinked_server_snap)
+        self.cmdListAsserEqual(result, expected_result)
 
     def test_local_check(self):
-        self.assertEqual(self.snapshot_manager.local_check(), True)
+        #Case: regular check
+        self.assertTrue(self.snapshot_manager.local_check())
 
+        #Case: error check
         self.snapshot_manager.last_status['snapshot'] = 'faultmd5'
-        self.assertEqual(self.snapshot_manager.local_check(), False)
+        self.assertFalse(self.snapshot_manager.local_check())
+
+        #Case: not last_status
+        self.snapshot_manager.last_status['snapshot'] = ""
+        self.assertTrue(self.snapshot_manager.local_check())
+
+    def test_is_syncro(self):
+        #Case: syncronized timestamp
+        self.assertTrue(
+            self.snapshot_manager.is_syncro(self.sinked_timestamp))
+
+        #Case: unsyncronized timestamp
+        self.assertFalse(
+            self.snapshot_manager.is_syncro(self.unsinked_timestamp))
 
     def test_load_status(self):
         self.snapshot_manager._load_status()
         self.assertEqual(self.snapshot_manager.last_status, self.conf_snap_gen)
 
     def test_file_snapMd5(self):
-
-        filepath = os.path.join(self.test_share_dir, 'sub_dir_1', 'test_file_1.txt')
+        #Case: file md5
+        filepath = self.test_file_1
         test_md5 = hashlib.md5(open(filepath).read()).hexdigest()
         self.assertEqual(self.snapshot_manager.file_snapMd5(filepath), test_md5)
+
+        #Case: directory
+        self.assertFalse(self.snapshot_manager.file_snapMd5(self.test_folder_1))
 
     def test_global_md5(self):
         self.assertEqual(self.snapshot_manager.global_md5(), self.md5_snapshot)
 
     def test_instant_snapshot(self):
+        shutil.copy(self.test_file_1, self.test_folder_2)
+        self.true_snapshot['fea80f2db003d4ebc4536023814aa885'] = [
+            'sub_dir_1/test_file_1.txt',
+            'sub_dir_2/test_file_1.txt',
+        ]
         instant_snapshot = self.snapshot_manager.instant_snapshot()
-        self.assertEqual(instant_snapshot, self.true_snapshot)
+        self.snapshotAsserEqual(instant_snapshot, self.true_snapshot)
 
     def test_save_snapshot(self):
         test_timestamp = '1234'
@@ -502,6 +895,161 @@ class DirSnapshotManagerTest(unittest.TestCase):
         new_conf = json.load(open(self.conf_snap_path))
 
         self.assertEqual(expected_conf, new_conf)
+
+    def test_update_snapshot_upload(self):
+        original_snapshot = copy.deepcopy(self.snapshot_manager.local_full_snapshot)
+        del self.snapshot_manager.local_full_snapshot['fea80f2db003d4ebc4536023814aa885']
+        self.snapshot_manager.update_snapshot_upload({"src_path": self.test_file_1})
+        self.assertEqual(self.snapshot_manager.local_full_snapshot, original_snapshot)
+
+    def test_update_snapshot_update(self):
+        original_snapshot = copy.deepcopy(self.snapshot_manager.local_full_snapshot)
+        mock_snapshot = copy.deepcopy(original_snapshot)
+        mock_file_content = "test_content"
+
+        with open(self.test_file_1, 'wb') as f:
+            f.write(mock_file_content)
+
+        mock_file_content_md5 = hashlib.md5(mock_file_content).hexdigest()
+
+        mock_snapshot[mock_file_content_md5] = [client_daemon.get_relpath(self.test_file_1)]
+        del mock_snapshot['fea80f2db003d4ebc4536023814aa885']
+
+        #------- update a file without copies -------#
+        self.snapshot_manager.update_snapshot_update({"src_path":self.test_file_1})
+        self.assertEqual(self.snapshot_manager.local_full_snapshot, mock_snapshot)
+        #reset original condition
+        self.snapshot_manager.local_full_snapshot = copy.deepcopy(original_snapshot)
+
+        #------- update a file with copies -------#
+        mock_copy_path = client_daemon.get_relpath(self.test_file_1 + "_copy")
+        self.snapshot_manager.local_full_snapshot['fea80f2db003d4ebc4536023814aa885'].append(mock_copy_path)
+        mock_snapshot = copy.deepcopy(self.snapshot_manager.local_full_snapshot)
+        mock_snapshot['fea80f2db003d4ebc4536023814aa885'].remove(client_daemon.get_relpath(self.test_file_1))
+        mock_snapshot[mock_file_content_md5] = [client_daemon.get_relpath(self.test_file_1)]
+
+        self.snapshot_manager.update_snapshot_update({"src_path":self.test_file_1})
+        self.assertEqual(self.snapshot_manager.local_full_snapshot, mock_snapshot)
+        #reset original condition
+        self.snapshot_manager.local_full_snapshot = copy.deepcopy(original_snapshot)
+
+        #------- update a file like another -------#
+        self.snapshot_manager.local_full_snapshot['fea80f2db003d4ebc4536023814aa885'].append(mock_copy_path)
+        self.snapshot_manager.local_full_snapshot[mock_file_content_md5] = [mock_copy_path + "_another"]
+        self.snapshot_manager.update_snapshot_update({"src_path":self.test_file_1})
+        mock_snapshot = {
+            '81bcb26fd4acfaa5d0acc7eef1d3013a': ['sub_dir_2/test_file_2.txt'],
+            'd1e2ac797b8385e792ac1e31db4a81f9': ['sub_dir_2/test_file_3.txt'],
+            'fea80f2db003d4ebc4536023814aa885': ['sub_dir_1/test_file_1.txt_copy'],
+            '27565f9a57c128674736aa644012ce67': [
+                'sub_dir_1/test_file_1.txt_copy_another',
+                'sub_dir_1/test_file_1.txt'
+                ]
+        }
+        self.snapshotAsserEqual(self.snapshot_manager.local_full_snapshot, mock_snapshot)
+
+    def test_update_snapshot_copy(self):
+        mock_snapshot = copy.deepcopy(self.snapshot_manager.local_full_snapshot)
+        original_snapshot = copy.deepcopy(mock_snapshot)
+        mock_copy_path = self.test_file_1 + "_copy"
+        mock_snapshot['fea80f2db003d4ebc4536023814aa885'].append(client_daemon.get_relpath(mock_copy_path))
+        self.snapshot_manager.update_snapshot_copy({
+            "src_path": self.test_file_1,
+            "dst_path": self.test_file_1 + "_copy",
+            })
+        self.assertEqual(self.snapshot_manager.local_full_snapshot ,mock_snapshot)
+        self.snapshot_manager.local_full_snapshot = original_snapshot
+
+    def test_update_snapshot_move(self):
+        original_snapshot = copy.deepcopy(self.snapshot_manager.local_full_snapshot)
+        mock_snapshot = copy.deepcopy(original_snapshot)
+        mock_new_dest = self.test_file_1 + "_new_dest"
+        with open(self.test_file_1, 'rb') as f:
+            file_1_content = f.read()
+        with open(mock_new_dest, "wb") as f:
+            f.write(file_1_content)
+        mock_snapshot['fea80f2db003d4ebc4536023814aa885'][0] = client_daemon.get_relpath(mock_new_dest)
+        self.snapshot_manager.update_snapshot_move({'src_path':self.test_file_1, 'dst_path' :mock_new_dest})
+        self.assertEqual(self.snapshot_manager.local_full_snapshot, mock_snapshot)
+        #reset origial confition
+        self.snapshot_manager.local_full_snapshot = original_snapshot
+        os.remove(mock_new_dest)
+
+    def test_update_snapshot_delete(self):
+        mock_snapshot = copy.deepcopy(self.snapshot_manager.local_full_snapshot)
+        original_snapshot = copy.deepcopy(mock_snapshot)
+        del mock_snapshot['fea80f2db003d4ebc4536023814aa885']
+        self.snapshot_manager.update_snapshot_delete({'src_path':self.test_file_1})
+        #delete a file without copies
+        self.assertEqual(self.snapshot_manager.local_full_snapshot, mock_snapshot)
+
+        #reset original condition
+        self.snapshot_manager.local_full_snapshot = copy.deepcopy(original_snapshot)
+
+        mock_copy_path = self.test_file_1 + "_copy"
+        self.snapshot_manager.local_full_snapshot['fea80f2db003d4ebc4536023814aa885'].append(client_daemon.get_relpath(mock_copy_path))
+        self.snapshot_manager.update_snapshot_delete({"src_path": mock_copy_path})
+        #delete a file with copies
+        self.assertEqual(self.snapshot_manager.local_full_snapshot, original_snapshot)
+
+    def test_save_timestamp(self):
+        #Case: timestamp not correct: older than synked one
+        expected_snap = self.conf_snap_gen
+        self.snapshot_manager.save_timestamp(self.old_timestamp)
+        new_snap_conf = json.load(open(self.conf_snap_path))
+        self.assertEqual(new_snap_conf, expected_snap)
+        self.assertEqual(
+            self.snapshot_manager.last_status,
+            self.conf_snap_gen)
+
+        #Case: timestamp correct: newer than synked one
+        expected_snap = {
+            "timestamp": self.unsinked_timestamp,
+            "snapshot": self.md5_snapshot
+        }
+        self.snapshot_manager.save_timestamp(self.unsinked_timestamp)
+        new_snap_conf = json.load(open(self.conf_snap_path))
+        self.assertEqual(new_snap_conf, expected_snap)
+        self.assertEqual(
+            self.snapshot_manager.last_status,
+            expected_snap)
+
+    def test_find_file_md5(self):
+        #case true path of local snapshot
+        md5 = self.snapshot_manager.find_file_md5(self.true_snapshot, 'sub_dir_1/test_file_1.txt', False)
+        self.assertEqual(md5, 'fea80f2db003d4ebc4536023814aa885')
+
+        #case false path of local snapshot
+        md5 = self.snapshot_manager.find_file_md5(self.true_snapshot, 'sub_dir_1/test_file_1.txt_fake', False)
+        self.assertEqual(md5, None)
+
+        #case true path of server snapshot
+        mock_server_snap = {
+            '81bcb26fd4acfaa5d0acc7eef1d3013a': [
+                {
+                    'path': u'sub_dir_2/test_file_2.txt',
+                    'timestamp': self.sinked_timestamp,
+                }],
+            'd1e2ac797b8385e792ac1e31db4a81f9': [
+                {
+                    'path': u'sub_dir_2/test_file_3.txt',
+                    'timestamp': self.sinked_timestamp,
+                }],
+            'fea80f2db003d4ebc4536023814aa885': [
+                {
+                    'path': u'sub_dir_1/test_file_1.txt',
+                    'timestamp': self.sinked_timestamp,
+                }],
+        }
+        md5 = self.snapshot_manager.find_file_md5(mock_server_snap, 'sub_dir_1/test_file_1.txt', True)
+        self.assertEqual(md5, 'fea80f2db003d4ebc4536023814aa885')
+
+        #case false path of server snapshot
+        md5 = self.snapshot_manager.find_file_md5(mock_server_snap, 'sub_dir_1/test_file_1.txt_fake', True)
+        self.assertEqual(md5, None)
+
+    def test_check_files_timestamp(self):
+        pass
 
 
 class DirectoryEventHandlerTest(unittest.TestCase):
@@ -550,14 +1098,21 @@ class DirectoryEventHandlerTest(unittest.TestCase):
             self.snapshot_manager)
 
     def test__is_copy(self):
+        #Case: is file not in snapshot
         response = self.event_handler._is_copy('path')
+        self.assertFalse(response)
 
-        self.assertEqual(response, False)
-
+        #Case: is file in snapshot
         self.snapshot_manager.local_full_snapshot = {'MD5': ['path']}
         response = self.event_handler._is_copy('path')
-
         self.assertEqual(response, 'path')
+
+        #Case: is folder
+        def file_snapMd5(self, *args, **kwargs):
+                return False
+        self.snapshot_manager.file_snapMd5 = file_snapMd5
+        response = self.event_handler._is_copy('path')
+        self.assertFalse(response)
 
     def test_on_moved(self):
         move_file_event = FileMovedEvent(self.test_src, self.test_dst)
@@ -650,7 +1205,7 @@ class DirectoryEventHandlerTest(unittest.TestCase):
 
         #Case: delete file in ignored directory
         self.event_handler.paths_ignored.append(self.test_src)
-        self.event_handler.on_created(delete_file_event)
+        self.event_handler.on_deleted(delete_file_event)
         self.assertFalse(self.server_comm.cmd["delete"])
         self.assertFalse(self.test_src in self.event_handler.paths_ignored)
 
@@ -676,6 +1231,162 @@ class DirectoryEventHandlerTest(unittest.TestCase):
         self.event_handler.on_modified(modify_file_event)
         self.assertFalse(self.server_comm.cmd["upload"])
         self.assertFalse(self.test_src in self.event_handler.paths_ignored)
+
+
+class CommandExecuterTest(unittest.TestCase):
+
+    def setUp(self):
+        class FileSystemOperator(object):
+            def __init__(self):
+                self.copy = False
+                self.write = False
+                self.delete = False
+
+            def copy_a_file(self, origin_path, dst_path):
+                self.copy = [origin_path, dst_path]
+
+            def write_a_file(self, path):
+                self.write = path
+
+            def delete_a_file(self, dst_path):
+                self.delete = dst_path
+
+        class ServerCommunicator(object):
+            def __init__(self):
+                self.upload = False
+                self.delete = False
+
+            def upload_file(self, dst_path):
+                self.upload = dst_path
+
+            def delete_file(self, dst_path):
+                self.delete = dst_path
+
+        self.file_system_op = FileSystemOperator()
+        self.server_comm = ServerCommunicator()
+        self.executer = CommandExecuter(
+            self.file_system_op,
+            self.server_comm)
+
+    def test_syncronize_executer(self):
+        #Case: remote and local command error
+
+        error_command_list = [
+            {'local_errorcommand': 'sub_dir_2/test_file_3.txt'},
+            {'remote_errorcommand': 'sub_dir_1/test_file_1.txt'},
+        ]
+
+        self.executer.syncronize_executer(error_command_list)
+
+        self.assertFalse(self.file_system_op.copy)
+        self.assertFalse(self.file_system_op.write)
+        self.assertFalse(self.file_system_op.delete)
+        self.assertFalse(self.server_comm.upload)
+        self.assertFalse(self.server_comm.delete)
+
+        #Case: remote and local command
+
+        command_list = [
+            {'local_download': ['download/test/path']},
+            {'local_copy': [
+                'src/copy/test/path',
+                'src/copy/test/path']},
+            {'local_delete': ['delete/test/path']},
+            {'remote_delete': ['delete/test/path']},
+            {'remote_upload': ['upload/test/path']},
+        ]
+
+        self.executer.syncronize_executer(command_list)
+
+        self.assertEqual(
+            self.file_system_op.copy,
+            ['src/copy/test/path', 'src/copy/test/path'])
+        self.assertEqual(
+            self.file_system_op.write,
+            'download/test/path')
+        self.assertEqual(
+            self.file_system_op.delete,
+            'delete/test/path')
+        self.assertEqual(
+            self.server_comm.upload,
+            'upload/test/path')
+        self.assertEqual(
+            self.server_comm.delete,
+            'delete/test/path')
+
+
+class FunctionTest(unittest.TestCase):
+
+    def setUp(self):
+        client_daemon.CONFIG_DIR_PATH = '/home/user/test_shared_dir'
+
+    def test_get_abspath(self):
+        expected_result = '/home/user/test_shared_dir/folder/file.txt'
+
+        #Case: relative path
+        path = 'folder/file.txt'
+        self.assertEqual(get_abspath(path), expected_result)
+
+        #Case: absolute path
+        path = '/home/user/test_shared_dir/folder/file.txt'
+        self.assertEqual(get_abspath(path), expected_result)
+
+    def test_get_relpath(self):
+        expected_result = 'folder/file.txt'
+
+        #Case: absolute path
+        path = '/home/user/test_shared_dir/folder/file.txt'
+        self.assertEqual(get_relpath(path), expected_result)
+
+        #Case: relarive path
+        path = 'folder/file.txt'
+        self.assertEqual(get_relpath(path), expected_result)
+
+    def test_load_config(self):
+        expected_conf = {
+            'config': 'test configuration'
+        }
+        open('config.json', 'w').write(json.dumps(expected_conf))
+
+        #Case: test config file
+        config, is_new = load_config()
+        self.assertFalse(is_new)
+        self.assertEqual(config, expected_conf)
+
+        #reset
+        os.remove('config.json')
+
+        abs_path = os.path.dirname(os.path.abspath(__file__))
+
+        #Case: IOError
+        expected_conf = {
+            "server_url": "http://{}:{}/{}".format(
+                client_daemon.SERVER_URL,
+                client_daemon.SERVER_PORT,
+                client_daemon.API_PREFIX
+            ),
+            "dir_path": os.path.join(os.path.expanduser("~"), "RawBox"),
+            "snapshot_file_path": os.path.join(abs_path, 'snapshot_file.json'),
+            "crash_repo_path": os.path.join(abs_path, 'RawBox_crash_report.log'),
+            "file_log_level": "ERROR",
+            "stdout_log_level": "DEBUG",
+            "cmd_host": "localhost",
+            "cmd_port": 6666,
+            "username": 'username',
+            "password": 'password',
+        }
+        expected_snap = {
+            "timestamp": 0,
+            "snapshot": "",
+        }
+        config, is_new = load_config()
+        abspath = os.path.dirname(os.path.abspath(__file__))
+        self.assertTrue(is_new)
+        self.assertTrue(os.path.exists(os.path.join(abspath, 'config.json')))
+        self.assertEqual(config, expected_conf)
+        self.assertTrue(os.path.exists(os.path.join(abspath, 'snapshot_file.json')))
+        snap = json.loads(open(os.path.join(abspath, 'snapshot_file.json')).read())
+        self.assertEqual(snap, expected_snap)
 
 
 if __name__ == '__main__':

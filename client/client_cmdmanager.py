@@ -177,7 +177,7 @@ def main():
         os.system('clear')
 
     conf, is_new = load_config()
-    comm_sock = CmdMessageClient(conf['cmd_host'], int(conf['cmd_port']))
+    comm_sock = CmdMessageClient(conf['cmd_host'], conf['cmd_port'])
     try:
         RawBoxCmd(RawBoxExecuter(comm_sock)).cmdloop()
     except KeyboardInterrupt:
