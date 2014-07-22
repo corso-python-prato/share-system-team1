@@ -966,6 +966,34 @@ class TestShare(unittest.TestCase):
             server.User.shared_resources
         )
 
+    def test_get_shares_list(self):
+        # share the subdir
+        received = self.tc.post(
+            "{}shares/{}/{}".format(
+                _API_PREFIX, "shared_directory", self.ben1
+            ),
+            headers=self.owner_headers
+        )
+        self.assertEqual(received.status_code, 200)
+        self.assertIn(
+            "shares/{}/shared_directory".format(self.owner),
+            server.User.users[self.ben1].paths
+        )
+        self.assertIn(
+            "shares/{}/shared_directory/interesting_file.txt".format(
+                self.owner
+            ),
+            server.User.users[self.ben1].paths
+        )
+        received = self.tc.get(
+            "{}shares/".format(
+                _API_PREFIX
+            ),
+            headers=make_headers(self.ben1, "password")
+        )
+        self.assertEqual(received.status_code, 200)
+
+
 
 if __name__ == '__main__':
     # TODO: these things, here, are ok for nose?

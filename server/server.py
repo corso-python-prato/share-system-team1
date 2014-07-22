@@ -575,7 +575,7 @@ class Shares(Resource):
             if usr in bens:
                 if bens[0] == usr:
                     # the user shares the path
-                    if "mine" not in shares:
+                    if "my_shares" not in shares:
                         shares["my_shares"] = [path]
                     else:
                         shares["my_shares"].append(path)
