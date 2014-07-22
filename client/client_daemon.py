@@ -224,6 +224,14 @@ class ServerCommunicator(object):
             error = "on create user:\t email: {}\n\nsend message:\t{}\nresponse is:\t{}".format(username, request, response.text)
             logger.critical("\nbad request on user creation, report this crash to RawBox_team@gmail.com\n {}\n\n".format(error))
 
+    def get_shares(self):
+        server_url = "{}/shares/".format(self.server_url)
+        request = {"url": server_url}
+        shares_list_request = self._try_request(requests.get, "getSharesList success", "getSharesList fail", **request)
+        
+        if shares_list_request.status_code != 401:
+            my_shares = shares_list_request.json()
+            print my_shares
 
 class FileSystemOperator(object):
 

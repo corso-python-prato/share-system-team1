@@ -581,6 +581,7 @@ class Shares(Resource):
                         shares["my_shares"].append(path)
                 else:
                     #the user is a beneficiary
+                    path = "shares/{}/{}".format(bens[0], path)
                     if bens[0] not in shares:
                         shares[bens[0]] = [path]
                     else:
