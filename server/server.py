@@ -6,6 +6,7 @@ from flask.ext.httpauth import HTTPBasicAuth
 from passlib.hash import sha256_crypt
 from flask import Flask, request
 from server_errors import *
+import passwordmeter
 import hashlib
 import shutil
 import time
@@ -18,6 +19,7 @@ HTTP_CREATED = 201
 HTTP_BAD_REQUEST = 400
 HTTP_FORBIDDEN = 403
 HTTP_NOT_FOUND = 404
+HTTP_NOT_ACCEPTABLE = 406
 HTTP_CONFLICT = 409
 HTTP_GONE = 410
 
@@ -29,6 +31,7 @@ _API_PREFIX = "/API/v1/"
 SERVER_ROOT = os.path.dirname(__file__)
 USERS_DIRECTORIES = os.path.join(SERVER_ROOT, "user_dirs/")
 USERS_DATA = os.path.join(SERVER_ROOT, "user_data.json")
+PASSWORD_NOT_ACCEPTED_DATA = "password_not_accepted.txt"
 
 parser = reqparse.RequestParser()
 parser.add_argument("task", type=str)
@@ -55,6 +58,25 @@ def can_write(username, server_path):
     (the server_path begins with his name)
     """
     return server_path.split('/')[0] == username
+
+
+def PasswordChecker(clear_password):
+    #if the password is too short
+    if len(clear_password) <= 5:
+        abort(HTTP_NOT_ACCEPTABLE)
+    #if the password is too used
+    f = open(PASSWORD_NOT_ACCEPTED_DATA)
+    lines = f.readlines()
+    f.close()
+    for line in lines:
+        for word in line.split():
+            if clear_password == word:
+                abort(HTTP_NOT_ACCEPTABLE)
+    #if the password is too easy
+    strength, improvements = passwordmeter.test(clear_password)
+    if strength < 0.5:
+        abort(HTTP_NOT_ACCEPTABLE)
+    return clear_password
 
 
 class User(object):
@@ -116,7 +138,7 @@ class User(object):
             self.timestamp = from_dict["timestamp"]
             User.users[username] = self
             return
-
+        clear_password = PasswordChecker(clear_password)
         psw_hash = sha256_crypt.encrypt(clear_password)
         full_path = os.path.join(USERS_DIRECTORIES, username)
         try:
