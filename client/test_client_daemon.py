@@ -12,6 +12,7 @@ from watchdog.events import DirDeletedEvent
 from watchdog.events import DirModifiedEvent
 from watchdog.events import DirCreatedEvent
 from watchdog.events import DirMovedEvent
+import ConfigParser
 import client_daemon
 import httpretty
 import unittest
@@ -162,11 +163,35 @@ class ServerCommunicatorTest(unittest.TestCase):
             self.username,
             self.password,
             snapshot_manager)
+        self.TEST_CONFIG_FILE = 'test_config.ini'
+        self.mock_config_ini = ConfigParser.ConfigParser()
+        self.mock_config_ini.add_section("daemon_user_data")
+        self.mock_config_ini.set("daemon_user_data", "username")
+        self.mock_config_ini.set("daemon_user_data", "password")
+        self.mock_config_ini.set("daemon_user_data", "active")
+        with open(self.TEST_CONFIG_FILE, 'wb') as config:
+            self.mock_config_ini.write(config)
+        
         
     def tearDown(self):
         httpretty.disable()
         httpretty.reset()
+        os.remove(self.TEST_CONFIG_FILE)
     
+    def test_write_user_data(self):
+        client_daemon.FILE_CONFIG = self.TEST_CONFIG_FILE
+        self.server_comm.write_user_data(self.username, self.password, activate=False)
+        self.mock_config_ini.read(self.TEST_CONFIG_FILE)
+        user = self.mock_config_ini.get("daemon_user_data", "username")
+        self.assertEqual(self.username, user)
+        pwd = self.mock_config_ini.get("daemon_user_data", "password")
+        self.assertEqual(self.password, pwd)
+        self.server_comm.write_user_data(activate=True)
+        self.mock_config_ini.read(self.TEST_CONFIG_FILE)
+        activate = self.mock_config_ini.get("daemon_user_data", "active")
+        self.assertEqual(activate, "True")
+
+
     def test_upload(self):
         put_file=True
         mock_auth_user = ":".join([self.username, self.password])
@@ -307,7 +332,7 @@ class ServerCommunicatorTest(unittest.TestCase):
         code = "qwerty12345"
         msg1 = self.server_comm.activate_user({"user":self.username, "code":code})
         self.assertEqual(msg1["result"], 201)
-        self.assertEqual(msg1["details"][0], "User activated")
+        self.assertEqual(msg1["details"][0], "You have now entered RawBox")
         msg2 = self.server_comm.activate_user({"user":self.username, "code":code})
         self.assertEqual(msg2["result"], 404)
         self.assertEqual(msg2["details"][0], "User not found")
