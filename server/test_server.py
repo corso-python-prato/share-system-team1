@@ -280,7 +280,7 @@ class TestFilesAPI(unittest.TestCase):
     def test_files_differences(self):
         data = {
             "user": "complex_user@gmail.com",
-            "psw": "complex_password"
+            "psw": "password"
         }
         headers = make_headers(data["user"], data["psw"])
 
@@ -300,11 +300,11 @@ class TestFilesAPI(unittest.TestCase):
         except OSError:
             pass
 
-        rv = self.tc.post(
-            _API_PREFIX + "create_user",
-            data=data
-        )
-        self.assertEqual(rv.status_code, 201)
+        # rv = self.tc.post(
+        #     _API_PREFIX + "create_user",
+        #     data=data
+        # )
+        # self.assertEqual(rv.status_code, 201)
 
         # first check: user created just now
         snapshot1 = get_diff()
