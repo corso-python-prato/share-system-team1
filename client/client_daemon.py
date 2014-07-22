@@ -260,7 +260,7 @@ class ServerCommunicator(object):
             logger.warning("user: {} psw: {} already exists!".format(username, password))
             self.msg["details"].append("User already exists")
         else:
-            error = "on create user:\t email: {}\n\nsend message:\t{}\nresponse is:\t{}".format(request, response.text)
+            error = "on create user:\t email: {}\n\nsend message:\t{}\nresponse is:\t{}".format(username, request, response.text)
             logger.critical("\nbad request on user creation, report this crash to RawBox_team@gmail.com\n {}\n\n".format(error))
             self.msg["details"].append("Bad request")
         return self.msg
