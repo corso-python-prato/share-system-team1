@@ -566,6 +566,27 @@ class Shares(Resource):
         else:
             return self._remove_share(owner, server_path, client_path)
 
+    def get(self):
+        owner = User.get_user(auth.username())
+        usr = owner.username
+        shares = {}
+        for path, bens in User.shared_resources.iteritems():
+            path =  "/".join((path.split("/")[1:]))
+            if usr in bens:
+                if bens[0] == usr:
+                    # the user shares the path
+                    if "mine" not in shares:
+                        shares["my_shares"] = [path]
+                    else:
+                        shares["my_shares"].append(path)
+                else:
+                    #the user is a beneficiary
+                    if bens[0] not in shares:
+                        shares[bens[0]] = [path]
+                    else:
+                        shares[bens[0]].append(path)
+        return shares, HTTP_OK
+
 
 @auth.verify_password
 def verify_password(username, password):
@@ -608,6 +629,7 @@ api.add_resource(
 api.add_resource(Actions, "{}actions/<string:cmd>".format(_API_PREFIX))
 api.add_resource(
     Shares,
+    "{}shares/".format(_API_PREFIX),
     "{}shares/<path:client_path>".format(_API_PREFIX),
     "{}shares/<path:client_path>/<string:beneficiary>".format(_API_PREFIX)
 )
