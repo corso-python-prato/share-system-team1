@@ -18,7 +18,6 @@ HTTP_BAD_REQUEST = 400
 HTTP_FORBIDDEN = 403
 HTTP_NOT_FOUND = 404
 HTTP_CONFLICT = 409
-HTTP_GONE = 410
 
 app = Flask(__name__)
 api = Api(app)
