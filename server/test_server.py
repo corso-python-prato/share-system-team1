@@ -46,6 +46,12 @@ def create_temporary_file(content=None):
     return tmp.name
 
 
+def get_data(file_object):
+    file_md5 = hashlib.md5(file_object.read()).hexdigest()
+    file_object.seek(0)
+    return {"file_content": file_object, 'file_md5': file_md5}
+
+
 class TestSetupServer(unittest.TestCase):
     other_directory = os.path.join(
         os.path.dirname(__file__),
@@ -127,13 +133,10 @@ class TestFilesAPI(unittest.TestCase):
 
         # correct upload
         with open(TestFilesAPI.demo_file1, "r") as f:
-            file_md5 = hashlib.md5(f.read()).hexdigest()
-            f.seek(0)
-            data = {"file_content": f, 'file_md5': file_md5}
             start = time.time()
             rv = self.tc.post(
                 _API_PREFIX + url,
-                data=data,
+                data=get_data(f),
                 headers=self.headers,
             )
             end = time.time()
@@ -154,12 +157,9 @@ class TestFilesAPI(unittest.TestCase):
 
         # try to re-upload the same file to check conflict error
         with open(TestFilesAPI.demo_file1, "r") as f:
-            file_md5 = hashlib.md5(f.read()).hexdigest()
-            f.seek(0)
-            data = {"file_content": f, 'file_md5': file_md5}
             rv = self.tc.post(
                 _API_PREFIX + url,
-                data=data,
+                data=get_data(f),
                 headers=self.headers
             )
             self.assertEqual(rv.status_code, 409)
@@ -234,14 +234,11 @@ class TestFilesAPI(unittest.TestCase):
 
         # correct put
         with open(cls.demo_file1, "r") as f:
-            file_md5 = hashlib.md5(f.read()).hexdigest()
-            f.seek(0)
-            data = {"file_content": f, 'file_md5': file_md5}
             url = "{}{}".format(cls.url_radix, "random_file.txt")
             start = time.time()
             rv = self.tc.put(
                 _API_PREFIX + url,
-                data=data,
+                data=get_data(f),
                 headers=self.headers
             )
             end = time.time()
@@ -262,13 +259,10 @@ class TestFilesAPI(unittest.TestCase):
 
         # wrong path
         with open(cls.demo_file1, "r") as f:
-            file_md5 = hashlib.md5(f.read()).hexdigest()
-            f.seek(0)
-            data = {"file_content": f, 'file_md5': file_md5}
             url = "{}{}".format(cls.url_radix, "NO_SERVER_PATH")
             rv = self.tc.put(
                 _API_PREFIX + url,
-                data=data,
+                data=get_data(f),
                 headers=self.headers
             )
             self.assertEqual(rv.status_code, 404)
@@ -349,12 +343,9 @@ class TestFilesAPI(unittest.TestCase):
         ]
         for p in some_paths:
             with open(TestFilesAPI.demo_file1, "r") as f:
-                file_md5 = hashlib.md5(f.read()).hexdigest()
-                f.seek(0)
-                data_local = {"file_content": f, 'file_md5': file_md5}
                 rv = self.tc.post(
                     "{}{}{}".format(_API_PREFIX, self.url_radix, p),
-                    data=data_local,
+                    data=get_data(f),
                     headers=headers
                 )
             self.assertEqual(rv.status_code, 201)
@@ -930,14 +921,11 @@ class TestShare(unittest.TestCase):
         # update a shared file and check if it's ok
         owner_timestamp = server.User.users[self.owner].timestamp
         with open(TestShare.demo_file2, "r") as f:
-            file_md5 = hashlib.md5(f.read()).hexdigest()
-            f.seek(0)
-            data = {"file_content": f, 'file_md5': file_md5}
             received = self.tc.put(
                 "{}files/{}/{}".format(
                     _API_PREFIX, subdir, filename
                 ),
-                data=data,
+                data=get_data(f),
                 headers=self.owner_headers
             )
         self.assertEqual(received.status_code, 201)
@@ -949,14 +937,11 @@ class TestShare(unittest.TestCase):
 
         # upload a new file in shared directory and check
         with open(TestShare.demo_file1, "r") as f:
-            file_md5 = hashlib.md5(f.read()).hexdigest()
-            f.seek(0)
-            data = {"file_content": f, 'file_md5': file_md5}
             received = self.tc.post(
                 "{}files/{}/{}".format(
                     _API_PREFIX, subdir, "other_subdir/new_file"
                 ),
-                data=data,
+                data=get_data(f),
                 headers=self.owner_headers
             )
         self.assertEqual(received.status_code, 201)
