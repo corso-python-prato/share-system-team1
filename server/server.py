@@ -356,7 +356,7 @@ class Files(Resource):
         """Download
         Returns file content as a byte string
         Expected GET method with path"""
-        u = User.get_user(auth.username())
+        u = User.users[auth.username()]
         try:
             full_path = os.path.join(
                 USERS_DIRECTORIES, u.paths[client_path][0]
@@ -379,7 +379,7 @@ class Files(Resource):
         Updates an existing file
         Expected as POST data:
         { "file_content" : <file>} """
-        u = User.get_user(auth.username())
+        u = User.users[auth.username()]
 
         try:
             server_path = u.paths[client_path][0]
@@ -400,7 +400,7 @@ class Files(Resource):
         Upload a new file
         Expected as POST data:
         { "file_content" : <file>} """
-        u = User.get_user(auth.username())
+        u = User.users[auth.username()]
 
         if client_path in u.paths:
             # The file is already present. To modify it, use PUT, not POST
@@ -423,7 +423,7 @@ class Actions(Resource):
         """ Expected as POST data:
         { "path" : <path>} """
         # check user and path
-        u = User.get_user(auth.username())
+        u = User.users[auth.username()]
         client_path = request.form["path"]
         try:
             server_path = u.paths[client_path][0]
@@ -543,7 +543,7 @@ class Shares(Resource):
             return HTTP_OK
 
     def delete(self, client_path, beneficiary=None):
-        owner = User.get_user(auth.username())
+        owner = User.users[auth.username()]
         try:
             server_path = owner.paths[client_path][0]
         except KeyError:
