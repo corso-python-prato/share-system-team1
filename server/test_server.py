@@ -4,12 +4,12 @@
 from base64 import b64encode
 import tempfile
 import unittest
-import server
 import shutil
 import json
 import os
 import time
 
+import server
 from server import _API_PREFIX
 
 
