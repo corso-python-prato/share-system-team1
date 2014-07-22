@@ -1093,10 +1093,10 @@ class TestServerInternalErrors(unittest.TestCase):
                 },
                 headers=owner_headers
             )
-        # # check IOError
-        # for action in ["move", "copy"]:
-        #     with self.assertRaises(IOError):
-        #         try_to_transfer(action)
+        # check IOError
+        for action in ["move", "copy"]:
+            with self.assertRaises(IOError):
+                try_to_transfer(action)
         # check service code
         server.app.testing = False
         for action in ["move", "copy"]:

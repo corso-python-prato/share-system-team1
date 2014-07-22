@@ -3,12 +3,12 @@
         "Emilio@me.it": {
             "paths": {
                 "": [
-                    "user_dirs/Emilio@me.it",
+                    "Emilio@me.it",
                     null,
                     1405076390.847102
                 ],
                 "ciao.txt": [
-                    "user_dirs/Emilio@me.it/ciao.txt",
+                    "Emilio@me.it/ciao.txt",
                     "6186badadb5fbb0416cd29a04e2d92d7",
                     1405076398.984682
                 ]
