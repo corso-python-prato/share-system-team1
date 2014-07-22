@@ -232,6 +232,8 @@ class ServerCommunicator(object):
         if shares_list_request.status_code != 401:
             my_shares = shares_list_request.json()
             print my_shares
+        else:
+            print "error"
 
 class FileSystemOperator(object):
 

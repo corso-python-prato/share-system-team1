@@ -96,6 +96,14 @@ class RawBoxExecuter(object):
         self.comm_sock.send_message(command_type, param)
         self.print_response(self.comm_sock.read_message())
 
+    def _get_shares_list(self, *args):
+        """retrieve the list of shares of a user """
+        command_type = 'get_shares'
+        param = {}
+
+        self.comm_sock.send_message(command_type, param)
+        self.print_response(self.comm_sock.read_message())
+
     def print_response(self, response):
         ''' print response from the daemon.
             the response is a dictionary as:
@@ -156,6 +164,16 @@ class RawBoxCmd(cmd.Cmd):
                 'user': self.executer._create_user,
                 'group': self.executer._create_group,
             }.get(command, self.error)(arguments)
+        else:
+            Message('INFO', self.do_create.__doc__)
+
+    def do_get_shares_list(self, line):
+        """
+        share_list (get the list of the shares)
+        """
+        if line:
+            command = line.split()[0]
+            self.executer._get_shares_list()
         else:
             Message('INFO', self.do_create.__doc__)
 
