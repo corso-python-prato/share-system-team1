@@ -175,6 +175,7 @@ class ServerCommunicatorTest(unittest.TestCase):
         self.mock_config_ini.set("daemon_user_data", "active")
         with open(self.TEST_CONFIG_FILE, 'wb') as config:
             self.mock_config_ini.write(config)
+        client_daemon.FILE_CONFIG = self.TEST_CONFIG_FILE
         
         
     def tearDown(self):
@@ -183,7 +184,6 @@ class ServerCommunicatorTest(unittest.TestCase):
         os.remove(self.TEST_CONFIG_FILE)
     
     def test_write_user_data(self):
-        client_daemon.FILE_CONFIG = self.TEST_CONFIG_FILE
         self.server_comm.write_user_data(self.username, self.password, activate=False)
         self.mock_config_ini.read(self.TEST_CONFIG_FILE)
         user = self.mock_config_ini.get("daemon_user_data", "username")
@@ -462,6 +462,8 @@ class LoadConfigTest(unittest.TestCase):
     CONFIG_WITH_DAEMON_SECTION = "test_config_with_daemon_section.ini"
     CONFIG_WITH_USER_SECTION = "test_config_with_user_conf.ini"
     DIR_PATH = os.path.join(os.path.expanduser("~"), "RawBox")
+    abs_path = os.path.dirname(os.path.abspath(__file__))
+    CRASH_LOG_PATH = os.path.join(abs_path, 'RawBox_crash_report.log')
 
     def setUp(self):
 
@@ -478,6 +480,9 @@ class LoadConfigTest(unittest.TestCase):
                     client_daemon.SERVER_URL,
                     client_daemon.SERVER_PORT,
                     client_daemon.API_PREFIX),
+            "crash_repo_path": self.CRASH_LOG_PATH,
+            "stdout_log_level": "DEBUG",
+            "file_log_level": "ERROR",
             "dir_path":self.DIR_PATH,
             "snapshot_file_path": "snapshot_file.json"
 
@@ -493,6 +498,9 @@ class LoadConfigTest(unittest.TestCase):
         config_with_daemon_conf.set('daemon_communication', 'server_url', "example/server/url")
         config_with_daemon_conf.set('daemon_communication', 'server_port', "example_port")
         config_with_daemon_conf.set('daemon_communication', 'api_prefix', "example/api/prefix")
+        config_with_daemon_conf.set("daemon_communication", "crash_repo_path", self.CRASH_LOG_PATH)
+        config_with_daemon_conf.set("daemon_communication", "stdout_log_level", "DEBUG")
+        config_with_daemon_conf.set("daemon_communication", "file_log_level", "ERROR")
         with open(self.CONFIG_WITH_DAEMON_SECTION, 'wb') as config_file:
             config_with_daemon_conf.write(config_file)
         self.config_with_daemon_conf = {
@@ -502,6 +510,12 @@ class LoadConfigTest(unittest.TestCase):
                     config_with_daemon_conf.get("daemon_communication", "server_url"),
                     config_with_daemon_conf.get("daemon_communication", "server_port"),
                     config_with_daemon_conf.get("daemon_communication", "api_prefix")),
+            "crash_repo_path": 
+                config_with_daemon_conf.get("daemon_communication", "crash_repo_path"),
+            "stdout_log_level": 
+                config_with_daemon_conf.get("daemon_communication", "stdout_log_level"),
+            "file_log_level": 
+                config_with_daemon_conf.get("daemon_communication", "file_log_level"),
             "dir_path": config_with_daemon_conf.get("daemon_communication", "dir_path"),
             "snapshot_file_path": config_with_daemon_conf.get("daemon_communication", "snapshot_file_path")
         }
@@ -517,6 +531,9 @@ class LoadConfigTest(unittest.TestCase):
         config_with_user_conf.set('daemon_communication', 'server_url', "example/server/url")
         config_with_user_conf.set('daemon_communication', 'server_port', "example_port")
         config_with_user_conf.set('daemon_communication', 'api_prefix', "example/api/prefix")
+        config_with_user_conf.set("daemon_communication", "crash_repo_path", self.CRASH_LOG_PATH)
+        config_with_user_conf.set("daemon_communication", "stdout_log_level", "DEBUG")
+        config_with_user_conf.set("daemon_communication", "file_log_level", "ERROR")
         config_with_user_conf.set('daemon_user_data', 'username', "example_username")
         config_with_user_conf.set('daemon_user_data', 'password', "example_password")
         config_with_user_conf.set('daemon_user_data', 'active', True)
@@ -529,6 +546,12 @@ class LoadConfigTest(unittest.TestCase):
                     config_with_user_conf.get("daemon_communication", "server_url"),
                     config_with_user_conf.get("daemon_communication", "server_port"),
                     config_with_user_conf.get("daemon_communication", "api_prefix")),
+            "crash_repo_path": 
+                config_with_user_conf.get("daemon_communication", "crash_repo_path"),
+            "stdout_log_level": 
+                config_with_user_conf.get("daemon_communication", "stdout_log_level"),
+            "file_log_level": 
+                config_with_user_conf.get("daemon_communication", "file_log_level"),
             "dir_path": config_with_user_conf.get("daemon_communication", "dir_path"),
             "snapshot_file_path": config_with_user_conf.get("daemon_communication", "snapshot_file_path"),
             "username": config_with_user_conf.get("daemon_user_data", "username"),
