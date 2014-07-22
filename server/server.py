@@ -5,7 +5,6 @@ from flask.ext.restful import reqparse, abort, Api, Resource
 from flask.ext.httpauth import HTTPBasicAuth
 from passlib.hash import sha256_crypt
 from flask import Flask, request
-from server_errors import *
 import hashlib
 import shutil
 import time
@@ -76,11 +75,12 @@ class User(object):
             ud = open(USERS_DATA, "r")
             saved = json.load(ud)
             ud.close()
-        # if error, create new structure from scratch
         except IOError:
-            pass                # missing file
-        except ValueError:      # invalid json
-            os.remove(USERS_DATA)
+            # The json file is not present. It will be created a new structure
+            # from scratch.
+            pass
+        # If the json file is corrupted, it will be raised a ValueError here.
+        # In that case, please remove the corrupted file.
         else:
             for u, v in saved["users"].iteritems():
                 User(u, None, from_dict=v)
@@ -99,16 +99,9 @@ class User(object):
         with open(filename, "w") as f:
             json.dump(to_save, f)
 
-    @classmethod
-    def get_user(cls, username):
-        try:
-            return cls.users[username]
-        except KeyError:
-            raise MissingUserError("User doesn't exist")
-
     # DYNAMIC METHODS
     def __init__(self, username, clear_password, from_dict=None):
-        # if restoring the server
+        # if restoring the server:
         if from_dict:
             self.username = username
             self.psw = from_dict["psw"]
@@ -117,12 +110,13 @@ class User(object):
             User.users[username] = self
             return
 
+        # else, if a real new user is being created:
         psw_hash = sha256_crypt.encrypt(clear_password)
         full_path = os.path.join(USERS_DIRECTORIES, username)
-        try:
-            os.mkdir(full_path)
-        except OSError:
-            abort(HTTP_CONFLICT)
+        os.mkdir(full_path)
+        # If a directory with the same name of the user is already present,
+        # it will be raised an OSError here. It shouldn't happen, if the server
+        # works right.
 
         # OBJECT ATTRIBUTES
         self.username = username
@@ -155,7 +149,6 @@ class User(object):
         # search the first directory father already present
         directory_path, filename = os.path.split(client_path)
         dir_list = directory_path.split("/")
-
         to_be_created = []
         while (len(dir_list) > 0) \
                 and (os.path.join(*dir_list) not in self.paths):
@@ -231,7 +224,7 @@ class User(object):
 
             # upgrade every beneficiaries
             for ben_name in User.shared_resources[share][1:]:
-                ben_user = User.get_user(ben_name)
+                ben_user = User.users[ben_name]
                 if not only_modify:
                     ben_user.paths[ben_path] = file_meta
                 ben_user.timestamp = now
@@ -269,7 +262,7 @@ class User(object):
                         shared_server_path, ben_path = is_shared
                         for ben_name in \
                                 User.shared_resources[shared_server_path][1:]:
-                            ben_user = User.get_user(ben_name)
+                            ben_user = User.users[ben_name]
                             del ben_user.paths[ben_path]
                     # step 3: remove from paths
                     del self.paths[client_subdir]
@@ -280,7 +273,7 @@ class User(object):
         if is_shared:
             shared_server_path, ben_path = is_shared
             for ben_name in User.shared_resources[shared_server_path][1:]:
-                ben_user = User.get_user(ben_name)
+                ben_user = User.users[ben_name]
                 del ben_user.paths[ben_path]
                 ben_user.timestamp = now
             # if the shared resource is a removed file or an empty directory
@@ -333,7 +326,7 @@ class Files(Resource):
         """ Send a JSON with the timestamp of the last change in user
         directories and an md5 for each file
         Expected GET method without path """
-        u = User.get_user(auth.username())
+        u = User.users[auth.username()]
         tree = {}
         for p, v in u.paths.iteritems():
             if v[1] is None:
@@ -371,13 +364,9 @@ class Files(Resource):
         except KeyError:
             return "File unreachable", HTTP_NOT_FOUND
 
-        try:
-            f = open(full_path, "rb")
+        with open(full_path, "rb") as f:
             content = f.read()
-            f.close()
-            return content
-        except IOError:
-            abort(HTTP_GONE)
+        return content
 
     def get(self, client_path=None):
         if not client_path:
@@ -461,7 +450,7 @@ class Actions(Resource):
         depending on keep_the_original value
         Expected as POST data:
         { "file_src": <path>, "file_dest": <path> }"""
-        u = User.get_user(auth.username())
+        u = User.users[auth.username()]
         client_src = request.form["file_src"]
         client_dest = request.form["file_dest"]
 
@@ -509,7 +498,7 @@ class Actions(Resource):
 
 class Shares(Resource):
     def post(self, client_path, beneficiary):
-        owner = User.get_user(auth.username())
+        owner = User.users[auth.username()]
 
         if not owner.add_share(client_path, beneficiary):
             abort(HTTP_BAD_REQUEST)     # TODO: choice the code
@@ -520,9 +509,11 @@ class Shares(Resource):
                             beneficiary):
         # remove the beneficiary from the shared resources list
         try:
-            ben_user = User.get_user(beneficiary)
+            ben_user = User.users[beneficiary]
             User.shared_resources[server_path].remove(beneficiary)
         except (KeyError, ValueError):
+            # beneficiary is not an user or the resource is not shared
+            # or the resource is shared, but not with this beneficiary
             abort(HTTP_BAD_REQUEST)
 
         if len(User.shared_resources[server_path]) == 1:
@@ -569,12 +560,10 @@ class Shares(Resource):
 
 @auth.verify_password
 def verify_password(username, password):
-    try:
-        u = User.get_user(username)
-    except MissingUserError:
+    if username not in User.users:
         return False
     else:
-        return sha256_crypt.verify(password, u.psw)
+        return sha256_crypt.verify(password, User.users[username].psw)
 
 
 @app.route("{}create_user".format(_API_PREFIX), methods=["POST"])
@@ -594,10 +583,18 @@ def create_user():
             return "user created", HTTP_CREATED
 
 
-def main():
+def server_setup():
+    global USERS_DIRECTORIES
+    USERS_DIRECTORIES = os.path.join(SERVER_ROOT, "user_dirs/")
+    global USERS_DATA
+    USERS_DATA = os.path.join(SERVER_ROOT, "user_data.json")
     if not os.path.isdir(USERS_DIRECTORIES):
         os.makedirs(USERS_DIRECTORIES)
     User.user_class_init()
+
+
+def main():
+    server_setup()
     app.run(host="0.0.0.0", debug=True)         # TODO: remove debug=True
 
 
