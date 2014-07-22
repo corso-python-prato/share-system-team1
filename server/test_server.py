@@ -274,7 +274,7 @@ class TestFilesAPI(unittest.TestCase):
     def test_files_differences(self):
         data = {
             "user": "complex_user@gmail.com",
-            "psw": "complex_password"
+            "psw": "33Complex_Password33!!"
         }
         headers = make_headers(data["user"], data["psw"])
 
@@ -607,12 +607,35 @@ class TestUser(unittest.TestCase):
         shutil.rmtree(server.USERS_DIRECTORIES)
 
     def test_create_user(self):
-        # check if a new user is correctly created
         dirs_counter = len(os.listdir(server.USERS_DIRECTORIES))
-
+        # check if a new user use a slow password
         data = {
             "user": "Gianni",
-            "psw": "IloveJava"
+            "psw": "java"
+        }
+        with server.app.test_client() as tc:
+            received = tc.post(_API_PREFIX + "create_user", data=data)
+        self.assertEqual(received.status_code, server.HTTP_NOT_ACCEPTABLE)
+        # check if a new user use a used password
+        data = {
+            "user": "Gianni",
+            "psw": "123456"
+        }
+        with server.app.test_client() as tc:
+            received = tc.post(_API_PREFIX + "create_user", data=data)
+        self.assertEqual(received.status_code, server.HTTP_NOT_ACCEPTABLE)
+        # check if a new user use a easy password
+        data = {
+            "user": "Gianni",
+            "psw": "ilovejava"
+        }
+        with server.app.test_client() as tc:
+            received = tc.post(_API_PREFIX + "create_user", data=data)
+        self.assertEqual(received.status_code, server.HTTP_NOT_ACCEPTABLE)
+        # check if a new user is correctly created
+        data = {
+            "user": "Gianni",
+            "psw": "ILoveJava<3"
         }
         with server.app.test_client() as tc:
             received = tc.post(_API_PREFIX + "create_user", data=data)
