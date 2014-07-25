@@ -5,7 +5,6 @@ from client_daemon import FileSystemOperator
 from client_daemon import CommandExecuter
 from client_daemon import get_abspath
 from client_daemon import get_relpath
-from client_daemon import load_config
 
 #Watchdog event import for event_handler test
 from watchdog.events import FileDeletedEvent
@@ -16,6 +15,7 @@ from watchdog.events import DirDeletedEvent
 from watchdog.events import DirModifiedEvent
 from watchdog.events import DirCreatedEvent
 from watchdog.events import DirMovedEvent
+import ConfigParser
 import client_daemon
 import httpretty
 import requests
@@ -27,6 +27,7 @@ import shutil
 import copy
 import json
 import os
+
 
 class TestEnvironment(object):
 
@@ -66,7 +67,6 @@ class TestEnvironment(object):
         open(self.conf_snap_path, 'w').write(json.dumps(self.conf_snap_gen))
 
         return self.test_main_path, self.test_share_dir, self.test_folder_1, self.test_folder_2, self.test_file_1, self.test_file_2, self.test_file_3, self.true_snapshot, self.md5_snapshot, self.conf_snap_path, self.conf_snap_gen
-
 
     def remove(self):
         shutil.rmtree(self.test_main_path)
@@ -146,21 +146,43 @@ class ServerCommunicatorTest(unittest.TestCase):
             'http://127.0.0.1:5000/API/v1/actions/copy')
         httpretty.register_uri(
             httpretty.POST,
-            'http://127.0.0.1:5000/API/v1/create_user',
-            status=201)
+            'http://127.0.0.1:5000/API/v1/Users/usernameFarlocco',
+            responses=[
+                httpretty.Response(body='{}', status=201),
+                httpretty.Response(body='{}', status=409),
+                httpretty.Response(body='{"something wrong"}', status=400)
+            ])
         httpretty.register_uri(httpretty.GET,
             'http://127.0.0.1:5000/API/v1/files',
             body=str({
-                '9406539a103956dc36cb7ad35547198c': [{"path": u'/Users/marc0/progetto/prove_deamon\\bla.txt',"timestamp":123123}],
-                'a8f5f167f44f4964e6c998dee827110c': [{"path": u'vecchio.txt',"timestamp":123122}], 
-                'c21e1af364fa17cc80e0bbec2dd2ce5c': [{"path": u'/Users/marc0/progetto/prove_deamon\\asdas\\asdasd.txt',"timestamp":123123}], 
-                'd41d8cd98f00b204e9800998ecf8427e': [{"path": u'/Users/marc0/progetto/prove_deamon\\dsa.txt',"timestamp":123122},#old timestamp 
-                                                    {"path":  u'/Users/marc0/progetto/prove_deamon\\Nuovo documento di testo (2).txt',"timestamp":123123}, 
-                                                    {"path":  u'server path in piu copiata',"timestamp":123123}],
-                'a8f5f167f44f4964e6c998dee827110b': [{"path":  u'nuova path server con md5 nuovo',"timestamp":123123}],
-                'a8f5f167f44f4964e6c998eee827110b': [{"path":  u'nuova path server con md5 nuovo e timestamp minore',"timestamp":123122}]}),
+                '9406539a103956dc36cb7ad35547198c': [{"path": u'/Users/marc0/progetto/prove_deamon\\bla.txt', "timestamp": 123123}],
+                'a8f5f167f44f4964e6c998dee827110c': [{"path": u'vecchio.txt', "timestamp": 123122}],
+                'c21e1af364fa17cc80e0bbec2dd2ce5c': [{"path": u'/Users/marc0/progetto/prove_deamon\\asdas\\asdasd.txt', "timestamp": 123123}],
+                'd41d8cd98f00b204e9800998ecf8427e': [{"path": u'/Users/marc0/progetto/prove_deamon\\dsa.txt', "timestamp": 123122},  # old timestamp
+                                                    {"path": u'/Users/marc0/progetto/prove_deamon\\Nuovo documento di testo (2).txt', "timestamp": 123123},
+                                                    {"path": u'server path in piu copiata', "timestamp": 123123}],
+                'a8f5f167f44f4964e6c998dee827110b': [{"path": u'nuova path server con md5 nuovo', "timestamp": 123123}],
+                'a8f5f167f44f4964e6c998eee827110b': [{"path": u'nuova path server con md5 nuovo e timestamp minore', "timestamp": 123122}]}),
                 content_type="application/json"
         )
+        httpretty.register_uri(httpretty.GET, 'http://127.0.0.1:5000/API/v1/user',
+            responses=[
+                httpretty.Response(body='{"user":"usernameFarlocco","psw":"passwordSegretissima"}', status=200),
+                httpretty.Response(body='{}', status=404),
+                httpretty.Response(body='{"something wrong"}', status=400)
+            ])
+        httpretty.register_uri(httpretty.DELETE, 'http://127.0.0.1:5000/API/v1/Users/usernameFarlocco',
+            responses=[
+                httpretty.Response(body='{}',status=200),
+                httpretty.Response(body='{}',status=401),
+                httpretty.Response(body='{}',status=400)
+            ])
+        httpretty.register_uri(httpretty.PUT, 'http://127.0.0.1:5000/API/v1/Users/usernameFarlocco',
+            responses=[
+                httpretty.Response(body='{}',status=201),
+                httpretty.Response(body='{}',status=404),
+                httpretty.Response(body='{}',status=400)
+            ])
 
         self.dir = "/tmp/home/test_rawbox/folder"
         client_daemon.CONFIG_DIR_PATH = self.dir
@@ -182,10 +204,32 @@ class ServerCommunicatorTest(unittest.TestCase):
             self.username,
             self.password,
             snapshot_manager)
-        
+        self.TEST_CONFIG_FILE = 'test_config.ini'
+        self.mock_config_ini = ConfigParser.ConfigParser()
+        self.mock_config_ini.add_section("daemon_user_data")
+        self.mock_config_ini.set("daemon_user_data", "username")
+        self.mock_config_ini.set("daemon_user_data", "password")
+        self.mock_config_ini.set("daemon_user_data", "active")
+        with open(self.TEST_CONFIG_FILE, 'wb') as config:
+            self.mock_config_ini.write(config)
+        client_daemon.FILE_CONFIG = self.TEST_CONFIG_FILE
+
     def tearDown(self):
         httpretty.disable()
         httpretty.reset()
+        os.remove(self.TEST_CONFIG_FILE)
+    
+    def test_write_user_data(self):
+        self.server_comm.write_user_data(self.username, self.password, activate=False)
+        self.mock_config_ini.read(self.TEST_CONFIG_FILE)
+        user = self.mock_config_ini.get("daemon_user_data", "username")
+        self.assertEqual(self.username, user)
+        pwd = self.mock_config_ini.get("daemon_user_data", "password")
+        self.assertEqual(self.password, pwd)
+        self.server_comm.write_user_data(activate=True)
+        self.mock_config_ini.read(self.TEST_CONFIG_FILE)
+        activate = self.mock_config_ini.get("daemon_user_data", "active")
+        self.assertEqual(activate, "True")
 
     def test_try_request(self):
         class Callback(object):
@@ -243,14 +287,14 @@ class ServerCommunicatorTest(unittest.TestCase):
         self.assertEqual(result, expected_result)
 
     def test_upload(self):
+
         def fake_try_request(*args, **kwargs):
             self.request = kwargs
             self.server_comm._try_request = self.true_try_request
             return self.server_comm._try_request(*args ,**kwargs)
 
+        put_file = True
         self.true_try_request = self.server_comm._try_request
-
-        put_file=True
         self.server_comm._try_request = fake_try_request
         mock_auth_user = ":".join([self.username, self.password])
         self.server_comm.upload_file(self.file_path, put_file)
@@ -322,7 +366,6 @@ class ServerCommunicatorTest(unittest.TestCase):
         self.assertEqual(
             self.server_comm.snapshot_manager.timestamp,
             'update')
-
 
     def test_download(self):
         mock_auth_user = ":".join([self.username, self.password])
@@ -452,51 +495,70 @@ class ServerCommunicatorTest(unittest.TestCase):
             'timestamp')
 
     def test_create_user(self):
-        test_username = "test_username"
-        test_password = "test_password"
-        mock_auth_user = ":".join([self.username, self.password])
-        self.server_comm.create_user(test_username, test_password)
-        encoded = httpretty.last_request().headers['authorization'].split()[1]
-        authorization_decoded = base64.decodestring(encoded)
-        path = httpretty.last_request().path
-        host = httpretty.last_request().headers['host']
-        method = httpretty.last_request().method
+        msg1 = self.server_comm.create_user({"user": self.username, "psw": self.password})
+        self.assertEqual(msg1["result"], 201)
+        self.assertEqual(msg1["details"][0], "Check your email for the activation code")
+        msg2 = self.server_comm.create_user({"user": self.username, "psw": self.password})
+        self.assertEqual(msg2["result"], 409)
+        self.assertEqual(msg2["details"][0], "User already exists")
+        msg3 = self.server_comm.create_user({"user": self.username, "psw": self.password})
+        self.assertEqual(msg3["result"], 400)
+        self.assertEqual(msg3["details"][0], "Bad request")
 
-        #check if authorization are equal
-        self.assertEqual(authorization_decoded, mock_auth_user)
-        #check if url and host are equal
-        self.assertEqual(path, '/API/v1/create_user')
-        self.assertEqual(host, '127.0.0.1:5000')
-        #check if methods are equal
-        self.assertEqual(method, 'POST')
+    def test_get_user(self):
+        msg1 = self.server_comm.get_user({"user": self.username, "psw": self.password})
+        self.assertEqual(msg1["result"], 200)
+        self.assertEqual(msg1["details"][0], {"user": "usernameFarlocco", "psw": "passwordSegretissima"})
+        msg2 = self.server_comm.get_user({"user": self.username, "psw": self.password})
+        self.assertEqual(msg2["result"], 404)
+        self.assertEqual(msg2["details"][0], {})
+        msg3 = self.server_comm.get_user({"user": self.username, "psw": self.password})
+        self.assertEqual(msg3["result"], 400)
+        self.assertEqual(msg3["details"][0], {"something wrong"})
 
-        self.server_comm._try_request = self.mock_try_request
+    def test_delete_user(self):
+        msg1 = self.server_comm.delete_user({"user": self.username, "psw": self.password})
+        self.assertEqual(msg1["result"], 200)
+        self.assertEqual(msg1["details"][0], "User deleted")
+        msg2 = self.server_comm.delete_user({"user": self.username, "psw": self.password})
+        self.assertEqual(msg2["result"], 401)
+        self.assertEqual(msg2["details"][0], "Access denied")
+        msg3 = self.server_comm.delete_user({"user": self.username, "psw": self.password})
+        self.assertEqual(msg3["result"], 400)
+        self.assertEqual(msg3["details"][0], "Bad request")
 
-        #Case: 409 error
-        self.server_comm._try_request.status_code = 409
-        self.server_comm.create_user(test_username, test_password)
-
-        #Case: another status
-        self.server_comm._try_request.status_code = 501
-        self.server_comm.create_user(test_username, test_password)
+    def test_activate_user(self):
+        code = "qwerty12345"
+        msg1 = self.server_comm.activate_user({"user": self.username, "code": code})
+        self.assertEqual(msg1["result"], 201)
+        self.assertEqual(msg1["details"][0], "You have now entered RawBox")
+        msg2 = self.server_comm.activate_user({"user": self.username, "code": code})
+        self.assertEqual(msg2["result"], 404)
+        self.assertEqual(msg2["details"][0], "User not found")
+        msg3 = self.server_comm.activate_user({"user": self.username, "code": code})
+        self.assertEqual(msg3["result"], 400)
+        self.assertEqual(msg3["details"][0], "Bad request")
     
     def test_syncronize(self):
         def my_try_request(*args, **kwargs):
             class obj (object):
-                text={
+                text = {
                     'timestamp': 123123,
                     'snapshot': u'1234uh34h5bhj124b',
                 }
                 status_code = 'boh'
+
                 def json(self):
                     return self.text
             return obj()
+
         class Executer(object):
+
             def __init__(self):
-                self.status=False
+                self.status = False
 
             def syncronize_executer(self, command_list):
-                self.status=True
+                self.status = True
 
         executer = Executer()
         self.server_comm.executer = executer
@@ -508,6 +570,7 @@ class ServerCommunicatorTest(unittest.TestCase):
 class FileSystemOperatorTest(unittest.TestCase):
 
     def setUp(self):
+
         class DirSnapshotManager(object):
             def __init__(self):
                 self.delete = False
@@ -541,11 +604,11 @@ class FileSystemOperatorTest(unittest.TestCase):
             server_url='http://localhost/api/v1',
             username='usernameFarlocco',
             password='passwordSegretissima',
-            snapshot_manager= self.snapshot_manager)
+            snapshot_manager=self.snapshot_manager)
         self.event_handler = DirectoryEventHandler(self.server_com,
             self.snapshot_manager)
         self.file_system_op = FileSystemOperator(self.event_handler,
-            self.server_com, snapshot_manager = self.snapshot_manager)
+            self.server_com, snapshot_manager=self.snapshot_manager)
 
     def tearDown(self):
         httpretty.disable()
@@ -560,7 +623,7 @@ class FileSystemOperatorTest(unittest.TestCase):
     def test_write_a_file(self):
         source_path = '{}/{}'.format(self.client_path, self.filename)
         self.file_system_op.write_a_file(source_path)
-        written_file = open('{}/{}'.format(self.client_path,self.filename), 'rb').read()
+        written_file = open('{}/{}'.format(self.client_path, self.filename), 'rb').read()
         self.assertEqual('this is a test', written_file)
         self.assertEqual(
             self.snapshot_manager.upload,
@@ -579,6 +642,7 @@ class FileSystemOperatorTest(unittest.TestCase):
         self.file_system_op.write_a_file(source_path)
         self.assertFalse(self.snapshot_manager.upload)
         self.assertEqual(self.event_handler.paths_ignored, [])
+
     def test_move_a_file(self):
         f_name = 'file_to_move.txt'
         file_to_move = open('{}/{}'.format(self.client_path, f_name), 'w')
@@ -638,6 +702,128 @@ class FileSystemOperatorTest(unittest.TestCase):
 
         #Case: wrong path
         self.file_system_op.delete_a_file('wrong/path')
+
+
+class LoadConfigTest(unittest.TestCase):
+
+    CONFIG_ONLY_CMD_SECTION = "test_config_only_cmd_section.ini"
+    CONFIG_WITH_DAEMON_SECTION = "test_config_with_daemon_section.ini"
+    CONFIG_WITH_USER_SECTION = "test_config_with_user_conf.ini"
+    DIR_PATH = os.path.join(os.path.expanduser("~"), "RawBox")
+    abs_path = os.path.dirname(os.path.abspath(__file__))
+    CRASH_LOG_PATH = os.path.join(abs_path, 'RawBox_crash_report.log')
+
+    def setUp(self):
+
+        config_only_cmd = ConfigParser.ConfigParser()
+        config_only_cmd.add_section("cmd")
+        config_only_cmd.set("cmd", "host", "localhost")
+        config_only_cmd.set("cmd", "port", "6666")
+        with open(self.CONFIG_ONLY_CMD_SECTION, 'wb') as config_file:
+            config_only_cmd.write(config_file)
+        self.config_only_cmd = {
+            "host": config_only_cmd.get("cmd", "host"),
+            "port": config_only_cmd.get("cmd", "port"),
+            "server_url": "http://{}:{}/{}".format(
+                    client_daemon.SERVER_URL,
+                    client_daemon.SERVER_PORT,
+                    client_daemon.API_PREFIX),
+            "crash_repo_path": self.CRASH_LOG_PATH,
+            "stdout_log_level": "DEBUG",
+            "file_log_level": "ERROR",
+            "dir_path": self.DIR_PATH,
+            "snapshot_file_path": "snapshot_file.json"
+
+        }
+
+        config_with_daemon_conf = ConfigParser.ConfigParser()
+        config_with_daemon_conf.add_section("cmd")
+        config_with_daemon_conf.add_section("daemon_communication")
+        config_with_daemon_conf.set("cmd", "host", "localhost")
+        config_with_daemon_conf.set("cmd", "port", "6666")
+        config_with_daemon_conf.set('daemon_communication', 'snapshot_file_path', 'snapshot_file.json')
+        config_with_daemon_conf.set('daemon_communication', 'dir_path', "example/dir/path")
+        config_with_daemon_conf.set('daemon_communication', 'server_url', "example/server/url")
+        config_with_daemon_conf.set('daemon_communication', 'server_port', "example_port")
+        config_with_daemon_conf.set('daemon_communication', 'api_prefix', "example/api/prefix")
+        config_with_daemon_conf.set("daemon_communication", "crash_repo_path", self.CRASH_LOG_PATH)
+        config_with_daemon_conf.set("daemon_communication", "stdout_log_level", "DEBUG")
+        config_with_daemon_conf.set("daemon_communication", "file_log_level", "ERROR")
+        with open(self.CONFIG_WITH_DAEMON_SECTION, 'wb') as config_file:
+            config_with_daemon_conf.write(config_file)
+        self.config_with_daemon_conf = {
+            "host": config_with_daemon_conf.get("cmd", "host"),
+            "port": config_with_daemon_conf.get("cmd", "port"),
+            "server_url": "http://{}:{}/{}".format(
+                    config_with_daemon_conf.get("daemon_communication", "server_url"),
+                    config_with_daemon_conf.get("daemon_communication", "server_port"),
+                    config_with_daemon_conf.get("daemon_communication", "api_prefix")),
+            "crash_repo_path":
+                config_with_daemon_conf.get("daemon_communication", "crash_repo_path"),
+            "stdout_log_level":
+                config_with_daemon_conf.get("daemon_communication", "stdout_log_level"),
+            "file_log_level":
+                config_with_daemon_conf.get("daemon_communication", "file_log_level"),
+            "dir_path": config_with_daemon_conf.get("daemon_communication", "dir_path"),
+            "snapshot_file_path": config_with_daemon_conf.get("daemon_communication", "snapshot_file_path")
+        }
+
+        config_with_user_conf = ConfigParser.ConfigParser()
+        config_with_user_conf.add_section("cmd")
+        config_with_user_conf.add_section("daemon_communication")
+        config_with_user_conf.add_section("daemon_user_data")
+        config_with_user_conf.set("cmd", "host", "localhost")
+        config_with_user_conf.set("cmd", "port", "6666")
+        config_with_user_conf.set('daemon_communication', 'snapshot_file_path', 'snapshot_file.json')
+        config_with_user_conf.set('daemon_communication', 'dir_path', "example/dir/path")
+        config_with_user_conf.set('daemon_communication', 'server_url', "example/server/url")
+        config_with_user_conf.set('daemon_communication', 'server_port', "example_port")
+        config_with_user_conf.set('daemon_communication', 'api_prefix', "example/api/prefix")
+        config_with_user_conf.set("daemon_communication", "crash_repo_path", self.CRASH_LOG_PATH)
+        config_with_user_conf.set("daemon_communication", "stdout_log_level", "DEBUG")
+        config_with_user_conf.set("daemon_communication", "file_log_level", "ERROR")
+        config_with_user_conf.set('daemon_user_data', 'username', "example_username")
+        config_with_user_conf.set('daemon_user_data', 'password', "example_password")
+        config_with_user_conf.set('daemon_user_data', 'active', True)
+        with open(self.CONFIG_WITH_USER_SECTION, 'wb') as config_file:
+            config_with_user_conf.write(config_file)
+        self.config_with_user_conf = {
+            "host": config_with_user_conf.get("cmd", "host"),
+            "port": config_with_user_conf.get("cmd", "port"),
+            "server_url": "http://{}:{}/{}".format(
+                    config_with_user_conf.get("daemon_communication", "server_url"),
+                    config_with_user_conf.get("daemon_communication", "server_port"),
+                    config_with_user_conf.get("daemon_communication", "api_prefix")),
+            "crash_repo_path":
+                config_with_user_conf.get("daemon_communication", "crash_repo_path"),
+            "stdout_log_level":
+                config_with_user_conf.get("daemon_communication", "stdout_log_level"),
+            "file_log_level":
+                config_with_user_conf.get("daemon_communication", "file_log_level"),
+            "dir_path": config_with_user_conf.get("daemon_communication", "dir_path"),
+            "snapshot_file_path": config_with_user_conf.get("daemon_communication", "snapshot_file_path"),
+            "username": config_with_user_conf.get("daemon_user_data", "username"),
+            "password": config_with_user_conf.get("daemon_user_data", "password")
+        }
+
+    def tearDown(self):
+        os.remove(self.CONFIG_ONLY_CMD_SECTION)
+        os.remove(self.CONFIG_WITH_DAEMON_SECTION)
+        os.remove(self.CONFIG_WITH_USER_SECTION)
+
+    def test_load_config(self):
+        client_daemon.FILE_CONFIG = self.CONFIG_ONLY_CMD_SECTION
+        conf, user = client_daemon.load_config()
+        self.assertEqual(self.config_only_cmd, conf)
+        self.assertFalse(user)
+        client_daemon.FILE_CONFIG = self.CONFIG_WITH_DAEMON_SECTION
+        conf, user = client_daemon.load_config()
+        self.assertEqual(self.config_with_daemon_conf, conf)
+        self.assertFalse(user)
+        client_daemon.FILE_CONFIG = self.CONFIG_WITH_USER_SECTION
+        conf, user = client_daemon.load_config()
+        self.assertEqual(self.config_with_user_conf, conf)
+        self.assertTrue(user)
 
 
 class DirSnapshotManagerTest(unittest.TestCase):
@@ -905,7 +1091,7 @@ class DirSnapshotManagerTest(unittest.TestCase):
         self.assertEqual(self.snapshot_manager.last_status['timestamp'], test_timestamp)
         self.assertEqual(self.snapshot_manager.last_status['snapshot'], self.md5_snapshot)
 
-        expected_conf = {'timestamp': test_timestamp, 'snapshot': self.md5_snapshot,}
+        expected_conf = {'timestamp': test_timestamp, 'snapshot': self.md5_snapshot}
         new_conf = json.load(open(self.conf_snap_path))
 
         self.assertEqual(expected_conf, new_conf)
@@ -930,7 +1116,7 @@ class DirSnapshotManagerTest(unittest.TestCase):
         del mock_snapshot['fea80f2db003d4ebc4536023814aa885']
 
         #------- update a file without copies -------#
-        self.snapshot_manager.update_snapshot_update({"src_path":self.test_file_1})
+        self.snapshot_manager.update_snapshot_update({"src_path": self.test_file_1})
         self.assertEqual(self.snapshot_manager.local_full_snapshot, mock_snapshot)
         #reset original condition
         self.snapshot_manager.local_full_snapshot = copy.deepcopy(original_snapshot)
@@ -942,7 +1128,7 @@ class DirSnapshotManagerTest(unittest.TestCase):
         mock_snapshot['fea80f2db003d4ebc4536023814aa885'].remove(client_daemon.get_relpath(self.test_file_1))
         mock_snapshot[mock_file_content_md5] = [client_daemon.get_relpath(self.test_file_1)]
 
-        self.snapshot_manager.update_snapshot_update({"src_path":self.test_file_1})
+        self.snapshot_manager.update_snapshot_update({"src_path": self.test_file_1})
         self.assertEqual(self.snapshot_manager.local_full_snapshot, mock_snapshot)
         #reset original condition
         self.snapshot_manager.local_full_snapshot = copy.deepcopy(original_snapshot)
@@ -950,15 +1136,14 @@ class DirSnapshotManagerTest(unittest.TestCase):
         #------- update a file like another -------#
         self.snapshot_manager.local_full_snapshot['fea80f2db003d4ebc4536023814aa885'].append(mock_copy_path)
         self.snapshot_manager.local_full_snapshot[mock_file_content_md5] = [mock_copy_path + "_another"]
-        self.snapshot_manager.update_snapshot_update({"src_path":self.test_file_1})
+        self.snapshot_manager.update_snapshot_update({"src_path": self.test_file_1})
         mock_snapshot = {
             '81bcb26fd4acfaa5d0acc7eef1d3013a': ['sub_dir_2/test_file_2.txt'],
             'd1e2ac797b8385e792ac1e31db4a81f9': ['sub_dir_2/test_file_3.txt'],
             'fea80f2db003d4ebc4536023814aa885': ['sub_dir_1/test_file_1.txt_copy'],
             '27565f9a57c128674736aa644012ce67': [
                 'sub_dir_1/test_file_1.txt_copy_another',
-                'sub_dir_1/test_file_1.txt'
-                ]
+                'sub_dir_1/test_file_1.txt']
         }
         self.snapshotAsserEqual(self.snapshot_manager.local_full_snapshot, mock_snapshot)
 
@@ -970,8 +1155,8 @@ class DirSnapshotManagerTest(unittest.TestCase):
         self.snapshot_manager.update_snapshot_copy({
             "src_path": self.test_file_1,
             "dst_path": self.test_file_1 + "_copy",
-            })
-        self.assertEqual(self.snapshot_manager.local_full_snapshot ,mock_snapshot)
+        })
+        self.assertEqual(self.snapshot_manager.local_full_snapshot, mock_snapshot)
         self.snapshot_manager.local_full_snapshot = original_snapshot
 
     def test_update_snapshot_move(self):
@@ -983,7 +1168,7 @@ class DirSnapshotManagerTest(unittest.TestCase):
         with open(mock_new_dest, "wb") as f:
             f.write(file_1_content)
         mock_snapshot['fea80f2db003d4ebc4536023814aa885'][0] = client_daemon.get_relpath(mock_new_dest)
-        self.snapshot_manager.update_snapshot_move({'src_path':self.test_file_1, 'dst_path' :mock_new_dest})
+        self.snapshot_manager.update_snapshot_move({'src_path': self.test_file_1, 'dst_path': mock_new_dest})
         self.assertEqual(self.snapshot_manager.local_full_snapshot, mock_snapshot)
         #reset origial confition
         self.snapshot_manager.local_full_snapshot = original_snapshot
@@ -993,7 +1178,7 @@ class DirSnapshotManagerTest(unittest.TestCase):
         mock_snapshot = copy.deepcopy(self.snapshot_manager.local_full_snapshot)
         original_snapshot = copy.deepcopy(mock_snapshot)
         del mock_snapshot['fea80f2db003d4ebc4536023814aa885']
-        self.snapshot_manager.update_snapshot_delete({'src_path':self.test_file_1})
+        self.snapshot_manager.update_snapshot_delete({'src_path': self.test_file_1})
         #delete a file without copies
         self.assertEqual(self.snapshot_manager.local_full_snapshot, mock_snapshot)
 
@@ -1061,9 +1246,6 @@ class DirSnapshotManagerTest(unittest.TestCase):
         #case false path of server snapshot
         md5 = self.snapshot_manager.find_file_md5(mock_server_snap, 'sub_dir_1/test_file_1.txt_fake', True)
         self.assertEqual(md5, None)
-
-    def test_check_files_timestamp(self):
-        pass
 
 
 class DirectoryEventHandlerTest(unittest.TestCase):
@@ -1355,52 +1537,6 @@ class FunctionTest(unittest.TestCase):
         #Case: relarive path
         path = 'folder/file.txt'
         self.assertEqual(get_relpath(path), expected_result)
-
-    def test_load_config(self):
-        expected_conf = {
-            'config': 'test configuration'
-        }
-        open('config.json', 'w').write(json.dumps(expected_conf))
-
-        #Case: test config file
-        config, is_new = load_config()
-        self.assertFalse(is_new)
-        self.assertEqual(config, expected_conf)
-
-        #reset
-        os.remove('config.json')
-
-        abs_path = os.path.dirname(os.path.abspath(__file__))
-
-        #Case: IOError
-        expected_conf = {
-            "server_url": "http://{}:{}/{}".format(
-                client_daemon.SERVER_URL,
-                client_daemon.SERVER_PORT,
-                client_daemon.API_PREFIX
-            ),
-            "dir_path": os.path.join(os.path.expanduser("~"), "RawBox"),
-            "snapshot_file_path": os.path.join(abs_path, 'snapshot_file.json'),
-            "crash_repo_path": os.path.join(abs_path, 'RawBox_crash_report.log'),
-            "file_log_level": "ERROR",
-            "stdout_log_level": "DEBUG",
-            "cmd_host": "localhost",
-            "cmd_port": 6666,
-            "username": 'username',
-            "password": 'password',
-        }
-        expected_snap = {
-            "timestamp": 0,
-            "snapshot": "",
-        }
-        config, is_new = load_config()
-        abspath = os.path.dirname(os.path.abspath(__file__))
-        self.assertTrue(is_new)
-        self.assertTrue(os.path.exists(os.path.join(abspath, 'config.json')))
-        self.assertEqual(config, expected_conf)
-        self.assertTrue(os.path.exists(os.path.join(abspath, 'snapshot_file.json')))
-        snap = json.loads(open(os.path.join(abspath, 'snapshot_file.json')).read())
-        self.assertEqual(snap, expected_snap)
 
 
 if __name__ == '__main__':

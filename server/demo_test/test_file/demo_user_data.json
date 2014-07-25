@@ -15,6 +15,17 @@
             },
             "psw": "$5$rounds=110000$JgPCd7KcgvHsgVrS$SIqjTeEgflvCfarDlufcyEBeDXOjsxqblcK3.hRggb1",
             "timestamp": 1405674096.142302
+        },
+        "complex_user@gmail.com": {
+                "paths": {
+                    "": [
+                        "complex_user@gmail.com",
+                        null,
+                        1405673896.451061
+                    ]
+                },
+                "psw": "$5$rounds=110000$JgPCd7KcgvHsgVrS$SIqjTeEgflvCfarDlufcyEBeDXOjsxqblcK3.hRggb1",
+                "timestamp": 1405674096.142302
         }
     }
 }
