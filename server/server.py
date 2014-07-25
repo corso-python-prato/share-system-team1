@@ -358,10 +358,7 @@ class UsersApi(Resource):
                     pending = json.load(p_u)
             except ValueError:  # PENDING_USERS exists but is corrupted
                 if os.path.getsize(PENDING_USERS) > 0:
-                    shutil.copy(PENDING_USERS, CORRUPTED_DATA)
-                    os.remove(PENDING_USERS)
-                else:           # PENDING_USERS exists but is empty
-                    pending = {}
+                    shutil.move(PENDING_USERS, CORRUPTED_DATA)
         return pending
 
     def post(self, username):
