@@ -627,7 +627,7 @@ class Actions(Resource_with_auth):
             return abort(HTTP_NOT_FOUND)
 
 
-class Shares(Resource):
+class Shares(Resource_with_auth):
     def post(self, client_path, beneficiary):
         owner = User.get_user(auth.username())
 
