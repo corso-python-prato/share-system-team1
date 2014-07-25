@@ -116,6 +116,14 @@ class RawBoxExecuter(object):
             self.comm_sock.send_message(command_type, param)
             self.print_response(self.comm_sock.read_message())
 
+    def _add_share(self, path, ben):
+        param = {
+            'path': path,
+            'ben': ben
+        }
+        self.comm_sock.send_message("add_share", param)
+        self.print_response(self.comm_sock.read_message())
+
     def print_response(self, response):
         ''' print response from the daemon.
             the response is a dictionary as:
@@ -195,6 +203,26 @@ class RawBoxCmd(cmd.Cmd):
             self.executer._delete_user(user)
         else:
             Message('INFO', self.do_delete.__doc__)
+
+    def do_add_share(self, line):
+        """
+        share a resource with a beneficiary.
+        Expected: add_share path beneficiary
+        (the path starts from the RawBox root)
+        """
+        try:
+            path, ben = line.split()
+            # check if the path is in the RawBox root
+            if len(path.split("/")) != 1:
+                Message(
+                    "WARNING",
+                    "A shared resource has to be in the RawBox root"
+                )
+
+            self.executer._add_share(path, ben)
+
+        except ValueError:
+            Message("INFO", self.do_add_share.__doc__)
 
     def do_q(self, line=None):
         """ exit from RawBox"""

@@ -381,7 +381,7 @@ class ServerCommunicator(object):
         self.msg["details"] = []
         request = {
             "url" : "{}/share/{}".format(self.server_url,
-                param["path"])
+                param["path"]),
             "data" : {}
         }
 
@@ -399,19 +399,18 @@ class ServerCommunicator(object):
             self.msg["details"].append("Error, shares not removed")
 
         return self.msg
-        pass
 
     def remove_beneficiary(self, param):
         """Remove user from share"""
         self.msg["details"] = []
         request = {
             "url" : "{}/share/{}/{}".format(self.server_url,
-                param["path"], param["ben"])
+                param["path"], param["ben"]),
             "data" : {}
         }
 
         success_log = "Removed user {} from shares".format(param["ben"])
-        error_log = "EROOR on removing user {} from shares".format(param["ben"])
+        error_log = "ERROR on removing user {} from shares".format(param["ben"])
 
         response = self._try_request(requests.delete, success_log,
             error_log, **request)
