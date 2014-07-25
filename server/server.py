@@ -4,10 +4,10 @@
 from flask.ext.restful import reqparse, abort, Api, Resource
 from flask.ext.mail import Mail, Message
 from passlib.hash import sha256_crypt
-import ConfigParser
 from flask.ext.httpauth import HTTPBasicAuth
 from flask import Flask, request
 from server_errors import *
+import ConfigParser
 import hashlib
 import shutil
 import time
@@ -41,6 +41,7 @@ USERS_DIRECTORIES = "user_dirs/"
 USERS_DATA = "user_data.json"
 PENDING_USERS = ".pending.tmp"
 CORRUPTED_DATA = "corrupted_data"
+EMAIL_SETTINGS_INI = "email_settings.ini"
 
 SERVER_ROOT = os.path.dirname(__file__)
 USERS_DIRECTORIES = os.path.join(SERVER_ROOT, "user_dirs/")
@@ -391,6 +392,7 @@ class UsersApi(Resource):
         else:
             psw_hash = sha256_crypt.encrypt(psw)
             code = os.urandom(16).encode('hex')
+            send_mail(username, "RawBox activation code", code)
             pending[username] = \
                 {"password": psw_hash,
                  "code": code,
@@ -398,8 +400,6 @@ class UsersApi(Resource):
 
             with open(PENDING_USERS, "w") as p_u:
                 json.dump(pending, p_u)
-            content = code
-            send_mail(username, "RawBox activation code", content)
             return "User added to pending users", HTTP_CREATED
 
     def put(self, username):
