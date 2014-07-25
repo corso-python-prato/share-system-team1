@@ -683,9 +683,28 @@ class Shares(Resource):
             return self._remove_share(owner, server_path, client_path)
 
 
+class MissingConfigIni(Exception):
+    pass
+
+
+def mail_config_init():
+    config = ConfigParser.ConfigParser()
+    if config.read(EMAIL_SETTINGS_INI):
+        app.config.update(
+            MAIL_SERVER = config.get('email', 'smtp_address'),
+            MAIL_PORT = config.getint('email', 'smtp_port'),
+            MAIL_USERNAME = config.get('email', 'smtp_username'),
+            MAIL_PASSWORD = config.get('email', 'smtp_password')
+        )
+    else:
+        raise MissingConfigIni
+
+
 def send_mail(receiver, obj, content):
     """ Send an email to the 'receiver', with the
     specified object ('obj') and the specified 'content' """
+    mail_config_init()
+    mail = Mail(app)
     msg = Message(
         obj,
         sender="RawBoxTeam",
