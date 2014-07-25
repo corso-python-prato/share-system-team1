@@ -359,7 +359,7 @@ class ServerCommunicator(object):
     def add_share(self, param):
         """ Called by cmdmanager.
         Share a resource with a beneficiary """
-        self.msg = []
+        self.msg["details"] = []
         request = {
             "url": "{}/share/{}/{}".format(
                 self.server_url, param["path"], param["ben"]
