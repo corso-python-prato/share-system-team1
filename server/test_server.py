@@ -1159,6 +1159,10 @@ class UserActions(unittest.TestCase):
     MAIL_PASSWORD = "smtp_password"
     TESTING = True
 
+    user = "user_mail@demo.it"
+    psw = "password_demo"
+    code = "5f8e441f01abc7b3e312917efb52cc12"  # os.urandom(16).encode('hex')
+
     def inject_user(self, inject_dest, user, psw=None, code=None):
         underskin_user = {}
 
@@ -1206,9 +1210,6 @@ class UserActions(unittest.TestCase):
         open(TEST_USER_DATA, "w").close()
         server.USERS_DATA = TEST_USER_DATA
 
-        UserActions.user = "user_mail@demo.it"
-        UserActions.psw = "password_demo"
-        UserActions.code = "5f8e441f01abc7b3e312917efb52cc12"  # os.urandom(16).encode('hex')
         self.url = "".join((server._API_PREFIX, "Users/", UserActions.user))
 
     def tearDown(self):
