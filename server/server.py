@@ -26,15 +26,13 @@ api = Api(app)
 auth = HTTPBasicAuth()
 _API_PREFIX = "/API/v1/"
 
-USERS_DIRECTORIES = "user_dirs/"
-USERS_DATA = "user_data.json"
-PENDING_USERS = ".pending.tmp"
-CORRUPTED_DATA = "corrupted_data"
-EMAIL_SETTINGS_INI = "email_settings.ini"
-
 SERVER_ROOT = os.path.dirname(__file__)
 USERS_DIRECTORIES = os.path.join(SERVER_ROOT, "user_dirs/")
 USERS_DATA = os.path.join(SERVER_ROOT, "user_data.json")
+
+PENDING_USERS = os.path.join(SERVER_ROOT, ".pending.tmp")
+CORRUPTED_DATA = os.path.join(SERVER_ROOT, "corrupted_data.json")
+EMAIL_SETTINGS_INI = os.path.join(SERVER_ROOT, "email_settings.ini")
 
 parser = reqparse.RequestParser()
 parser.add_argument("task", type=str)
