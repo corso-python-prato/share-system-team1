@@ -1251,7 +1251,7 @@ class UserActions(unittest.TestCase):
         response = self.tc.post(self.url, data=data, headers=None)
         self.assertEqual(response.status_code, server.HTTP_BAD_REQUEST)
 
-    def test_create_user_that_is_arleady_pending(self):
+    def test_create_user_that_is_already_pending(self):
         data = {
             "psw": UserActions.psw
         }
@@ -1260,7 +1260,7 @@ class UserActions(unittest.TestCase):
         response = self.tc.post(self.url, data=data, headers=None)
         self.assertEqual(response.status_code, server.HTTP_CONFLICT)
 
-    def test_create_user_that_is_arleady_active(self):
+    def test_create_user_that_is_already_active(self):
         data = {
             "psw": UserActions.psw
         }
@@ -1287,7 +1287,7 @@ class UserActions(unittest.TestCase):
         response = self.tc.put(self.url, data=data, headers=None)
         self.assertEqual(response.status_code, server.HTTP_BAD_REQUEST)
 
-    def test_activate_user_that_is_arleady_active(self):
+    def test_activate_user_that_is_already_active(self):
         data = {
             "code": UserActions.code
         }
