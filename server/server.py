@@ -23,16 +23,7 @@ HTTP_NOT_FOUND = 404
 HTTP_CONFLICT = 409
 HTTP_GONE = 410
 
-config = ConfigParser.ConfigParser()
-config.read('email_settings.ini')
-MAIL_SERVER = config.get('email', 'smtp_address')
-MAIL_PORT = config.getint('email', 'smtp_port')
-MAIL_USERNAME = config.get('email', 'smtp_username')
-MAIL_PASSWORD = config.get('email', 'smtp_password')
-
 app = Flask(__name__)
-app.config.from_object(__name__)
-mail = Mail(app)
 api = Api(app)
 auth = HTTPBasicAuth()
 _API_PREFIX = "/API/v1/"
