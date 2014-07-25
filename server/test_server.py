@@ -1040,38 +1040,6 @@ class TestServerInternalErrors(unittest.TestCase):
         with self.assertRaises(ValueError):
             server_setup(TestServerInternalErrors.root)
 
-    def test_directory_already_present(self):
-        """
-        If, creating a new user, after checking his username, a directory with
-        his/her name is already present, it will be raised an OSError and
-        it will be returned a status code 500.
-        """
-        cls = TestServerInternalErrors
-        username = "papplamoose@500.com"
-        try:
-            os.makedirs(os.path.join(cls.user_dirs, username))
-        except OSError:
-            shutil.rmtree(cls.user_dirs)
-            os.makedirs(os.path.join(cls.user_dirs, username))
-
-        def try_to_create_user():
-            return self.tc.post(
-                _API_PREFIX + "create_user",
-                data={
-                    "user": username,
-                    "psw": "omg_it_will_be_raised_an_error!"
-                }
-            )
-
-        # check if OSError is raised
-        with self.assertRaises(OSError):
-            try_to_create_user()
-
-        # check if returns 500
-        server.app.testing = False
-        received = try_to_create_user()
-        self.assertEqual(received.status_code, 500)
-
     def test_access_to_non_existent_server_path(self):
         """
         If a path exists in some user's paths dictionary, but it's not in the
@@ -1340,6 +1308,35 @@ class UserActions(unittest.TestCase):
         response = self.tc.put(self.url, data=data, headers=None)
         self.assertEqual(response.status_code, server.HTTP_CREATED)
         self.assertTrue(os.path.exists(TEST_PENDING_USERS))
+
+    def test_activate_user_whose_directory_already_present(self):
+        """
+        Check about a possible internal error.
+        If, activating a new user, when the User is really created, a directory
+        with his/her name is already present, it will be raised an OSError and
+        it will be returned a status code 500.
+        """
+        cls = UserActions
+        os.makedirs(os.path.join(server.USERS_DIRECTORIES, cls.user))
+        self.inject_user(TEST_PENDING_USERS, cls.user, cls.psw, cls.code)
+
+        def try_to_create_user():
+            received =  self.tc.put(
+                self.url,
+                data={"code": cls.code}
+            )
+            return received
+
+        # check if OSError is raised
+        server.app.testing = True
+        with self.assertRaises(OSError):
+            try_to_create_user()
+
+        # check if returns 500
+        server.app.testing = False
+        received = try_to_create_user()
+        self.assertEqual(received.status_code, 500)
+        server.app.testing = True
 
 
 if __name__ == "__main__":
