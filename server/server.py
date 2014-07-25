@@ -383,22 +383,22 @@ class UsersApi(Resource):
             return "Missing password", HTTP_BAD_REQUEST
 
         if username in pending:
-            return "This user have arleady a pending request", HTTP_CONFLICT
-        elif username in User.users:
+            return "This user have already a pending request", HTTP_CONFLICT
+        if username in User.users:
             return "This user already exists", HTTP_CONFLICT
-        else:
-            psw_hash = sha256_crypt.encrypt(psw)
-            code = os.urandom(16).encode('hex')
-            send_mail(username, "RawBox activation code", code)
-            pending[username] = \
-                {"password": psw_hash,
-                 "code": code,
-                 "timestamp": time.time()}
 
-            with open(PENDING_USERS, "w") as p_u:
-                json.dump(pending, p_u)
-            return "User added to pending users", HTTP_CREATED
+        psw_hash = sha256_crypt.encrypt(psw)
+        code = os.urandom(16).encode('hex')
         mail_obj = "{} activation code".format(PROJECT_NAME)
+        send_mail(username, mail_obj, code)
+        pending[username] = \
+            {"password": psw_hash,
+             "code": code,
+             "timestamp": time.time()}
+
+        with open(PENDING_USERS, "w") as p_u:
+            json.dump(pending, p_u)
+        return "User added to pending users", HTTP_CREATED
 
     def put(self, username):
         """Activate a pending user
