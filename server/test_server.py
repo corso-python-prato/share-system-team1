@@ -4,6 +4,7 @@
 from base64 import b64encode
 import tempfile
 import unittest
+import hashlib
 import server
 import shutil
 import json
@@ -43,6 +44,12 @@ def create_temporary_file(content=None):
         tmp.write("Hello my dear,\nit's a beautiful day here in Compiobbi.")
     tmp.close()
     return tmp.name
+
+
+def get_data(file_object):
+    file_md5 = hashlib.md5(file_object.read()).hexdigest()
+    file_object.seek(0)
+    return {"file_content": file_object, 'file_md5': file_md5}
 
 
 class TestSetupServer(unittest.TestCase):
@@ -126,12 +133,11 @@ class TestFilesAPI(unittest.TestCase):
 
         # correct upload
         with open(TestFilesAPI.demo_file1, "r") as f:
-            data = {"file_content": f}
             start = time.time()
             rv = self.tc.post(
                 _API_PREFIX + url,
-                data=data,
-                headers=self.headers
+                data=get_data(f),
+                headers=self.headers,
             )
             end = time.time()
             response = float(rv.get_data())
@@ -151,16 +157,31 @@ class TestFilesAPI(unittest.TestCase):
 
         # try to re-upload the same file to check conflict error
         with open(TestFilesAPI.demo_file1, "r") as f:
-            data = {"file_content": f}
             rv = self.tc.post(
                 _API_PREFIX + url,
-                data=data,
+                data=get_data(f),
                 headers=self.headers
             )
             self.assertEqual(rv.status_code, 409)
 
+        url = "{}{}".format(
+            TestFilesAPI.url_radix,
+            "upload_file2.txt"
+        )
+
+        # try to sent a wrong md5
+        with open(TestFilesAPI.demo_file1, "r") as f:
+            data = {"file_content": f, 'file_md5': 'fake_md5'}
+            rv = self.tc.post(
+                _API_PREFIX + url,
+                data=data,
+                headers=self.headers,
+            )
+            self.assertEqual(rv.status_code, 400)
+
         # restore
         os.remove(uploaded_file)
+
 
     def test_fail_auth_get(self):
         # fail authentication
@@ -213,12 +234,11 @@ class TestFilesAPI(unittest.TestCase):
 
         # correct put
         with open(cls.demo_file1, "r") as f:
-            data = {"file_content": f}
             url = "{}{}".format(cls.url_radix, "random_file.txt")
             start = time.time()
             rv = self.tc.put(
                 _API_PREFIX + url,
-                data=data,
+                data=get_data(f),
                 headers=self.headers
             )
             end = time.time()
@@ -239,14 +259,24 @@ class TestFilesAPI(unittest.TestCase):
 
         # wrong path
         with open(cls.demo_file1, "r") as f:
-            data = {"file_content": f}
             url = "{}{}".format(cls.url_radix, "NO_SERVER_PATH")
+            rv = self.tc.put(
+                _API_PREFIX + url,
+                data=get_data(f),
+                headers=self.headers
+            )
+            self.assertEqual(rv.status_code, 404)
+
+        # try to send a wrong md5
+        with open(cls.demo_file1, "r") as f:
+            data = {"file_content": f, 'file_md5': 'fake_path'}
+            url = "{}{}".format(cls.url_radix, "random_file.txt")
             rv = self.tc.put(
                 _API_PREFIX + url,
                 data=data,
                 headers=self.headers
             )
-            self.assertEqual(rv.status_code, 404)
+            self.assertEqual(rv.status_code, 400)
 
     def test_to_md5(self):
         cls = TestFilesAPI
@@ -313,10 +343,9 @@ class TestFilesAPI(unittest.TestCase):
         ]
         for p in some_paths:
             with open(TestFilesAPI.demo_file1, "r") as f:
-                data_local = {"file_content": f}
                 rv = self.tc.post(
                     "{}{}{}".format(_API_PREFIX, self.url_radix, p),
-                    data=data_local,
+                    data=get_data(f),
                     headers=headers
                 )
             self.assertEqual(rv.status_code, 201)
@@ -919,7 +948,7 @@ class TestShare(unittest.TestCase):
                 "{}files/{}/{}".format(
                     _API_PREFIX, subdir, filename
                 ),
-                data={"file_content": f},
+                data=get_data(f),
                 headers=self.owner_headers
             )
         self.assertEqual(received.status_code, 201)
@@ -935,7 +964,7 @@ class TestShare(unittest.TestCase):
                 "{}files/{}/{}".format(
                     _API_PREFIX, subdir, "other_subdir/new_file"
                 ),
-                data={"file_content": f},
+                data=get_data(f),
                 headers=self.owner_headers
             )
         self.assertEqual(received.status_code, 201)
