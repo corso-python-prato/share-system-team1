@@ -81,12 +81,14 @@ class ServerCommunicator(object):
             try:
                 request_result = callback(
                     auth=self.auth,
-                    *args, **kwargs)
-                if request_result.status_code == 401:
-                    logger.error("user not logged")
-                else:
+                    *args, **kwargs
+                )
+                if request.result.ok:
                     logger.info(success)
+                else:
+                    logger.error(request_result.reason)
                 return request_result
+
             except requests.exceptions.RequestException:
                 time.sleep(retry_delay)
                 logger.warning(error)
@@ -355,7 +357,24 @@ class ServerCommunicator(object):
         return self.msg
 
     def add_share(self, param):
-        pass
+        """ Called by cmdmanager.
+        Share a resource with a beneficiary """
+        self.msg = []
+        request = {
+            "url": "{}/share/{}/{}".format(
+                self.server_url, param["path"], param["ben"]
+            )
+        }
+        
+        success_log = "share added with {}!".format(param["ben"])
+        error_log = "ERROR in adding a share with {}".format(param["ben"])
+        
+        r = self._try_request(requests.post, success_log, error_log, **request)
+        if r.status_code == 400:
+            self.msg["details"].append("Bad request")
+        elif r.status_code == 201:
+            self.msg["details"].append("Added share!")
+        return self.msg
 
     def remove_share(self, param):
         pass
