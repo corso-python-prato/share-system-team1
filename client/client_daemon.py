@@ -377,6 +377,28 @@ class ServerCommunicator(object):
         return self.msg
 
     def remove_share(self, param):
+        """Remove all the share"""
+        self.msg["details"] = []
+        request = {
+            "url" : "{}/share/{}".format(self.server_url,
+                param["path"])
+            "data" : {}
+        }
+
+        success_log = "All shares removed"
+        error_log = "ERROR on removing all the shares"
+
+        response = self._try_request(requests.delete, success_log,
+            error_log, **request)
+
+        self.msg["result"] = response.status_code
+
+        if response.status_code == 200:
+            self.msg["details"].append["Shares removed"]
+        elif response.status_code == 400:
+            self.msg["details"].append("Error, shares not removed")
+
+        return self.msg
         pass
 
     def remove_beneficiary(self, param):
