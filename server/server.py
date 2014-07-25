@@ -697,10 +697,10 @@ def mail_config_init():
     config = ConfigParser.ConfigParser()
     if config.read(EMAIL_SETTINGS_INI):
         app.config.update(
-            MAIL_SERVER = config.get('email', 'smtp_address'),
-            MAIL_PORT = config.getint('email', 'smtp_port'),
-            MAIL_USERNAME = config.get('email', 'smtp_username'),
-            MAIL_PASSWORD = config.get('email', 'smtp_password')
+            MAIL_SERVER=config.get('email', 'smtp_address'),
+            MAIL_PORT=config.getint('email', 'smtp_port'),
+            MAIL_USERNAME=config.get('email', 'smtp_username'),
+            MAIL_PASSWORD=config.get('email', 'smtp_password')
         )
         mail = Mail(app)
         return mail
