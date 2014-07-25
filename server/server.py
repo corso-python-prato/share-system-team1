@@ -27,6 +27,7 @@ app = Flask(__name__)
 api = Api(app)
 auth = HTTPBasicAuth()
 _API_PREFIX = "/API/v1/"
+PROJECT_NAME = "RawBox"
 
 USERS_DIRECTORIES = "user_dirs/"
 USERS_DATA = "user_data.json"
@@ -397,6 +398,7 @@ class UsersApi(Resource):
             with open(PENDING_USERS, "w") as p_u:
                 json.dump(pending, p_u)
             return "User added to pending users", HTTP_CREATED
+        mail_obj = "{} activation code".format(PROJECT_NAME)
 
     def put(self, username):
         """Activate a pending user
@@ -712,7 +714,7 @@ def send_mail(receiver, obj, content):
     mail = mail_config_init()
     msg = Message(
         obj,
-        sender="RawBoxTeam",
+        sender="{}Team".format(PROJECT_NAME),
         recipients=[receiver])
     msg.body = content
     with app.app_context():
