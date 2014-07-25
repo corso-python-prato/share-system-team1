@@ -998,12 +998,7 @@ class TestServerInternalErrors(unittest.TestCase):
         # Note: it's possible to make assertRaises on internal server
         # exceptions from the test_client only if app testing is True.
 
-        self.root = TestServerInternalErrors.root
-        server.SERVER_ROOT = self.root
-        server.server_setup()
-
-        self.user_data = os.path.join(self.root, "user_data.json")
-        self.user_dirs = os.path.join(self.root, "user_dirs")
+        server_setup(TestServerInternalErrors.root)
         self.tc = server.app.test_client()
 
     def tearDown(self):
@@ -1021,11 +1016,14 @@ class TestServerInternalErrors(unittest.TestCase):
         If the user data file is corrupted, it will be raised a ValueError.
         """
         shutil.copy(
-            os.path.join(self.root, "corrupted_user_data.json"),
+            os.path.join(
+                TestServerInternalErrors.root,
+                "corrupted_user_data.json"
+            ),
             self.user_data
         )
         with self.assertRaises(ValueError):
-            server.server_setup()
+            server_setup(TestServerInternalErrors.root)
 
     def test_directory_already_present(self):
         """
@@ -1064,16 +1062,17 @@ class TestServerInternalErrors(unittest.TestCase):
         filesystem, when somebody will try to access it, it will be raised an
         IOError and it will be returned a status code 500.
         """
+        cls = TestServerInternalErrors
         owner = "Emilio@me.it"
         owner_headers = make_headers(owner, "password")
         owner_filepath = "ciao.txt"
 
         # setup
         shutil.copy(
-            os.path.join(self.root, "demo_user_data.json"),
-            self.user_data
+            os.path.join(cls.root, "demo_user_data.json"),
+            cls.user_data
         )
-        server.server_setup()
+        server_setup(cls.root)
 
         # 1. case download
         def try_to_download():

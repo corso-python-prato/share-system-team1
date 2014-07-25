@@ -582,18 +582,10 @@ def create_user():
             return "user created", HTTP_CREATED
 
 
-def server_setup():
-    global USERS_DIRECTORIES
-    USERS_DIRECTORIES = os.path.join(SERVER_ROOT, "user_dirs/")
-    global USERS_DATA
-    USERS_DATA = os.path.join(SERVER_ROOT, "user_data.json")
+def main():
     if not os.path.isdir(USERS_DIRECTORIES):
         os.makedirs(USERS_DIRECTORIES)
     User.user_class_init()
-
-
-def main():
-    server_setup()
     app.run(host="0.0.0.0", debug=True)         # TODO: remove debug=True
 
 
