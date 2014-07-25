@@ -32,17 +32,22 @@ parser = reqparse.RequestParser()
 parser.add_argument("task", type=str)
 
 
-def to_md5(full_path, block_size=2 ** 20):
-    """ if server_ path is a file, return a md5;
-    if server_path is a directory, return False """
+def to_md5(full_path=None, block_size=2 ** 20, file_object=False):
+    """ if path is a file, return a md5;
+    if path is a directory, return False
+    if file_object is defined file_object content md5"""
+    if file_object:
+        m = hashlib.md5()
+        for chunk in iter(lambda: file_object.read(block_size), b''):
+            m.update(chunk)
+        return m.hexdigest()
+
     if os.path.isdir(full_path):
         return None
-
     m = hashlib.md5()
     with open(full_path, 'rb') as f:
         for chunk in iter(lambda: f.read(block_size), b''):
             m.update(chunk)
-
     return m.hexdigest()
 
 
@@ -389,8 +394,12 @@ class Files(Resource):
             abort(HTTP_FORBIDDEN)
 
         f = request.files["file_content"]
-        f.save(os.path.join(USERS_DIRECTORIES, server_path))
 
+        if request.form["file_md5"] != to_md5(file_object=f):
+            abort(HTTP_BAD_REQUEST)
+
+        f.seek(0)
+        f.save(os.path.join(USERS_DIRECTORIES, server_path))
         u.push_path(client_path, server_path, only_modify=True)
         return u.timestamp, HTTP_CREATED
 
@@ -411,8 +420,12 @@ class Files(Resource):
             abort(HTTP_FORBIDDEN)
 
         f = request.files["file_content"]
-        f.save(os.path.join(USERS_DIRECTORIES, server_path))
 
+        if request.form["file_md5"] != to_md5(file_object=f):
+            abort(HTTP_BAD_REQUEST)
+
+        f.seek(0)
+        f.save(os.path.join(USERS_DIRECTORIES, server_path))
         u.push_path(client_path, server_path)
         return u.timestamp, HTTP_CREATED
 
