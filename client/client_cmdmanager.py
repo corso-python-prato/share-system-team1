@@ -116,11 +116,11 @@ class RawBoxExecuter(object):
             self.comm_sock.send_message(command_type, param)
             self.print_response(self.comm_sock.read_message())
 
-    def _get_shares_list(self, *args):
+    def _get_shares_list(self):
         """retrieve the list of shares of a user """
-        command_type = 'get_shares'
+        command_type = 'get_shares_list'
 
-        self.comm_sock.send_message(command_type, None)
+        self.comm_sock.send_message(command_type)
         self.print_response(self.comm_sock.read_message())
 
     def print_response(self, response):

@@ -77,6 +77,7 @@ class ServerCommunicator(object):
 
     def _try_request(self, callback, success='', error='', retry_delay=2, *args, **kwargs):
         """ try a request until it's a success """
+        #import pdb; pdb.set_trace()
         while True:
             try:
                 request_result = callback(
@@ -354,16 +355,22 @@ class ServerCommunicator(object):
 
         return self.msg
 
-    def get_shares(self):
+    def get_shares_list(self, param=None):
+        self.msg["details"] = []
+        error_log = "List shares error"
+        success_log = "List shares downloaded!"
         server_url = "{}/shares/".format(self.server_url)
         request = {"url": server_url}
-        shares_list_request = self._try_request(requests.get, "getSharesList success", "getSharesList fail", **request)
-        
-        if shares_list_request.status_code != 401:
-            my_shares = shares_list_request.json()
-            print my_shares
+        response = self._try_request(requests.get, success_log, error_log, **request)
+
+        self.msg["result"] = response.status_code
+        if response.status_code != 401:
+            my_shares = response.json()
+            self.msg["details"].append("Shares list downloaded")
         else:
-            print "error"
+            self.msg["details"].append("Unauthorized access")
+
+        return self.msg
 
 class FileSystemOperator(object):
 
@@ -956,7 +963,7 @@ def main():
     snapshot_manager = DirSnapshotManager(
         snapshot_file_path=config['snapshot_file_path'],
     )
-
+    
     server_com = ServerCommunicator(
         server_url=config['server_url'],
         username=None,
@@ -966,7 +973,8 @@ def main():
     client_command = {
         "create_user": server_com.create_user,
         "activate_user": server_com.activate_user,
-        "delete_user": server_com.delete_user
+        "delete_user": server_com.delete_user,
+        "get_shares_list": server_com.get_shares_list
     }
     sock_server = CmdMessageServer(
         config['host'],
@@ -977,11 +985,9 @@ def main():
         asyncore.poll(timeout=1.0)
         config, user_exists = load_config()
     print config
-    server_com = ServerCommunicator(
-        server_url=config['server_url'],
-        username=config['username'],
-        password=config['password'],
-        snapshot_manager=snapshot_manager)
+    server_com.username = config['username']
+    server_com.password = config['password']
+    server_com.auth = HTTPBasicAuth(server_com.username, server_com.password)
 
     event_handler = DirectoryEventHandler(server_com, snapshot_manager)
     file_system_op = FileSystemOperator(event_handler, server_com, snapshot_manager)
