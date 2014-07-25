@@ -953,17 +953,20 @@ class TestShare(unittest.TestCase):
 
 class EmailTest(unittest.TestCase):
 
-    MAIL_SERVER = "smtp_address"
-    MAIL_PORT = "smtp_port"
-    MAIL_USERNAME = "smtp_username"
-    MAIL_PASSWORD = "smtp_password"
-    TESTING = True
+    def mock_mail_init(self):
+        return self.mail
 
     def setUp(self):
+        server.mail_config_init = self.mock_mail_init
         self.app = server.Flask(__name__)
-        self.app.config.from_object(__name__)
+        self.app.config.update(
+            MAIL_SERVER="smtp_address",
+            MAIL_PORT="smtp_port",
+            MAIL_USERNAME="smtp_username",
+            MAIL_PASSWORD="smtp_password",
+            TESTING=True
+        )
         self.mail = server.Mail(self.app)
-        server.app.config.update(TESTING=True)
         self.tc = server.app.test_client()
 
         server.PENDING_USERS = TEST_PENDING_USERS
@@ -1005,6 +1008,12 @@ class EmailTest(unittest.TestCase):
 
 
 class UserActions(unittest.TestCase):
+
+    MAIL_SERVER = "smtp_address"
+    MAIL_PORT = "smtp_port"
+    MAIL_USERNAME = "smtp_username"
+    MAIL_PASSWORD = "smtp_password"
+    TESTING = True
 
     def inject_user(self, inject_dest, user, psw=None, code=None):
         underskin_user = {}
