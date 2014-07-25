@@ -402,7 +402,28 @@ class ServerCommunicator(object):
         pass
 
     def remove_beneficiary(self, param):
-        pass
+        """Remove user from share"""
+        self.msg["details"] = []
+        request = {
+            "url" : "{}/share/{}/{}".format(self.server_url,
+                param["path"], param["ben"])
+            "data" : {}
+        }
+
+        success_log = "Removed user {} from shares".format(param["ben"])
+        error_log = "EROOR on removing user {} from shares".format(param["ben"])
+
+        response = self._try_request(requests.delete, success_log,
+            error_log, **request)
+
+        self.msg["result"] = response.status_code
+
+        if response.status_code == 200:
+            self.msg["details"].append("User removed from sahres")
+        elif response.status_code == 400:
+            self.msg["details"].append("Cannot remove user from shares")
+
+        return self.msg
 
 
 class FileSystemOperator(object):
