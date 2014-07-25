@@ -68,7 +68,8 @@ def can_write(username, server_path):
 def PasswordChecker(clear_password):
     #if the password is too short
     if len(clear_password) <= 5:
-        return "This password is too short", HTTP_NOT_ACCEPTABLE
+        return "This password is too short, the password \
+        must be at least 5 characters", HTTP_NOT_ACCEPTABLE
     #if the password is too used
     f = open(PASSWORD_NOT_ACCEPTED_DATA)
     lines = f.readlines()
@@ -76,11 +77,14 @@ def PasswordChecker(clear_password):
     for line in lines:
         for word in line.split():
             if clear_password == word:
-                return "This password is too used", HTTP_NOT_ACCEPTABLE
+                return "This password is too used, the password \
+                must be something unusual", HTTP_NOT_ACCEPTABLE
     #if the password is too easy
     strength, improvements = passwordmeter.test(clear_password)
     if strength < 0.5:
-        return "This password is too easy", HTTP_NOT_ACCEPTABLE
+        return "This password is too easy, the password should \
+        be a combination of numbers, uppercase and lowercase \
+        characters and special characters", HTTP_NOT_ACCEPTABLE
     return clear_password
 
 
