@@ -63,7 +63,7 @@ def can_write(username, server_path):
 def PasswordChecker(clear_password):
     #if the password is too short
     if len(clear_password) <= 5:
-        abort(HTTP_NOT_ACCEPTABLE)
+        return "This password is too short", HTTP_NOT_ACCEPTABLE
     #if the password is too used
     f = open(PASSWORD_NOT_ACCEPTED_DATA)
     lines = f.readlines()
@@ -71,11 +71,11 @@ def PasswordChecker(clear_password):
     for line in lines:
         for word in line.split():
             if clear_password == word:
-                abort(HTTP_NOT_ACCEPTABLE)
+                return "This password is too used", HTTP_NOT_ACCEPTABLE
     #if the password is too easy
     strength, improvements = passwordmeter.test(clear_password)
     if strength < 0.5:
-        abort(HTTP_NOT_ACCEPTABLE)
+        return "This password is too easy", HTTP_NOT_ACCEPTABLE
     return clear_password
 
 
@@ -138,7 +138,6 @@ class User(object):
             self.timestamp = from_dict["timestamp"]
             User.users[username] = self
             return
-        clear_password = PasswordChecker(clear_password)
         psw_hash = sha256_crypt.encrypt(clear_password)
         full_path = os.path.join(USERS_DIRECTORIES, username)
         try:
@@ -611,6 +610,8 @@ def create_user():
 
         if user in User.users:
             return "This user already exists", HTTP_CONFLICT
+        elif psw is not PasswordChecker(psw):
+            return PasswordChecker(psw)
         else:
             User(user, psw)
             return "user created", HTTP_CREATED
