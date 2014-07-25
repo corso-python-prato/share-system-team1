@@ -991,6 +991,8 @@ class TestServerInternalErrors(unittest.TestCase):
         os.path.dirname(__file__),
         "demo_test/internal_errors"
     )
+    user_data = os.path.join(root, "user_data.json")
+    user_dirs = os.path.join(root, "user_dirs")
 
     def setUp(self):
         server.app.config.update(TESTING=True)
@@ -1002,12 +1004,13 @@ class TestServerInternalErrors(unittest.TestCase):
         self.tc = server.app.test_client()
 
     def tearDown(self):
+        cls = TestServerInternalErrors
         try:
-            shutil.rmtree(self.user_dirs)
+            shutil.rmtree(cls.user_dirs)
         except OSError:
             pass
         try:
-            os.remove(self.user_data)
+            os.remove(cls.user_data)
         except OSError:
             pass
 
@@ -1031,12 +1034,13 @@ class TestServerInternalErrors(unittest.TestCase):
         his/her name is already present, it will be raised an OSError and
         it will be returned a status code 500.
         """
+        cls = TestServerInternalErrors
         username = "papplamoose@500.com"
         try:
-            os.makedirs(os.path.join(self.user_dirs, username))
+            os.makedirs(os.path.join(cls.user_dirs, username))
         except OSError:
-            shutil.rmtree(self.user_dirs)
-            os.makedirs(os.path.join(self.user_dirs, username))
+            shutil.rmtree(cls.user_dirs)
+            os.makedirs(os.path.join(cls.user_dirs, username))
 
         def try_to_create_user():
             return self.tc.post(
