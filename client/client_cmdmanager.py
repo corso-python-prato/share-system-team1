@@ -99,9 +99,8 @@ class RawBoxExecuter(object):
     def _get_shares_list(self, *args):
         """retrieve the list of shares of a user """
         command_type = 'get_shares'
-        param = {}
 
-        self.comm_sock.send_message(command_type, param)
+        self.comm_sock.send_message(command_type, None)
         self.print_response(self.comm_sock.read_message())
 
     def print_response(self, response):
@@ -167,15 +166,15 @@ class RawBoxCmd(cmd.Cmd):
         else:
             Message('INFO', self.do_create.__doc__)
 
-    def do_get_shares_list(self, line):
+    def do_get_shares_list(self, line=None):
         """
         share_list (get the list of the shares)
         """
-        if line:
-            command = line.split()[0]
-            self.executer._get_shares_list()
-        else:
-            Message('INFO', self.do_create.__doc__)
+        #if line:
+        #command = line.split()[0]
+        self.executer._get_shares_list()
+        #else:
+        #    Message('INFO', self.do_create.__doc__)
 
     def do_q(self, line=None):
         """ exit from RawBox"""
