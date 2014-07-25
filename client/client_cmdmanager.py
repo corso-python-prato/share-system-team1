@@ -206,6 +206,18 @@ class RawBoxCmd(cmd.Cmd):
         if take_input('[Exit] are you sure? y/n ') == 'y':
             return True
 
+    def do_remove_beneficiary(self, line):
+        """ Remove user from shares.
+            type: remove_beneficiary <user>
+        """
+        try:
+            if take_input('User {} will be removed, are you shure? y/n') == 'y':
+                command = line.spilt()[0]
+                user = line.spilt()[1]
+                self.executer._remove_beneficiary()
+        except IndexError:
+            Message('INFO', self.do_remove_beneficiary.__doc__)
+
 
 def main():
     if platform.system() == 'Windows':
