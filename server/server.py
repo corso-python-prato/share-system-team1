@@ -140,7 +140,6 @@ class User(object):
         # OBJECT ATTRIBUTES
         self.username = username
         self.psw = password
-        #self.psw = psw_hash
 
         # path of each file and each directory of the user:
         #     { client_path : [server_path, md5, timestamp] }
