@@ -687,6 +687,8 @@ def mail_config_init():
             MAIL_USERNAME = config.get('email', 'smtp_username'),
             MAIL_PASSWORD = config.get('email', 'smtp_password')
         )
+        mail = Mail(app)
+        return mail
     else:
         raise MissingConfigIni
 
@@ -694,8 +696,7 @@ def mail_config_init():
 def send_mail(receiver, obj, content):
     """ Send an email to the 'receiver', with the
     specified object ('obj') and the specified 'content' """
-    mail_config_init()
-    mail = Mail(app)
+    mail = mail_config_init()
     msg = Message(
         obj,
         sender="RawBoxTeam",
