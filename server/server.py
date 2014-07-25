@@ -2,10 +2,12 @@
 #-*- coding: utf-8 -*-
 
 from flask.ext.restful import reqparse, abort, Api, Resource
-from flask.ext.httpauth import HTTPBasicAuth
+from flask.ext.mail import Mail, Message
 from passlib.hash import sha256_crypt
+from flask.ext.httpauth import HTTPBasicAuth
 from flask import Flask, request
 from server_errors import *
+import ConfigParser
 import hashlib
 import shutil
 import time
@@ -25,6 +27,12 @@ app = Flask(__name__)
 api = Api(app)
 auth = HTTPBasicAuth()
 _API_PREFIX = "/API/v1/"
+
+USERS_DIRECTORIES = "user_dirs/"
+USERS_DATA = "user_data.json"
+PENDING_USERS = ".pending.tmp"
+CORRUPTED_DATA = "corrupted_data"
+EMAIL_SETTINGS_INI = "email_settings.ini"
 
 SERVER_ROOT = os.path.dirname(__file__)
 USERS_DIRECTORIES = os.path.join(SERVER_ROOT, "user_dirs/")
@@ -112,7 +120,7 @@ class User(object):
             raise MissingUserError("User doesn't exist")
 
     # DYNAMIC METHODS
-    def __init__(self, username, clear_password, from_dict=None):
+    def __init__(self, username, password, from_dict=None):
         # if restoring the server
         if from_dict:
             self.username = username
@@ -122,7 +130,6 @@ class User(object):
             User.users[username] = self
             return
 
-        psw_hash = sha256_crypt.encrypt(clear_password)
         full_path = os.path.join(USERS_DIRECTORIES, username)
         try:
             os.mkdir(full_path)
@@ -131,7 +138,8 @@ class User(object):
 
         # OBJECT ATTRIBUTES
         self.username = username
-        self.psw = psw_hash
+        self.psw = password
+        #self.psw = psw_hash
 
         # path of each file and each directory of the user:
         #     { client_path : [server_path, md5, timestamp] }
@@ -297,6 +305,12 @@ class User(object):
         del self.paths[client_path]
         User.save_users()
 
+    def delete_user(self, username):
+        user_root = self.paths[""][0]
+        del User.users[username]
+        shutil.rmtree(user_root)
+        User.save_users()
+
     def add_share(self, client_path, beneficiary):
         try:
             server_path = self.paths[client_path][0]
@@ -329,11 +343,104 @@ class User(object):
         return True
 
 
-class Resource(Resource):
+class Resource_with_auth(Resource):
     method_decorators = [auth.login_required]
 
 
-class Files(Resource):
+class UsersApi(Resource):
+
+    def load_pending_users(self):
+        pending = {}
+        if os.path.isfile(PENDING_USERS):
+            try:
+                with open(PENDING_USERS, "r") as p_u:
+                    pending = json.load(p_u)
+            except ValueError:  # PENDING_USERS exists but is corrupted
+                if os.path.getsize(PENDING_USERS) > 0:
+                    shutil.copy(PENDING_USERS, CORRUPTED_DATA)
+                    os.remove(PENDING_USERS)
+                else:           # PENDING_USERS exists but is empty
+                    pending = {}
+        return pending
+
+    def post(self, username):
+        """Create a user registration request
+        Expected {"psw": <password>}
+        save pending as
+        {<username>:
+            {
+            "password": <password>,
+            "code": <activation_code>
+            "timestamp": <timestamp>
+            }
+        }"""
+        pending = self.load_pending_users()
+
+        try:
+            psw = request.form["psw"]
+        except KeyError:
+            return "Missing password", HTTP_BAD_REQUEST
+
+        if username in pending:
+            return "This user have arleady a pending request", HTTP_CONFLICT
+        elif username in User.users:
+            return "This user already exists", HTTP_CONFLICT
+        else:
+            psw_hash = sha256_crypt.encrypt(psw)
+            code = os.urandom(16).encode('hex')
+            send_mail(username, "RawBox activation code", code)
+            pending[username] = \
+                {"password": psw_hash,
+                 "code": code,
+                 "timestamp": time.time()}
+
+            with open(PENDING_USERS, "w") as p_u:
+                json.dump(pending, p_u)
+            return "User added to pending users", HTTP_CREATED
+
+    def put(self, username):
+        """Activate a pending user
+        Expected
+        {"code": <activation code>}"""
+        try:
+            code = request.form["code"]
+        except KeyError:
+            return "Missing activation code", HTTP_BAD_REQUEST
+
+        if username in User.users:
+            return "This user is already active", HTTP_CONFLICT
+
+        pending = self.load_pending_users()
+
+        if username in pending:
+            if code == pending[username]["code"]:
+                User(username, pending[username]["password"])
+                del pending[username]
+                if pending:
+                    with open(PENDING_USERS, "w") as p_u:
+                        json.dump(pending, p_u)
+                else:
+                    os.remove(PENDING_USERS)
+                return "User activated", HTTP_CREATED
+            else:
+                return "Wrong code", HTTP_NOT_FOUND
+        else:
+            return "User need to be created", HTTP_NOT_FOUND
+
+    @auth.login_required
+    def delete(self, username):
+        """Delete the user who is making the request
+        """
+        current_username = auth.username()
+        current_user = User.get_user(current_username)
+        if current_username == username:
+            current_user.delete_user(username)
+            return "user deleted", HTTP_OK
+        else:
+            return "access denied", HTTP_BAD_REQUEST
+
+
+class Files(Resource_with_auth):
     def _diffs(self):
         """ Send a JSON with the timestamp of the last change in user
         directories and an md5 for each file
@@ -442,7 +549,7 @@ class Files(Resource):
         return u.timestamp, HTTP_CREATED
 
 
-class Actions(Resource):
+class Actions(Resource_with_auth):
     def _delete(self):
         """ Expected as POST data:
         { "path" : <path>} """
@@ -580,6 +687,38 @@ class Shares(Resource):
             return self._remove_share(owner, server_path, client_path)
 
 
+class MissingConfigIni(Exception):
+    pass
+
+
+def mail_config_init():
+    config = ConfigParser.ConfigParser()
+    if config.read(EMAIL_SETTINGS_INI):
+        app.config.update(
+            MAIL_SERVER = config.get('email', 'smtp_address'),
+            MAIL_PORT = config.getint('email', 'smtp_port'),
+            MAIL_USERNAME = config.get('email', 'smtp_username'),
+            MAIL_PASSWORD = config.get('email', 'smtp_password')
+        )
+        mail = Mail(app)
+        return mail
+    else:
+        raise MissingConfigIni
+
+
+def send_mail(receiver, obj, content):
+    """ Send an email to the 'receiver', with the
+    specified object ('obj') and the specified 'content' """
+    mail = mail_config_init()
+    msg = Message(
+        obj,
+        sender="RawBoxTeam",
+        recipients=[receiver])
+    msg.body = content
+    with app.app_context():
+        mail.send(msg)
+
+
 @auth.verify_password
 def verify_password(username, password):
     try:
@@ -590,40 +729,22 @@ def verify_password(username, password):
         return sha256_crypt.verify(password, u.psw)
 
 
-@app.route("{}create_user".format(_API_PREFIX), methods=["POST"])
-def create_user():
-        """ Expected as POST data:
-        { "user": <username>, "psw": <password> } """
-        try:
-            user = request.form["user"]
-            psw = request.form["psw"]
-        except KeyError:
-            abort(HTTP_BAD_REQUEST)
-
-        if user in User.users:
-            return "This user already exists", HTTP_CONFLICT
-        else:
-            User(user, psw)
-            return "user created", HTTP_CREATED
-
-
 def main():
     if not os.path.isdir(USERS_DIRECTORIES):
         os.makedirs(USERS_DIRECTORIES)
     User.user_class_init()
     app.run(host="0.0.0.0", debug=True)         # TODO: remove debug=True
 
-
+api.add_resource(UsersApi, "{}Users/<string:username>".format(_API_PREFIX))
+api.add_resource(Actions, "{}actions/<string:cmd>".format(_API_PREFIX))
 api.add_resource(
     Files,
     "{}files/<path:client_path>".format(_API_PREFIX),
     "{}files/".format(_API_PREFIX))
-api.add_resource(Actions, "{}actions/<string:cmd>".format(_API_PREFIX))
 api.add_resource(
     Shares,
     "{}shares/<path:client_path>".format(_API_PREFIX),
-    "{}shares/<path:client_path>/<string:beneficiary>".format(_API_PREFIX)
-)
+    "{}shares/<path:client_path>/<string:beneficiary>".format(_API_PREFIX))
 
 if __name__ == "__main__":
     main()
