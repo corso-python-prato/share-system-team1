@@ -134,9 +134,10 @@ class ServerCommunicator(object):
     def upload_file(self, dst_path, put_file=False):
         """ upload a file to server """
 
-        file_content = ''
+        file_object = ''
         try:
-            file_content = open(get_abspath(dst_path), 'rb')
+            file_object = open(get_abspath(dst_path), 'rb')
+            file_content = open(get_abspath(dst_path), 'rb').read()
         except IOError:
             return False  # Atomic create and delete error!
 
@@ -148,7 +149,8 @@ class ServerCommunicator(object):
         success_log = "file uploaded! " + dst_path
         request = {
             "url": server_url,
-            "files": {'file_content': file_content}
+            "files": {'file_content': file_object},
+            "data": {'file_md5': hashlib.md5(file_content).hexdigest()}
         }
 
         if put_file:
