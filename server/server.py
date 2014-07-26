@@ -340,17 +340,13 @@ class Resource_with_auth(Resource):
 class UsersApi(Resource):
 
     def load_pending_users(self):
-        pending = {}
-        if os.path.isfile(PENDING_USERS):
-            try:
-                with open(PENDING_USERS, "r") as p_u:
-                    pending = json.load(p_u)
-            except ValueError:  # PENDING_USERS exists but is corrupted
-                if os.path.getsize(PENDING_USERS) > 0:
-                    shutil.copy(PENDING_USERS, CORRUPTED_DATA)
-                    os.remove(PENDING_USERS)
-                else:           # PENDING_USERS exists but is empty
-                    pending = {}
+        try:
+            with open(PENDING_USERS, "r") as p_u:
+                pending = json.load(p_u)
+        except IOError:
+            # there aren't PENDING_USERS
+            pending = {}
+
         return pending
 
     def post(self, username):
