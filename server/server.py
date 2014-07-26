@@ -368,7 +368,7 @@ class UsersApi(Resource):
             return "Missing password", HTTP_BAD_REQUEST
 
         if username in pending:
-            return "This user have arleady a pending request", HTTP_CONFLICT
+            return "This user have already a pending request", HTTP_CONFLICT
         elif username in User.users:
             return "This user already exists", HTTP_CONFLICT
         else:
