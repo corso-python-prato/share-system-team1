@@ -110,7 +110,7 @@ class User(object):
             json.dump(to_save, f)
 
     # DYNAMIC METHODS
-    def __init__(self, username, clear_password, from_dict=None):
+    def __init__(self, username, password, from_dict=None):
         # if restoring the server:
         if from_dict:
             self.username = username
@@ -129,7 +129,7 @@ class User(object):
 
         # OBJECT ATTRIBUTES
         self.username = username
-        self.psw = clear_password
+        self.psw = password
 
         # path of each file and each directory of the user:
         #     { client_path : [server_path, md5, timestamp] }
