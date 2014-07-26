@@ -1160,7 +1160,7 @@ class UserActions(unittest.TestCase):
     TESTING = True
 
     user = "user_mail@demo.it"
-    psw = "password_demo"
+    psw = "$5$rounds=110000$9adcJL7bfKtZF/ii$p2vfrEbvs529hRMyQuW9LUIxiZvVKj8t62fB/7SZQSC"
     code = "5f8e441f01abc7b3e312917efb52cc12"  # os.urandom(16).encode('hex')
 
     def inject_user(self, inject_dest, user, psw=None, code=None):
