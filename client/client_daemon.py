@@ -45,7 +45,6 @@ def get_abspath(rel_path):
         return "/".join([CONFIG_DIR_PATH, rel_path])
     return rel_path
 
-
 class ServerCommunicator(object):
 
     def __init__(self, server_url, username, password, snapshot_manager):
