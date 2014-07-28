@@ -998,7 +998,7 @@ def main():
     while not user_exists:
         asyncore.poll(timeout=1.0)
         config, user_exists = load_config()
-    print config
+
     server_com.username = config['username']
     server_com.password = config['password']
     server_com.auth = HTTPBasicAuth(server_com.username, server_com.password)
