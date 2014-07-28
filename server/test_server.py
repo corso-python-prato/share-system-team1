@@ -1110,9 +1110,10 @@ class UserActions(unittest.TestCase):
         data = {
             "psw": UserActions.psw
         }
-
+        before_request_time = time.time()
         response = self.tc.post(self.url, data=data, headers=None)
         self.assertEqual(response.status_code, server.HTTP_CREATED)
+        after_request_time = time.time()
 
         with open(server.PENDING_USERS, "r") as pending_file:
             data = json.load(pending_file)
@@ -1123,8 +1124,8 @@ class UserActions(unittest.TestCase):
             code = data[UserActions.user]["code"]
             self.assertIsNotNone(code)
             self.assertEqual(len(code), 32)
-            timestamp = data[UserActions.user]["timestamp"]
-            self.assertIsNotNone(timestamp)
+            request_time = data[UserActions.user]["timestamp"]
+            self.assertTrue(before_request_time < request_time < after_request_time)
 
     def test_create_user_missing_password(self):
         data = {}
