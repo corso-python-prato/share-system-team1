@@ -508,7 +508,6 @@ class ServerCommunicatorTest(unittest.TestCase):
         msg3 = self.server_comm.create_user({"user": self.username, "psw": self.password})
         self.assertEqual(msg3["result"], 400)
         self.assertEqual(msg3["details"][0], "Bad request")
-        
 
     def test_get_user(self):
         msg1 = self.server_comm.get_user({"user": self.username, "psw": self.password})
