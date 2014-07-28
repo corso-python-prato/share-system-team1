@@ -1129,6 +1129,12 @@ class TestServerInternalErrors(unittest.TestCase):
 
 
 class EmailTest(unittest.TestCase):
+    email = "test@rawbox.com"
+    obj = "test"
+    content = "test content"
+    user = "user_mail@demo.it"
+    psw = "password_demo"
+    code = "5f8e441f01abc7b3e312917efb52cc12"  # os.urandom(16).encode('hex')
 
     def mock_mail_init(self):
         return self.mail
@@ -1148,13 +1154,6 @@ class EmailTest(unittest.TestCase):
 
         server.PENDING_USERS = TEST_PENDING_USERS
 
-        EmailTest.email = "test@rawbox.com"
-        EmailTest.obj = "test"
-        EmailTest.content = "test content"
-
-        EmailTest.user = "user_mail@demo.it"
-        EmailTest.psw = "password_demo"
-        EmailTest.code = "5f8e441f01abc7b3e312917efb52cc12"  # os.urandom(16).encode('hex')
         self.url = "".join((server._API_PREFIX, "Users/", EmailTest.user))
 
     def tearDown(self):
