@@ -270,7 +270,7 @@ class ServerCommunicator(object):
 
         self.msg["details"] = []
         error_log = "Cannot delete user"
-        success_log = "Usere deleted"
+        success_log = "User deleted"
 
         server_url = "{}/Users/{}".format(self.server_url, param["user"])
 
