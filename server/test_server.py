@@ -3,6 +3,7 @@
 
 from passlib.hash import sha256_crypt
 from base64 import b64encode
+import ConfigParser
 import tempfile
 import unittest
 import hashlib
@@ -1093,6 +1094,38 @@ class TestServerInternalErrors(unittest.TestCase):
             try_to_transfer(action)
         self.assertEqual(received.status_code, 500)
         server.app.testing = True
+
+    def test_missing_email_settings_ini(self):
+        """
+        If email_settings.ini is missing it will be raised a NoSectionError.
+        """
+        # setup
+        bak = server.EMAIL_SETTINGS_INI
+        server.EMAIL_SETTINGS_INI = "not_a_file"
+
+        # test
+        with self.assertRaises(ConfigParser.NoSectionError):
+            server.mail_config_init()
+
+        # tear down
+        server.EMAIL_SETTINGS_INI = bak
+
+    def test_corrupted_email_settings_ini(self):
+        """
+        If email_settings.ini is corrupted it will be raised a
+        ConfigParserError.
+        """
+        # setup
+        shutil.copy(server.EMAIL_SETTINGS_INI, "email_ini.bak")
+        open(server.EMAIL_SETTINGS_INI, "w").close()
+
+        # test
+        with self.assertRaises(ConfigParser.Error):
+            #import pdb; pdb.set_trace()
+            server.mail_config_init()
+
+        # tear down
+        shutil.move("email_ini.bak", server.EMAIL_SETTINGS_INI)
 
 
 class EmailTest(unittest.TestCase):
