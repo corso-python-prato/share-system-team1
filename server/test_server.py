@@ -1140,25 +1140,25 @@ class TestServerInternalErrors(unittest.TestCase):
         If email_settings.ini is corrupted it will be raised a
         ConfigParserError.
         """
+        flag_dry = False
         # setup
         try:
             shutil.copy(server.EMAIL_SETTINGS_INI, "email_ini.bak")
-            open(server.EMAIL_SETTINGS_INI, "w").close()
         except IOError:
             # probably running in Travis: there is not email_settings.ini
+            flag_dry = True
             pass
+        open(server.EMAIL_SETTINGS_INI, "w").close()
 
         # test
         with self.assertRaises(ConfigParser.Error):
-            #import pdb; pdb.set_trace()
             server.mail_config_init()
 
         # tear down
-        try:
+        if flag_dry:
+            os.remove(server.EMAIL_SETTINGS_INI)
+        else:
             shutil.move("email_ini.bak", server.EMAIL_SETTINGS_INI)
-        except IOError:
-            # as in setup
-            pass
 
 
 class EmailTest(unittest.TestCase):
