@@ -1130,8 +1130,12 @@ class TestServerInternalErrors(unittest.TestCase):
         ConfigParserError.
         """
         # setup
-        shutil.copy(server.EMAIL_SETTINGS_INI, "email_ini.bak")
-        open(server.EMAIL_SETTINGS_INI, "w").close()
+        try:
+            shutil.copy(server.EMAIL_SETTINGS_INI, "email_ini.bak")
+            open(server.EMAIL_SETTINGS_INI, "w").close()
+        except IOError:
+            # probably running in Travis: there is not email_settings.ini
+            pass
 
         # test
         with self.assertRaises(ConfigParser.Error):
@@ -1139,7 +1143,11 @@ class TestServerInternalErrors(unittest.TestCase):
             server.mail_config_init()
 
         # tear down
-        shutil.move("email_ini.bak", server.EMAIL_SETTINGS_INI)
+        try:
+            shutil.move("email_ini.bak", server.EMAIL_SETTINGS_INI)
+        except IOError:
+            # as in setup
+            pass
 
 
 class EmailTest(unittest.TestCase):
