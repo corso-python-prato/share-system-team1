@@ -354,7 +354,7 @@ class ServerCommunicator(object):
 
         return self.msg
 
-    def get_shares_list(self):
+    def get_shares_list(self, param=None):
         self.msg["details"] = []
         error_log = "List shares error"
         success_log = "List shares downloaded!"
@@ -367,7 +367,17 @@ class ServerCommunicator(object):
             try:
                 my_shares = response.json()
                 self.msg["details"].append("Shares list downloaded")
-                res = "".join("\nList of shares\n", my_shares)
+                sub_res = ""
+                if my_shares["my_shares"]:
+                    sub_res.append("My shares:\n")
+                    sub_res.append(str(my_shares["my_shares"]))
+                if my_shares["other_shares"]:
+                    sub_res.append("Other shares:\n")
+                    sub_res.append(str(my_shares["other_shares"]))
+                if sub_res != "":
+                    res = "".join(("\nList of shares\n", sub_res))
+                else:
+                    res = "No shares found"
                 self.msg["details"].append(res)
             except ValueError:
                 self.msg["details"].append("Shares not found")
