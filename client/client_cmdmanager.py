@@ -207,11 +207,7 @@ class RawBoxCmd(cmd.Cmd):
         """
         share_list (get the list of the shares)
         """
-        #if line:
-        #command = line.split()[0]
         self.executer._get_shares_list()
-        #else:
-        #    Message('INFO', self.do_create.__doc__)
 
     def do_q(self, line=None):
         """ exit from RawBox"""
