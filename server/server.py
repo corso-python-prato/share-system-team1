@@ -698,10 +698,8 @@ def mail_config_init():
             MAIL_USERNAME=config.get('email', 'smtp_username'),
             MAIL_PASSWORD=config.get('email', 'smtp_password')
         )
-        mail = Mail(app)
-        return mail
-    else:
-        raise MissingConfigIni
+        return Mail(app)
+    raise MissingConfigIni
 
 
 def send_mail(receiver, obj, content):
