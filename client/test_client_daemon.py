@@ -285,7 +285,7 @@ class ServerCommunicatorTest(unittest.TestCase):
         def fake_try_request(*args, **kwargs):
             self.request = kwargs
             self.server_comm._try_request = self.true_try_request
-            return self.server_comm._try_request(*args ,**kwargs)
+            return self.server_comm._try_request(*args, **kwargs)
 
         put_file = True
         self.true_try_request = self.server_comm._try_request
