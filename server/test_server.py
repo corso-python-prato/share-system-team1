@@ -1136,11 +1136,19 @@ class EmailTest(unittest.TestCase):
     psw = "password_demo"
     code = "5f8e441f01abc7b3e312917efb52cc12"  # os.urandom(16).encode('hex')
 
+    @classmethod
+    def setUpClass(cls):
+        EmailTest.pending_users_bak = server.PENDING_USERS
+        server.PENDING_USERS = TEST_PENDING_USERS
+
+    @classmethod
+    def tearDownClass(cls):
+        server.PENDING_USERS = EmailTest.pending_users_bak
+
     def mock_mail_init(self):
         return self.mail
 
     def setUp(self):
-        server.mail_config_init = self.mock_mail_init
         self.app = server.Flask(__name__)
         self.app.config.update(
             MAIL_SERVER="smtp_address",
@@ -1150,9 +1158,9 @@ class EmailTest(unittest.TestCase):
             TESTING=True
         )
         self.mail = server.Mail(self.app)
+        self.mail_init_bak = server.mail_config_init
+        server.mail_config_init = self.mock_mail_init
         self.tc = server.app.test_client()
-
-        server.PENDING_USERS = TEST_PENDING_USERS
 
         self.url = "".join((server._API_PREFIX, "Users/", EmailTest.user))
 
@@ -1160,6 +1168,7 @@ class EmailTest(unittest.TestCase):
         server.User.users = {}
         if os.path.exists(TEST_PENDING_USERS):
             os.remove(TEST_PENDING_USERS)
+        server.mail_config_init = self.mail_init_bak
 
     def test_mail_correct_data(self):
         with self.mail.record_messages() as outbox:
