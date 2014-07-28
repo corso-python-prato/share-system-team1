@@ -165,12 +165,6 @@ class ServerCommunicatorTest(unittest.TestCase):
                 'a8f5f167f44f4964e6c998eee827110b': [{"path": u'nuova path server con md5 nuovo e timestamp minore', "timestamp": 123122}]}),
                 content_type="application/json"
         )
-        httpretty.register_uri(httpretty.GET, 'http://127.0.0.1:5000/API/v1/user',
-            responses=[
-                httpretty.Response(body='{"user":"usernameFarlocco","psw":"passwordSegretissima"}', status=200),
-                httpretty.Response(body='{}', status=404),
-                httpretty.Response(body='{"something wrong"}', status=400)
-            ])
         httpretty.register_uri(httpretty.DELETE, 'http://127.0.0.1:5000/API/v1/Users/usernameFarlocco',
             responses=[
                 httpretty.Response(body='{}',status=200),
@@ -504,17 +498,6 @@ class ServerCommunicatorTest(unittest.TestCase):
         msg3 = self.server_comm.create_user({"user": self.username, "psw": self.password})
         self.assertEqual(msg3["result"], 400)
         self.assertEqual(msg3["details"][0], "Bad request")
-
-    def test_get_user(self):
-        msg1 = self.server_comm.get_user({"user": self.username, "psw": self.password})
-        self.assertEqual(msg1["result"], 200)
-        self.assertEqual(msg1["details"][0], {"user": "usernameFarlocco", "psw": "passwordSegretissima"})
-        msg2 = self.server_comm.get_user({"user": self.username, "psw": self.password})
-        self.assertEqual(msg2["result"], 404)
-        self.assertEqual(msg2["details"][0], {})
-        msg3 = self.server_comm.get_user({"user": self.username, "psw": self.password})
-        self.assertEqual(msg3["result"], 400)
-        self.assertEqual(msg3["details"][0], {"something wrong"})
 
     def test_delete_user(self):
         msg1 = self.server_comm.delete_user({"user": self.username, "psw": self.password})
