@@ -266,37 +266,6 @@ class ServerCommunicator(object):
             self.msg["details"].append("Bad request")
         return self.msg
 
-    def get_user(self, param):
-
-        self.msg["details"] = []
-        error_log = "cannot get user data"
-        success_log = "user data retrived"
-
-        server_url = "{}/user".format(self.server_url)
-
-        request = {
-            "url": server_url,
-            "data": {
-                "user": param["user"],
-                "psw": param["psw"]
-            }
-        }
-
-        response = self._try_request(
-            requests.get, success_log, error_log, **request)
-
-        self.msg["result"] = response.status_code
-        self.msg["details"].append(eval(response.text))
-
-        if response.status_code == 200:
-            self.msg["details"].append("User data retrived")
-        elif response.status_code == 404:
-            self.msg["details"].append("User not found")
-        else:
-            self.msg["details"].append("Bad request")
-
-        return self.msg
-
     def delete_user(self, param):
 
         self.msg["details"] = []
