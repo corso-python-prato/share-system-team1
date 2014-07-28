@@ -1041,16 +1041,11 @@ class TestServerInternalErrors(unittest.TestCase):
         with self.assertRaises(ValueError):
             server_setup(TestServerInternalErrors.root)
 
-    def test_access_to_non_existent_server_path(self):
-        """
-        If a path exists in some user's paths dictionary, but it's not in the
-        filesystem, when somebody will try to access it, it will be raised an
-        IOError and it will be returned a status code 500.
-        """
+    def setup_inconsistent_paths(self):
+        # If a path exists in some user's paths dictionary, but it's not in the
+        # filesystem, when somebody will try to access it, it will be raised an
+        # IOError and it will be returned a status code 500.
         cls = TestServerInternalErrors
-        owner = "Emilio@me.it"
-        owner_headers = make_headers(owner, "password")
-        owner_filepath = "ciao.txt"
 
         # setup
         shutil.copy(
@@ -1059,22 +1054,39 @@ class TestServerInternalErrors(unittest.TestCase):
         )
         server_setup(cls.root)
 
-        # 1. case download
+    def test_download_from_a_non_existent_path(self):
+        """
+        What happens when paths dictionary is inconsistent during download.
+        """
+        owner_headers = make_headers("Emilio@me.it", "password")
+        owner_filepath = "ciao.txt"
+        self.setup_inconsistent_paths()
+
         def try_to_download():
             return self.tc.get(
                 "{}files/{}".format(_API_PREFIX, owner_filepath),
                 headers=owner_headers
             )
+
         # check IOError
         with self.assertRaises(IOError):
             try_to_download()
+
         # check service code
         server.app.testing = False
         received = try_to_download()
         self.assertEqual(received.status_code, 500)
         server.app.testing = True
 
-        # 2. case move or copy
+
+    def test_access_to_non_existent_server_path(self):
+        """
+        What happens when paths dictionary is inconsistent during copy or move.
+        """
+        owner_headers = make_headers("Emilio@me.it", "password")
+        owner_filepath = "ciao.txt"
+        self.setup_inconsistent_paths()
+
         def try_to_transfer(action):
             return self.tc.post(
                 "{}actions/{}".format(_API_PREFIX, action),
@@ -1084,15 +1096,17 @@ class TestServerInternalErrors(unittest.TestCase):
                 },
                 headers=owner_headers
             )
+
         # check IOError
         for action in ["move", "copy"]:
             with self.assertRaises(IOError):
                 try_to_transfer(action)
+
         # check service code
         server.app.testing = False
         for action in ["move", "copy"]:
-            try_to_transfer(action)
-        self.assertEqual(received.status_code, 500)
+            received = try_to_transfer(action)
+            self.assertEqual(received.status_code, 500)
         server.app.testing = True
 
     def test_missing_email_settings_ini(self):
