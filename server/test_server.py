@@ -1205,7 +1205,7 @@ class EmailTest(unittest.TestCase):
             "psw": EmailTest.psw
         }
         with self.mail.record_messages() as outbox:
-            self.tc.post(self.url, data=data, headers=None)
+            self.tc.post(self.url, data=data)
             with open(server.PENDING_USERS, "r") as pending_file:
                 code = json.load(pending_file)[EmailTest.user]["code"]
                 self.assertEqual(outbox[0].body, code)
@@ -1295,7 +1295,7 @@ class UserActions(unittest.TestCase):
             "psw": UserActions.psw
         }
 
-        response = self.tc.post(self.url, data=data, headers=None)
+        response = self.tc.post(self.url, data=data)
         self.assertEqual(response.status_code, server.HTTP_CREATED)
 
         with open(server.PENDING_USERS, "r") as pending_file:
@@ -1314,7 +1314,7 @@ class UserActions(unittest.TestCase):
         data = {}
 
         self.inject_user(TEST_USER_DATA, UserActions.user, UserActions.psw)
-        response = self.tc.post(self.url, data=data, headers=None)
+        response = self.tc.post(self.url, data=data)
         self.assertEqual(response.status_code, server.HTTP_BAD_REQUEST)
 
     def test_create_user_that_is_already_pending(self):
@@ -1323,7 +1323,7 @@ class UserActions(unittest.TestCase):
         }
 
         self.inject_user(TEST_PENDING_USERS, UserActions.user, UserActions.psw)
-        response = self.tc.post(self.url, data=data, headers=None)
+        response = self.tc.post(self.url, data=data)
         self.assertEqual(response.status_code, server.HTTP_CONFLICT)
 
     def test_create_user_that_is_already_active(self):
@@ -1332,7 +1332,7 @@ class UserActions(unittest.TestCase):
         }
 
         self.inject_user(TEST_USER_DATA, UserActions.user, UserActions.psw)
-        response = self.tc.post(self.url, data=data, headers=None)
+        response = self.tc.post(self.url, data=data)
         self.assertEqual(response.status_code, server.HTTP_CONFLICT)
 
     def test_activate_user(self):
@@ -1342,7 +1342,7 @@ class UserActions(unittest.TestCase):
         }
 
         self.inject_user(TEST_PENDING_USERS, UserActions.user, UserActions.psw, UserActions.code)
-        response = self.tc.put(self.url, data=data, headers=None)
+        response = self.tc.put(self.url, data=data)
         self.assertEqual(response.status_code, server.HTTP_CREATED)
 
     def test_activate_user_missing_code(self):
@@ -1350,7 +1350,7 @@ class UserActions(unittest.TestCase):
         data = {}
 
         self.inject_user(TEST_PENDING_USERS, UserActions.user, UserActions.psw)
-        response = self.tc.put(self.url, data=data, headers=None)
+        response = self.tc.put(self.url, data=data)
         self.assertEqual(response.status_code, server.HTTP_BAD_REQUEST)
 
     def test_activate_user_that_is_already_active(self):
@@ -1359,7 +1359,7 @@ class UserActions(unittest.TestCase):
         }
 
         self.inject_user(TEST_USER_DATA, UserActions.user, UserActions.psw, UserActions.code)
-        response = self.tc.put(self.url, data=data, headers=None)
+        response = self.tc.put(self.url, data=data)
         self.assertEqual(response.status_code, server.HTTP_CONFLICT)
 
     def test_activate_user_that_is_not_the_last_pending_user(self):
@@ -1372,7 +1372,7 @@ class UserActions(unittest.TestCase):
                          sha256_crypt.encrypt("fake_password"),
                          "this0is0a0fake0code0long32char00")
         self.inject_user(TEST_PENDING_USERS, UserActions.user, UserActions.psw, UserActions.code)
-        response = self.tc.put(self.url, data=data, headers=None)
+        response = self.tc.put(self.url, data=data)
         self.assertEqual(response.status_code, server.HTTP_CREATED)
         self.assertTrue(os.path.exists(TEST_PENDING_USERS))
 
