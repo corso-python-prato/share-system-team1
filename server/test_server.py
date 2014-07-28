@@ -188,7 +188,6 @@ class TestFilesAPI(unittest.TestCase):
         # restore
         os.remove(uploaded_file)
 
-
     def test_fail_auth_get(self):
         # fail authentication
         received = self.tc.get(
@@ -329,12 +328,6 @@ class TestFilesAPI(unittest.TestCase):
             )
         except OSError:
             pass
-
-        # rv = self.tc.post(
-        #     _API_PREFIX + "create_user",
-        #     data=data
-        # )
-        # self.assertEqual(rv.status_code, 201)
 
         # first check: user created just now
         snapshot1 = get_diff()
