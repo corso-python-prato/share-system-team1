@@ -59,6 +59,18 @@ def get_data(file_object):
     return {"file_content": file_object, 'file_md5': file_md5}
 
 
+def mock_mail_init():
+    app = server.Flask(__name__)
+    app.config.update(
+        MAIL_SERVER="smtp_address",
+        MAIL_PORT="smtp_port",
+        MAIL_USERNAME="smtp_username",
+        MAIL_PASSWORD="smtp_password",
+        TESTING=True
+    )
+    return server.Mail(app)
+
+
 class TestSetupServer(unittest.TestCase):
     other_directory = os.path.join(
         os.path.dirname(__file__),
@@ -1078,7 +1090,6 @@ class TestServerInternalErrors(unittest.TestCase):
         self.assertEqual(received.status_code, 500)
         server.app.testing = True
 
-
     def test_access_to_non_existent_server_path(self):
         """
         What happens when paths dictionary is inconsistent during copy or move.
@@ -1158,30 +1169,14 @@ class EmailTest(unittest.TestCase):
     psw = "password_demo"
     code = "5f8e441f01abc7b3e312917efb52cc12"  # os.urandom(16).encode('hex')
 
-    @classmethod
-    def setUpClass(cls):
+    def setUp(self):
+        self.mail_init_bak = server.mail_config_init
+        server.mail_config_init = mock_mail_init
+
         EmailTest.pending_users_bak = server.PENDING_USERS
         server.PENDING_USERS = TEST_PENDING_USERS
 
-    @classmethod
-    def tearDownClass(cls):
-        server.PENDING_USERS = EmailTest.pending_users_bak
-
-    def mock_mail_init(self):
-        return self.mail
-
-    def setUp(self):
-        self.app = server.Flask(__name__)
-        self.app.config.update(
-            MAIL_SERVER="smtp_address",
-            MAIL_PORT="smtp_port",
-            MAIL_USERNAME="smtp_username",
-            MAIL_PASSWORD="smtp_password",
-            TESTING=True
-        )
-        self.mail = server.Mail(self.app)
-        self.mail_init_bak = server.mail_config_init
-        server.mail_config_init = self.mock_mail_init
+        self.mail = server.Mail(server.Flask(__name__))
         self.tc = server.app.test_client()
 
         self.url = "".join((server._API_PREFIX, "Users/", EmailTest.user))
@@ -1190,7 +1185,9 @@ class EmailTest(unittest.TestCase):
         server.User.users = {}
         if os.path.exists(TEST_PENDING_USERS):
             os.remove(TEST_PENDING_USERS)
+
         server.mail_config_init = self.mail_init_bak
+        server.PENDING_USERS = EmailTest.pending_users_bak
 
     def test_mail_correct_data(self):
         with self.mail.record_messages() as outbox:
@@ -1255,7 +1252,12 @@ class UserActions(unittest.TestCase):
                 json.dump(underskin_user, tmp_file)
 
     def setUp(self):
+        self.mail_init_bak = server.mail_config_init
+        server.mail_config_init = mock_mail_init
+
         self.app = server.Flask(__name__)
+        self.mail = server.Mail(self.app)
+
         self.app.config.from_object(__name__)
         server.app.config.update(TESTING=True)
         self.tc = server.app.test_client()
@@ -1276,6 +1278,7 @@ class UserActions(unittest.TestCase):
         self.url = "".join((server._API_PREFIX, "Users/", UserActions.user))
 
     def tearDown(self):
+        server.mail_config_init = self.mail_init_bak
         server.User.users = {}
         if os.path.exists(TEST_PENDING_USERS):
             os.remove(TEST_PENDING_USERS)
