@@ -310,7 +310,7 @@ class TestFilesAPI(unittest.TestCase):
     def test_files_differences(self):
         data = {
             "user": "complex_user@gmail.com",
-            "psw": "33Complex_Password33!!"
+            "psw": "password"
         }
         headers = make_headers(data["user"], data["psw"])
 
@@ -331,8 +331,8 @@ class TestFilesAPI(unittest.TestCase):
             pass
 
         # rv = self.tc.post(
-        #     _API_PREFIX + "create_user",
-        #     data=data
+        # _API_PREFIX + "create_user",
+        # data=data
         # )
         # self.assertEqual(rv.status_code, 201)
 
@@ -640,52 +640,6 @@ class TestUser(unittest.TestCase):
         except OSError:
             pass
         shutil.rmtree(server.USERS_DIRECTORIES)
-
-
-    def test_create_user(self):
-        dirs_counter = len(os.listdir(server.USERS_DIRECTORIES))
-        # check if a new user use a slow password
-        data = {
-            "user": "Gianni",
-            "psw": "java"
-        }
-        with server.app.test_client() as tc:
-            received = tc.post(_API_PREFIX + "create_user", data=data)
-        self.assertEqual(received.status_code, server.HTTP_NOT_ACCEPTABLE)
-        # check if a new user use a used password
-        data = {
-            "user": "Gianni",
-            "psw": "123456"
-        }
-        with server.app.test_client() as tc:
-            received = tc.post(_API_PREFIX + "create_user", data=data)
-        self.assertEqual(received.status_code, server.HTTP_NOT_ACCEPTABLE)
-        # check if a new user use a easy password
-        data = {
-            "user": "Gianni",
-            "psw": "ilovejava"
-        }
-        with server.app.test_client() as tc:
-            received = tc.post(_API_PREFIX + "create_user", data=data)
-        self.assertEqual(received.status_code, server.HTTP_NOT_ACCEPTABLE)
-        # check if a new user is correctly created
-        data = {
-            "user": "Gianni",
-            "psw": "ILoveJava<3"
-        }
-        with server.app.test_client() as tc:
-            received = tc.post(_API_PREFIX + "create_user", data=data)
-        self.assertEqual(received.status_code, server.HTTP_CREATED)
-
-        # check if a directory is created
-        new_counter = len(os.listdir(server.USERS_DIRECTORIES))
-        self.assertEqual(dirs_counter + 1, new_counter)
-
-        # check if, when the user already exists, 'create_user' returns an
-        # error
-        with server.app.test_client() as tc:
-            received = tc.post(_API_PREFIX + "create_user", data=data)
-        self.assertEqual(received.status_code, server.HTTP_CONFLICT)
 
 
 class TestShare(unittest.TestCase):
@@ -1052,7 +1006,7 @@ class EmailTest(unittest.TestCase):
 
         EmailTest.user = "user_mail@demo.it"
         EmailTest.psw = "password_demo"
-        EmailTest.code = "5f8e441f01abc7b3e312917efb52cc12"  # os.urandom(16).encode('hex')
+        EmailTest.code = "5f8e441f01abc7b3e312917efb52cc12" # os.urandom(16).encode('hex')
         self.url = "".join((server._API_PREFIX, "Users/", EmailTest.user))
 
     def tearDown(self):
@@ -1138,8 +1092,8 @@ class UserActions(unittest.TestCase):
         server.USERS_DATA = TEST_USER_DATA
 
         UserActions.user = "user_mail@demo.it"
-        UserActions.psw = "password_demo"
-        UserActions.code = "5f8e441f01abc7b3e312917efb52cc12"  # os.urandom(16).encode('hex')
+        UserActions.psw = "33Password_Demo33"
+        UserActions.code = "5f8e441f01abc7b3e312917efb52cc12" # os.urandom(16).encode('hex')
         self.url = "".join((server._API_PREFIX, "Users/", UserActions.user))
 
     def tearDown(self):
@@ -1155,6 +1109,27 @@ class UserActions(unittest.TestCase):
                 shutil.rmtree(TEST_DIRECTORY)
 
     def test_create_user(self):
+        data = {
+            "psw": "pro"
+        }
+
+        response = self.tc.post(self.url, data=data, headers=None)
+        self.assertEqual(response.status_code, server.HTTP_NOT_ACCEPTABLE)
+
+        data = {
+            "psw": "123456"
+        }
+
+        response = self.tc.post(self.url, data=data, headers=None)
+        self.assertEqual(response.status_code, server.HTTP_NOT_ACCEPTABLE)
+
+        data = {
+            "psw": "provasemplice"
+        }
+
+        response = self.tc.post(self.url, data=data, headers=None)
+        self.assertEqual(response.status_code, server.HTTP_NOT_ACCEPTABLE)
+
         data = {
             "psw": UserActions.psw
         }
