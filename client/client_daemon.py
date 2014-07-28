@@ -82,7 +82,7 @@ class ServerCommunicator(object):
                 request_result = callback(
                     auth=self.auth,
                     *args, **kwargs)
-                if request_result.status_code == 401:
+                if request_result.status_code == requests.codes.unauthorized:
                     logger.error("user not logged")
                 else:
                     logger.info(success)
@@ -99,7 +99,7 @@ class ServerCommunicator(object):
         sync = self._try_request(
             requests.get, "getFile success", "getFile fail", **request)
 
-        if sync.status_code != 401:
+        if sync.status_code != requests.codes.unauthorized:
             server_snapshot = sync.json()['snapshot']
 
             server_timestamp = float(sync.json()['timestamp'])
@@ -126,7 +126,7 @@ class ServerCommunicator(object):
         r = self._try_request(requests.get, success_log, error_log, **request)
         local_path = get_abspath(dst_path)
 
-        if r.status_code == 200:
+        if r.status_code == requests.codes.ok:
             return local_path, r.text
         else:
             return False, False
@@ -159,9 +159,9 @@ class ServerCommunicator(object):
         else:
             r = self._try_request(
                 requests.post, success_log, error_log, **request)
-        if r.status_code == 409:
+        if r.status_code == requests.codes.conflict:
             logger.error("file {} already exists on server".format(dst_path))
-        elif r.status_code == 201:
+        elif r.status_code == requests.codes.created:
             if put_file:
                 self.snapshot_manager.update_snapshot_update({"src_path": dst_path})
             else:
@@ -180,9 +180,9 @@ class ServerCommunicator(object):
             "data": {"path": self.get_url_relpath(dst_path)}
         }
         r = self._try_request(requests.post, success_log, error_log, **request)
-        if r.status_code == 404:
+        if r.status_code == requests.codes.not_found:
             logger.error("DELETE REQUEST file {} not found on server".format(dst_path))
-        elif r.status_code == 200:
+        elif r.status_code == requests.codes.ok:
             self.snapshot_manager.update_snapshot_delete({"src_path": dst_path})
             self.snapshot_manager.save_snapshot(r.text)
 
@@ -202,9 +202,9 @@ class ServerCommunicator(object):
         }
 
         r = self._try_request(requests.post, success_log, error_log, **request)
-        if r.status_code == 404:
+        if r.status_code == requests.codes.not_found:
             logger.error("MOVE REQUEST file {} not found on server".format(src_path))
-        elif r.status_code == 201:
+        elif r.status_code == requests.codes.created:
             self.snapshot_manager.update_snapshot_move({"src_path": src_path, "dst_path": dst_path})
             self.snapshot_manager.save_snapshot(r.text)
 
@@ -224,9 +224,9 @@ class ServerCommunicator(object):
             }
         }
         r = self._try_request(requests.post, success_log, error_log, **request)
-        if r.status_code == 404:
+        if r.status_code == requests.codes.not_found:
             logger.error("COPY REQUEST file {} not found on server".format(src_path))
-        elif r.status_code == 201:
+        elif r.status_code == requests.codes.created:
             self.snapshot_manager.update_snapshot_copy({"src_path": src_path, "dst_path": dst_path})
             self.snapshot_manager.save_snapshot(r.text)
 
@@ -252,12 +252,12 @@ class ServerCommunicator(object):
 
         self.msg["result"] = response.status_code
 
-        if response.status_code == 201:
+        if response.status_code == requests.codes.created:
             self.msg["details"].append(
                 "Check your email for the activation code")
             logger.info("user: {} psw: {} created!".format(username, password))
             self.write_user_data(param["user"], param["psw"], activate=False)
-        elif response.status_code == 409:
+        elif response.status_code == requests.codes.conflict:
             logger.warning("user: {} psw: {} already exists!".format(username, password))
             self.msg["details"].append("User already exists")
         else:
@@ -284,9 +284,9 @@ class ServerCommunicator(object):
 
         self.msg["result"] = response.status_code
 
-        if response.status_code == 200:
+        if response.status_code == requests.codes.ok:
             self.msg["details"].append("User deleted")
-        elif response.status_code == 401:
+        elif response.status_code == requests.codes.unauthorized:
             self.msg["details"].append("Access denied")
         else:
             self.msg["details"].append("Bad request")
@@ -313,10 +313,10 @@ class ServerCommunicator(object):
 
         self.msg["result"] = response.status_code
 
-        if response.status_code == 201:
+        if response.status_code == requests.codes.created:
             self.write_user_data(activate=True)
             self.msg["details"].append("You have now entered RawBox")
-        elif response.status_code == 404:
+        elif response.status_code == requests.codes.not_found:
             self.msg["details"].append("User not found")
         else:
             self.msg["details"].append("Bad request")
