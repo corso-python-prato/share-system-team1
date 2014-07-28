@@ -968,12 +968,10 @@ def main():
     while not user_exists:
         asyncore.poll(timeout=1.0)
         config, user_exists = load_config()
-    print config
-    server_com = ServerCommunicator(
-        server_url=config['server_url'],
-        username=config['username'],
-        password=config['password'],
-        snapshot_manager=snapshot_manager)
+
+    server_com.username = config['username']
+    server_com.password = config['password']
+    server_com.auth = HTTPBasicAuth(server_com.username, server_com.password)
 
     event_handler = DirectoryEventHandler(server_com, snapshot_manager)
     file_system_op = FileSystemOperator(event_handler, server_com, snapshot_manager)
