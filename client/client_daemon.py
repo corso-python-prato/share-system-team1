@@ -77,7 +77,6 @@ class ServerCommunicator(object):
 
     def _try_request(self, callback, success='', error='', retry_delay=2, *args, **kwargs):
         """ try a request until it's a success """
-        #import pdb; pdb.set_trace()
         while True:
             try:
                 request_result = callback(
@@ -355,7 +354,7 @@ class ServerCommunicator(object):
 
         return self.msg
 
-    def get_shares_list(self, param=None):
+    def get_shares_list(self):
         self.msg["details"] = []
         error_log = "List shares error"
         success_log = "List shares downloaded!"
@@ -365,8 +364,13 @@ class ServerCommunicator(object):
 
         self.msg["result"] = response.status_code
         if response.status_code != 401:
-            my_shares = response.json()
-            self.msg["details"].append("Shares list downloaded")
+            try:
+                my_shares = response.json()
+                self.msg["details"].append("Shares list downloaded")
+                res = "".join("\nList of shares\n", my_shares)
+                self.msg["details"].append(res)
+            except ValueError:
+                self.msg["details"].append("Shares not found")
         else:
             self.msg["details"].append("Unauthorized access")
 

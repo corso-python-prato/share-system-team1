@@ -145,6 +145,9 @@ class ServerCommunicatorTest(unittest.TestCase):
             httpretty.POST,
             'http://127.0.0.1:5000/API/v1/actions/copy')
         httpretty.register_uri(
+            httpretty.GET,
+            'http://127.0.0.1:5000/API/v1/shares/')
+        httpretty.register_uri(
             httpretty.POST,
             'http://127.0.0.1:5000/API/v1/Users/usernameFarlocco',
             responses=[
@@ -565,6 +568,12 @@ class ServerCommunicatorTest(unittest.TestCase):
         self.server_comm._try_request = my_try_request
         self.server_comm.synchronize("mock")
         self.assertEqual(executer.status, True)
+
+    def test_get_shares_list(self):
+        msg1 = self.server_comm.get_shares_list()
+        self.assertEqual(msg1["result"], 200)
+        self.assertIn(msg1["details"][0], ["Shares not found", "Shares list downloaded"])
+
 
 
 class FileSystemOperatorTest(unittest.TestCase):
