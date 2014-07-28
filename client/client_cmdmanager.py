@@ -20,6 +20,16 @@ def take_input(message, password=False):
         return getpass.getpass(message)
 
 
+def take_valid_username(username=None):
+    if not username:
+        username = take_input('insert your email: ')
+    email_regex = re.compile('[^@]+@[^@]+\.[^@]+')
+    while not email_regex.match(username):
+        Message('WARNING', 'invalid email')
+        username = take_input('insert your email: ')
+    return username
+
+
 class RawBoxExecuter(object):
 
     def __init__(self, comm_sock):
@@ -29,13 +39,7 @@ class RawBoxExecuter(object):
         """ create user if not exists """
         command_type = 'create_user'
 
-        if not username:
-            username = take_input('insert your email: ')
-        email_regex = re.compile('[^@]+@[^@]+\.[^@]+')
-        while not email_regex.match(username):
-            Message('WARNING', 'invalid email')
-            username = take_input('insert your email: ')
-
+        username = take_valid_username(username)
         password = take_input('insert your password: ', password=True)
         rpt_password = take_input('Repeat your password: ', password=True)
         while password != rpt_password:
@@ -55,13 +59,7 @@ class RawBoxExecuter(object):
         """ activate user previously created """
         command_type = 'activate_user'
 
-        if not username:
-            username = take_input('insert your email: ')
-        email_regex = re.compile('[^@]+@[^@]+\.[^@]+')
-        while not email_regex.match(username):
-            Message('WARNING', 'invalid email')
-            username = take_input('insert your email: ')
-
+        username = take_valid_username(username)
         if not code:
             code = take_input('insert your code: ')
         while len(code) != 32:
@@ -80,12 +78,7 @@ class RawBoxExecuter(object):
         """ delete user if is logged """
         command_type = 'delete_user'
 
-        if not username:
-            username = take_input('insert your email: ')
-        email_regex = re.compile('[^@]+@[^@]+\.[^@]+')
-        while not email_regex.match(username):
-            Message('WARNING', 'invalid email')
-            username = take_input('insert your email: ')
+        username = take_valid_username(username)
         param = {
             'user': username
         }
