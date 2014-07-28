@@ -115,7 +115,7 @@ class ServerCommunicatorTest(unittest.TestCase):
                 self.copy = body
 
         class _try_request(object):
-            status_code = 200
+            status_code = requests.codes.ok
             text = 'timestamp'
 
             def __init__(self, *args, **kwargs):
@@ -148,9 +148,9 @@ class ServerCommunicatorTest(unittest.TestCase):
             httpretty.POST,
             'http://127.0.0.1:5000/API/v1/Users/usernameFarlocco',
             responses=[
-                httpretty.Response(body='{}', status=201),
-                httpretty.Response(body='{}', status=409),
-                httpretty.Response(body='{"something wrong"}', status=400)
+                httpretty.Response(body='{}', status=requests.codes.created),
+                httpretty.Response(body='{}', status=requests.codes.conflict),
+                httpretty.Response(body='{"something wrong"}', status=requests.codes.bad_request)
             ])
         httpretty.register_uri(httpretty.GET,
             'http://127.0.0.1:5000/API/v1/files',
@@ -167,15 +167,15 @@ class ServerCommunicatorTest(unittest.TestCase):
         )
         httpretty.register_uri(httpretty.DELETE, 'http://127.0.0.1:5000/API/v1/Users/usernameFarlocco',
             responses=[
-                httpretty.Response(body='{}',status=200),
-                httpretty.Response(body='{}',status=401),
-                httpretty.Response(body='{}',status=400)
+                httpretty.Response(body='{}', status=requests.codes.ok),
+                httpretty.Response(body='{}', status=requests.codes.unauthorized),
+                httpretty.Response(body='{}', status=requests.codes.bad_request)
             ])
         httpretty.register_uri(httpretty.PUT, 'http://127.0.0.1:5000/API/v1/Users/usernameFarlocco',
             responses=[
-                httpretty.Response(body='{}',status=201),
-                httpretty.Response(body='{}',status=404),
-                httpretty.Response(body='{}',status=400)
+                httpretty.Response(body='{}', status=requests.codes.created),
+                httpretty.Response(body='{}', status=requests.codes.not_found),
+                httpretty.Response(body='{}', status=requests.codes.bad_request)
             ])
 
         self.dir = "/tmp/home/test_rawbox/folder"
@@ -212,7 +212,7 @@ class ServerCommunicatorTest(unittest.TestCase):
         httpretty.disable()
         httpretty.reset()
         os.remove(self.TEST_CONFIG_FILE)
-    
+
     def test_write_user_data(self):
         self.server_comm.write_user_data(self.username, self.password, activate=False)
         self.mock_config_ini.read(self.TEST_CONFIG_FILE)
@@ -227,7 +227,7 @@ class ServerCommunicatorTest(unittest.TestCase):
 
     def test_try_request(self):
         class Callback(object):
-            status_code = 200
+            status_code = requests.codes.ok
             exc = False
 
             def __init__(self, auth, *args, **kwargs):
@@ -241,15 +241,15 @@ class ServerCommunicatorTest(unittest.TestCase):
         self.assertEqual(
             result.auth,
             self.server_comm.auth)
-        self.assertEqual(result.status_code, 200)
+        self.assertEqual(result.status_code, requests.codes.ok)
 
         #Case: error 401
-        Callback.status_code = 401
+        Callback.status_code = requests.codes.unauthorized
         result = self.server_comm._try_request(Callback)
         self.assertEqual(
             result.auth,
             self.server_comm.auth)
-        self.assertEqual(result.status_code, 401)
+        self.assertEqual(result.status_code, requests.codes.unauthorized)
 
         #Case: request exception
         Callback.exc = True
@@ -257,7 +257,7 @@ class ServerCommunicatorTest(unittest.TestCase):
         self.assertEqual(
             result.auth,
             self.server_comm.auth)
-        self.assertEqual(result.status_code, 401)
+        self.assertEqual(result.status_code, requests.codes.unauthorized)
 
     def test_setexecuter(self):
         executer = "executer"
@@ -334,11 +334,11 @@ class ServerCommunicatorTest(unittest.TestCase):
         self.server_comm._try_request = self.mock_try_request
 
         #Case: 409 status
-        self.server_comm._try_request.status_code = 409
+        self.server_comm._try_request.status_code = requests.codes.conflict
         self.server_comm.upload_file(self.file_path, put_file)
 
         #Case: 201 status put_file == False
-        self.server_comm._try_request.status_code = 201
+        self.server_comm._try_request.status_code = requests.codes.created
         self.server_comm._try_request.text = 'upload'
         self.server_comm.upload_file(self.file_path, put_file)
         self.assertEqual(
@@ -350,7 +350,7 @@ class ServerCommunicatorTest(unittest.TestCase):
 
         #Case: 201 status put_file == True
         put_file = True
-        self.server_comm._try_request.status_code = 201
+        self.server_comm._try_request.status_code = requests.codes.created
         self.server_comm._try_request.text = 'update'
         self.server_comm.upload_file(self.file_path, put_file)
         self.assertEqual(
@@ -384,7 +384,7 @@ class ServerCommunicatorTest(unittest.TestCase):
         def _try_request(self, *args, **kwargs):
             class Response(object):
                 def __init__(self):
-                    self.status_code = 400
+                    self.status_code = requests.codes.bad_request
             response = Response()
             return response
 
@@ -418,7 +418,7 @@ class ServerCommunicatorTest(unittest.TestCase):
         self.server_comm._try_request = self.mock_try_request
 
         #Case: 404 error
-        self.server_comm._try_request.status_code = 404
+        self.server_comm._try_request.status_code = requests.codes.not_found
         self.server_comm.delete_file(self.file_path)
         self.assertFalse(self.server_comm.snapshot_manager.delete)
 
@@ -442,11 +442,11 @@ class ServerCommunicatorTest(unittest.TestCase):
         self.server_comm._try_request = self.mock_try_request
 
         #Case: 404 error
-        self.server_comm._try_request.status_code = 404
+        self.server_comm._try_request.status_code = requests.codes.not_found
         self.server_comm.move_file(self.file_path, self.another_path)
 
         #Case: 201 status
-        self.server_comm._try_request.status_code = 201
+        self.server_comm._try_request.status_code = requests.codes.created
         self.server_comm.move_file(self.file_path, self.another_path)
         self.assertEqual(
             self.server_comm.snapshot_manager.move,
@@ -475,11 +475,11 @@ class ServerCommunicatorTest(unittest.TestCase):
         self.server_comm._try_request = self.mock_try_request
 
         #Case: 404 error
-        self.server_comm._try_request.status_code = 404
+        self.server_comm._try_request.status_code = requests.codes.not_found
         self.server_comm.copy_file(self.file_path, self.another_path)
 
         #Case: 201 status
-        self.server_comm._try_request.status_code = 201
+        self.server_comm._try_request.status_code = requests.codes.created
         self.server_comm.copy_file(self.file_path, self.another_path)
         self.assertEqual(
             self.server_comm.snapshot_manager.copy,
@@ -490,38 +490,38 @@ class ServerCommunicatorTest(unittest.TestCase):
 
     def test_create_user(self):
         msg1 = self.server_comm.create_user({"user": self.username, "psw": self.password})
-        self.assertEqual(msg1["result"], 201)
+        self.assertEqual(msg1["result"], requests.codes.created)
         self.assertEqual(msg1["details"][0], "Check your email for the activation code")
         msg2 = self.server_comm.create_user({"user": self.username, "psw": self.password})
-        self.assertEqual(msg2["result"], 409)
+        self.assertEqual(msg2["result"], requests.codes.conflict)
         self.assertEqual(msg2["details"][0], "User already exists")
         msg3 = self.server_comm.create_user({"user": self.username, "psw": self.password})
-        self.assertEqual(msg3["result"], 400)
+        self.assertEqual(msg3["result"], requests.codes.bad_request)
         self.assertEqual(msg3["details"][0], "Bad request")
 
     def test_delete_user(self):
         msg1 = self.server_comm.delete_user({"user": self.username, "psw": self.password})
-        self.assertEqual(msg1["result"], 200)
+        self.assertEqual(msg1["result"], requests.codes.ok)
         self.assertEqual(msg1["details"][0], "User deleted")
         msg2 = self.server_comm.delete_user({"user": self.username, "psw": self.password})
-        self.assertEqual(msg2["result"], 401)
+        self.assertEqual(msg2["result"], requests.codes.unauthorized)
         self.assertEqual(msg2["details"][0], "Access denied")
         msg3 = self.server_comm.delete_user({"user": self.username, "psw": self.password})
-        self.assertEqual(msg3["result"], 400)
+        self.assertEqual(msg3["result"], requests.codes.bad_request)
         self.assertEqual(msg3["details"][0], "Bad request")
 
     def test_activate_user(self):
         code = "qwerty12345"
         msg1 = self.server_comm.activate_user({"user": self.username, "code": code})
-        self.assertEqual(msg1["result"], 201)
+        self.assertEqual(msg1["result"], requests.codes.created)
         self.assertEqual(msg1["details"][0], "You have now entered RawBox")
         msg2 = self.server_comm.activate_user({"user": self.username, "code": code})
-        self.assertEqual(msg2["result"], 404)
+        self.assertEqual(msg2["result"], requests.codes.not_found)
         self.assertEqual(msg2["details"][0], "User not found")
         msg3 = self.server_comm.activate_user({"user": self.username, "code": code})
-        self.assertEqual(msg3["result"], 400)
+        self.assertEqual(msg3["result"], requests.codes.bad_request)
         self.assertEqual(msg3["details"][0], "Bad request")
-    
+
     def test_syncronize(self):
         def my_try_request(*args, **kwargs):
             class obj (object):
