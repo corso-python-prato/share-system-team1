@@ -689,23 +689,30 @@ class Shares(Resource_with_auth):
     def get(self):
         owner = User.get_user(auth.username())
         usr = owner.username
-        shares = {}
+        my_shares = []
+        other_shares = {}
         for path, bens in User.shared_resources.iteritems():
             path =  "/".join((path.split("/")[1:]))
             if usr in bens:
                 if bens[0] == usr:
                     # the user shares the path
-                    if "my_shares" not in shares:
-                        shares["my_shares"] = [path]
-                    else:
-                        shares["my_shares"].append(path)
+                    # if "my_shares" not in shares:
+                    #     shares["my_shares"] = [path]
+                    # else:
+                    #     shares["my_shares"].append(path)
+                    my_shares.append(path)
                 else:
                     #the user is a beneficiary
                     path = "shares/{}/{}".format(bens[0], path)
-                    if bens[0] not in shares:
-                        shares[bens[0]] = [path]
+                    if bens[0] not in other_shares:
+                        other_shares[bens[0]] = [path]
                     else:
-                        shares[bens[0]].append(path)
+                        other_shares[bens[0]].append(path)
+        shares = {
+            "my_shares": my_shares,
+            "other_shares": other_shares
+        }
+
         return shares, HTTP_OK
 
 

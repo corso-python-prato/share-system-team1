@@ -992,7 +992,7 @@ class TestShare(unittest.TestCase):
         )
         self.assertEqual(received.status_code, 200)
         #check that the beneficiary doesn't have a list of paths
-        self.assertNotIn("my_shares", received.get_data())
+        self.assertFalse(json.loads(received.get_data())["my_shares"])
         #get the shares list of the owner
         received = self.tc.get(
             "{}shares/".format(
@@ -1002,7 +1002,7 @@ class TestShare(unittest.TestCase):
         )
         self.assertEqual(received.status_code, 200)
         #check that the owner has the personal shares in the list
-        self.assertIn("my_shares", received.get_data())
+        self.assertTrue(json.loads(received.get_data())["my_shares"])
 
 
 
