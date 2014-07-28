@@ -19,6 +19,11 @@ TEST_DIRECTORY = "test_users_dirs/"
 TEST_USER_DATA = "test_user_data.json"
 TEST_PENDING_USERS = "test_user_pending.tmp"
 
+TEST_ROOT = os.path.dirname(__file__)
+TEST_DIRECTORY = os.path.join(TEST_ROOT, TEST_DIRECTORY)
+TEST_USER_DATA = os.path.join(TEST_ROOT, TEST_USER_DATA)
+TEST_PENDING_USERS = os.path.join(TEST_ROOT, TEST_PENDING_USERS)
+
 
 def server_setup(root):
     server.SERVER_ROOT = root
