@@ -3,15 +3,16 @@
 
 from passlib.hash import sha256_crypt
 from base64 import b64encode
+import ConfigParser
 import tempfile
 import unittest
 import hashlib
-import server
 import shutil
 import json
 import time
 import os
 
+import server
 from server import _API_PREFIX
 
 
@@ -58,6 +59,18 @@ def get_data(file_object):
     return {"file_content": file_object, 'file_md5': file_md5}
 
 
+def mock_mail_init():
+    app = server.Flask(__name__)
+    app.config.update(
+        MAIL_SERVER="smtp_address",
+        MAIL_PORT="smtp_port",
+        MAIL_USERNAME="smtp_username",
+        MAIL_PASSWORD="smtp_password",
+        TESTING=True
+    )
+    return server.Mail(app)
+
+
 class TestSetupServer(unittest.TestCase):
     other_directory = os.path.join(
         os.path.dirname(__file__),
@@ -98,6 +111,9 @@ class TestFilesAPI(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        server.app.config.update(TESTING=True)
+        server.app.testing = True
+
         cls.demo_file1 = create_temporary_file()
         cls.demo_file2 = create_temporary_file("ps, something new.")
 
@@ -187,7 +203,6 @@ class TestFilesAPI(unittest.TestCase):
 
         # restore
         os.remove(uploaded_file)
-
 
     def test_fail_auth_get(self):
         # fail authentication
@@ -418,6 +433,9 @@ class TestActionsAPI(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        server.app.config.update(TESTING=True)
+        server.app.testing = True
+
         cls.demo_file1 = create_temporary_file()
         cls.demo_file2 = create_temporary_file("ps, something new.")
 
@@ -624,6 +642,13 @@ class TestActionsAPI(unittest.TestCase):
         )
         self.assertEqual(received.status_code, 404)
 
+    def test_invalid_command(self):
+        received = self.tc.post(
+            "{}actions/{}".format(_API_PREFIX, "not_a_command"),
+            headers=self.headers
+        )
+        self.assertEqual(received.status_code, 404)
+
 
 class TestUser(unittest.TestCase):
     root = os.path.join(
@@ -632,6 +657,9 @@ class TestUser(unittest.TestCase):
     )
 
     def setUp(self):
+        server.app.config.update(TESTING=True)
+        server.app.testing = True
+
         server_setup(TestUser.root)
 
     def tearDown(self):
@@ -650,6 +678,9 @@ class TestShare(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        server.app.config.update(TESTING=True)
+        server.app.testing = True
+
         cls.demo_file1 = create_temporary_file()
         cls.demo_file2 = create_temporary_file("ps, something new.")
 
@@ -980,39 +1011,183 @@ class TestShare(unittest.TestCase):
         )
 
 
-class EmailTest(unittest.TestCase):
-
-    def mock_mail_init(self):
-        return self.mail
+class TestServerInternalErrors(unittest.TestCase):
+    root = os.path.join(
+        os.path.dirname(__file__),
+        "demo_test/internal_errors"
+    )
+    user_data = os.path.join(root, "user_data.json")
+    user_dirs = os.path.join(root, "user_dirs")
 
     def setUp(self):
-        server.mail_config_init = self.mock_mail_init
-        self.app = server.Flask(__name__)
-        self.app.config.update(
-            MAIL_SERVER="smtp_address",
-            MAIL_PORT="smtp_port",
-            MAIL_USERNAME="smtp_username",
-            MAIL_PASSWORD="smtp_password",
-            TESTING=True
-        )
-        self.mail = server.Mail(self.app)
+        server.app.config.update(TESTING=True)
+        server.app.testing = True
+        # Note: it's possible to make assertRaises on internal server
+        # exceptions from the test_client only if app testing is True.
+
+        server_setup(TestServerInternalErrors.root)
         self.tc = server.app.test_client()
 
+    def tearDown(self):
+        cls = TestServerInternalErrors
+        try:
+            shutil.rmtree(cls.user_dirs)
+        except OSError:
+            pass
+        try:
+            os.remove(cls.user_data)
+        except OSError:
+            pass
+
+    def test_corrupted_users_data_json(self):
+        """
+        If the user data file is corrupted, it will be raised a ValueError.
+        """
+        shutil.copy(
+            os.path.join(
+                TestServerInternalErrors.root,
+                "corrupted_user_data.json"
+            ),
+            self.user_data
+        )
+        with self.assertRaises(ValueError):
+            server_setup(TestServerInternalErrors.root)
+
+    def setup_inconsistent_paths(self):
+        # If a path exists in some user's paths dictionary, but it's not in the
+        # filesystem, when somebody will try to access it, it will be raised an
+        # IOError and it will be returned a status code 500.
+        cls = TestServerInternalErrors
+
+        # setup
+        shutil.copy(
+            os.path.join(cls.root, "demo_user_data.json"),
+            cls.user_data
+        )
+        server_setup(cls.root)
+
+    def test_download_from_a_non_existent_path(self):
+        """
+        What happens when paths dictionary is inconsistent during download.
+        """
+        owner_headers = make_headers("Emilio@me.it", "password")
+        owner_filepath = "ciao.txt"
+        self.setup_inconsistent_paths()
+
+        def try_to_download():
+            return self.tc.get(
+                "{}files/{}".format(_API_PREFIX, owner_filepath),
+                headers=owner_headers
+            )
+
+        # check IOError
+        with self.assertRaises(IOError):
+            try_to_download()
+
+        # check service code
+        server.app.testing = False
+        received = try_to_download()
+        self.assertEqual(received.status_code, 500)
+        server.app.testing = True
+
+    def test_access_to_non_existent_server_path(self):
+        """
+        What happens when paths dictionary is inconsistent during copy or move.
+        """
+        owner_headers = make_headers("Emilio@me.it", "password")
+        owner_filepath = "ciao.txt"
+        self.setup_inconsistent_paths()
+
+        def try_to_transfer(action):
+            return self.tc.post(
+                "{}actions/{}".format(_API_PREFIX, action),
+                data={
+                    "file_src": owner_filepath,
+                    "file_dest": "transferred.file"
+                },
+                headers=owner_headers
+            )
+
+        # check IOError
+        for action in ["move", "copy"]:
+            with self.assertRaises(IOError):
+                try_to_transfer(action)
+
+        # check service code
+        server.app.testing = False
+        for action in ["move", "copy"]:
+            received = try_to_transfer(action)
+            self.assertEqual(received.status_code, 500)
+        server.app.testing = True
+
+    def test_missing_email_settings_ini(self):
+        """
+        If email_settings.ini is missing it will be raised a NoSectionError.
+        """
+        # setup
+        bak = server.EMAIL_SETTINGS_INI
+        server.EMAIL_SETTINGS_INI = "not_a_file"
+
+        # test
+        with self.assertRaises(ConfigParser.NoSectionError):
+            server.mail_config_init()
+
+        # tear down
+        server.EMAIL_SETTINGS_INI = bak
+
+    def test_corrupted_email_settings_ini(self):
+        """
+        If email_settings.ini is corrupted it will be raised a
+        ConfigParserError.
+        """
+        flag_dry = False
+        # setup
+        try:
+            shutil.copy(server.EMAIL_SETTINGS_INI, "email_ini.bak")
+        except IOError:
+            # probably running in Travis: there is not email_settings.ini
+            flag_dry = True
+            pass
+        open(server.EMAIL_SETTINGS_INI, "w").close()
+
+        # test
+        with self.assertRaises(ConfigParser.Error):
+            server.mail_config_init()
+
+        # tear down
+        if flag_dry:
+            os.remove(server.EMAIL_SETTINGS_INI)
+        else:
+            shutil.move("email_ini.bak", server.EMAIL_SETTINGS_INI)
+
+
+class EmailTest(unittest.TestCase):
+    email = "test@rawbox.com"
+    obj = "test"
+    content = "test content"
+    user = "user_mail@demo.it"
+    psw = "password_demo"
+    code = "5f8e441f01abc7b3e312917efb52cc12"  # os.urandom(16).encode('hex')
+
+    def setUp(self):
+        self.mail_init_bak = server.mail_config_init
+        server.mail_config_init = mock_mail_init
+
+        EmailTest.pending_users_bak = server.PENDING_USERS
         server.PENDING_USERS = TEST_PENDING_USERS
 
-        EmailTest.email = "test@rawbox.com"
-        EmailTest.obj = "test"
-        EmailTest.content = "test content"
+        self.mail = server.Mail(server.Flask(__name__))
+        self.tc = server.app.test_client()
 
-        EmailTest.user = "user_mail@demo.it"
-        EmailTest.psw = "password_demo"
-        EmailTest.code = "5f8e441f01abc7b3e312917efb52cc12"  # os.urandom(16).encode('hex')
         self.url = "".join((server._API_PREFIX, "Users/", EmailTest.user))
 
     def tearDown(self):
         server.User.users = {}
         if os.path.exists(TEST_PENDING_USERS):
             os.remove(TEST_PENDING_USERS)
+
+        server.mail_config_init = self.mail_init_bak
+        server.PENDING_USERS = EmailTest.pending_users_bak
 
     def test_mail_correct_data(self):
         with self.mail.record_messages() as outbox:
@@ -1030,7 +1205,7 @@ class EmailTest(unittest.TestCase):
             "psw": EmailTest.psw
         }
         with self.mail.record_messages() as outbox:
-            self.tc.post(self.url, data=data, headers=None)
+            self.tc.post(self.url, data=data)
             with open(server.PENDING_USERS, "r") as pending_file:
                 code = json.load(pending_file)[EmailTest.user]["code"]
                 self.assertEqual(outbox[0].body, code)
@@ -1043,6 +1218,10 @@ class UserActions(unittest.TestCase):
     MAIL_USERNAME = "smtp_username"
     MAIL_PASSWORD = "smtp_password"
     TESTING = True
+
+    user = "user_mail@demo.it"
+    psw = "$5$rounds=110000$9adcJL7bfKtZF/ii$p2vfrEbvs529hRMyQuW9LUIxiZvVKj8t62fB/7SZQSC"
+    code = "5f8e441f01abc7b3e312917efb52cc12"  # os.urandom(16).encode('hex')
 
     def inject_user(self, inject_dest, user, psw=None, code=None):
         underskin_user = {}
@@ -1073,7 +1252,12 @@ class UserActions(unittest.TestCase):
                 json.dump(underskin_user, tmp_file)
 
     def setUp(self):
+        self.mail_init_bak = server.mail_config_init
+        server.mail_config_init = mock_mail_init
+
         self.app = server.Flask(__name__)
+        self.mail = server.Mail(self.app)
+
         self.app.config.from_object(__name__)
         server.app.config.update(TESTING=True)
         self.tc = server.app.test_client()
@@ -1091,12 +1275,10 @@ class UserActions(unittest.TestCase):
         open(TEST_USER_DATA, "w").close()
         server.USERS_DATA = TEST_USER_DATA
 
-        UserActions.user = "user_mail@demo.it"
-        UserActions.psw = "password_demo"
-        UserActions.code = "5f8e441f01abc7b3e312917efb52cc12"  # os.urandom(16).encode('hex')
         self.url = "".join((server._API_PREFIX, "Users/", UserActions.user))
 
     def tearDown(self):
+        server.mail_config_init = self.mail_init_bak
         server.User.users = {}
         if os.path.exists(TEST_PENDING_USERS):
             os.remove(TEST_PENDING_USERS)
@@ -1113,7 +1295,7 @@ class UserActions(unittest.TestCase):
             "psw": UserActions.psw
         }
 
-        response = self.tc.post(self.url, data=data, headers=None)
+        response = self.tc.post(self.url, data=data)
         self.assertEqual(response.status_code, server.HTTP_CREATED)
 
         with open(server.PENDING_USERS, "r") as pending_file:
@@ -1132,25 +1314,25 @@ class UserActions(unittest.TestCase):
         data = {}
 
         self.inject_user(TEST_USER_DATA, UserActions.user, UserActions.psw)
-        response = self.tc.post(self.url, data=data, headers=None)
+        response = self.tc.post(self.url, data=data)
         self.assertEqual(response.status_code, server.HTTP_BAD_REQUEST)
 
-    def test_create_user_that_is_arleady_pending(self):
+    def test_create_user_that_is_already_pending(self):
         data = {
             "psw": UserActions.psw
         }
 
         self.inject_user(TEST_PENDING_USERS, UserActions.user, UserActions.psw)
-        response = self.tc.post(self.url, data=data, headers=None)
+        response = self.tc.post(self.url, data=data)
         self.assertEqual(response.status_code, server.HTTP_CONFLICT)
 
-    def test_create_user_that_is_arleady_active(self):
+    def test_create_user_that_is_already_active(self):
         data = {
             "psw": UserActions.psw
         }
 
         self.inject_user(TEST_USER_DATA, UserActions.user, UserActions.psw)
-        response = self.tc.post(self.url, data=data, headers=None)
+        response = self.tc.post(self.url, data=data)
         self.assertEqual(response.status_code, server.HTTP_CONFLICT)
 
     def test_activate_user(self):
@@ -1160,7 +1342,7 @@ class UserActions(unittest.TestCase):
         }
 
         self.inject_user(TEST_PENDING_USERS, UserActions.user, UserActions.psw, UserActions.code)
-        response = self.tc.put(self.url, data=data, headers=None)
+        response = self.tc.put(self.url, data=data)
         self.assertEqual(response.status_code, server.HTTP_CREATED)
 
     def test_activate_user_missing_code(self):
@@ -1168,16 +1350,16 @@ class UserActions(unittest.TestCase):
         data = {}
 
         self.inject_user(TEST_PENDING_USERS, UserActions.user, UserActions.psw)
-        response = self.tc.put(self.url, data=data, headers=None)
+        response = self.tc.put(self.url, data=data)
         self.assertEqual(response.status_code, server.HTTP_BAD_REQUEST)
 
-    def test_activate_user_that_is_arleady_active(self):
+    def test_activate_user_that_is_already_active(self):
         data = {
             "code": UserActions.code
         }
 
         self.inject_user(TEST_USER_DATA, UserActions.user, UserActions.psw, UserActions.code)
-        response = self.tc.put(self.url, data=data, headers=None)
+        response = self.tc.put(self.url, data=data)
         self.assertEqual(response.status_code, server.HTTP_CONFLICT)
 
     def test_activate_user_that_is_not_the_last_pending_user(self):
@@ -1190,13 +1372,40 @@ class UserActions(unittest.TestCase):
                          sha256_crypt.encrypt("fake_password"),
                          "this0is0a0fake0code0long32char00")
         self.inject_user(TEST_PENDING_USERS, UserActions.user, UserActions.psw, UserActions.code)
-        response = self.tc.put(self.url, data=data, headers=None)
+        response = self.tc.put(self.url, data=data)
         self.assertEqual(response.status_code, server.HTTP_CREATED)
         self.assertTrue(os.path.exists(TEST_PENDING_USERS))
 
-if __name__ == '__main__':
-    # TODO: these things, here, are ok for nose?
-    server.app.config.update(TESTING=True)
-    server.app.testing = True
+    def test_activate_user_whose_directory_already_present(self):
+        """
+        Check about a possible internal error.
+        If, activating a new user, when the User is really created, a directory
+        with his/her name is already present, it will be raised an OSError and
+        it will be returned a status code 500.
+        """
+        cls = UserActions
+        os.makedirs(os.path.join(server.USERS_DIRECTORIES, cls.user))
+        self.inject_user(TEST_PENDING_USERS, cls.user, cls.psw, cls.code)
+
+        def try_to_create_user():
+            received =  self.tc.put(
+                self.url,
+                data={"code": cls.code}
+            )
+            return received
+
+        # check if OSError is raised
+        server.app.testing = True
+        with self.assertRaises(OSError):
+            try_to_create_user()
+
+        # check if returns 500
+        server.app.testing = False
+        received = try_to_create_user()
+        self.assertEqual(received.status_code, 500)
+        server.app.testing = True
+
+
+if __name__ == "__main__":
     # make tests!
     unittest.main()
