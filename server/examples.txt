@@ -1,15 +1,13 @@
-#### GENERIC PAGES ####
-# welcome
-curl localhost:5000/
-
-# access to restricted area
-curl  localhost:5000/hidden_page -u UserName:password
-
-
 #### USER ACTIONS ####
-# examples of user creation
-(it's a POST request, as you have to do)
-curl --data "user=UserName&psw=password" localhost:5000/API/v1/create_user
+Note: please put the right email_settings.ini (you can find it in the Google Drive directory) in directory where server.py is.
+
+# user creation
+curl -X POST --data "psw=password" localhost:5000/API/v1/Users/youremail@email.com
+[you will receive a code in your email, copy it and proceed with activation]
+
+# user activation
+curl -X PUT --data "code=c3ff96c9c4dbea05ab3908e3a6a16154" localhost:5000/API/v1/Users/youremail@email.com
+
 
 # example of diff request
 curl localhost:5000/API/v1/files/ -u UserName:password
