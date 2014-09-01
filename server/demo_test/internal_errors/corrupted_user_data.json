@@ -1,0 +1,22 @@
+{
+    "users": {
+        "Ben1@me.too": {
+            "paths": {
+                "": [
+                    "demo_test/test_share/user_dirs/Ben1@me.too",
+                    false,
+                    1405081776.030658
+                ],
+                "my_file.txt": [
+                    "demo_test/test_share/user_dirs/Ben1@me.too/my_file.txt",
+                    "63ddb04460aab66acdd6101db6cd6ce7",
+                    1405076398.984682
+                ]
+            },
+            "psw": "$5$rounds=110000$7a1FtXsfwrFISw92$wJKPhrQA1MpO3FvAGEY9SrVE2ltDjt96zP/1CARXwS7",
+            "timestamp": 1405081776.030585
+        },
+        "Ben2@me.too": {
+            "paths": {
+                "": [
+
