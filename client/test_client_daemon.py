@@ -233,8 +233,9 @@ class ServerCommunicatorTest(unittest.TestCase):
 
     def test_try_request(self):
         class Callback(object):
-            status_code = 200
+            reason = 'error'
             exc = False
+            ok = True
 
             def __init__(self, auth, *args, **kwargs):
                 self.auth = auth
