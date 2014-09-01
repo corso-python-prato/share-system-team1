@@ -83,7 +83,7 @@ class ServerCommunicator(object):
                     auth=self.auth,
                     *args, **kwargs
                 )
-                if request.result.ok:
+                if request_result.ok:
                     logger.info(success)
                 else:
                     logger.error(request_result.reason)
