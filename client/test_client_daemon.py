@@ -248,23 +248,24 @@ class ServerCommunicatorTest(unittest.TestCase):
         self.assertEqual(
             result.auth,
             self.server_comm.auth)
-        self.assertEqual(result.status_code, 200)
+        self.assertEqual(result.ok, True)
 
-        #Case: error 401
-        Callback.status_code = 401
+        #Case: error 
+        Callback.ok = False
         result = self.server_comm._try_request(Callback)
         self.assertEqual(
             result.auth,
             self.server_comm.auth)
-        self.assertEqual(result.status_code, 401)
+        self.assertEqual(result.ok, False)
 
         #Case: request exception
         Callback.exc = True
+        Callback.ok = False
         result = self.server_comm._try_request(Callback)
         self.assertEqual(
             result.auth,
             self.server_comm.auth)
-        self.assertEqual(result.status_code, 401)
+        self.assertEqual(result.ok, False)
 
     def test_setexecuter(self):
         executer = "executer"
