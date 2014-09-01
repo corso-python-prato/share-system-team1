@@ -418,7 +418,7 @@ class UsersApi(Resource):
         """Delete the user who is making the request
         """
         current_username = auth.username()
-        current_user = User.get_user(current_username)
+        current_user = User.users[current_username]
         if current_username == username:
             current_user.delete_user(username)
             return "user deleted", HTTP_OK
@@ -671,7 +671,7 @@ class Shares(Resource_with_auth):
             return self._remove_share(owner, server_path, client_path)
 
     def get(self):
-        owner = User.get_user(auth.username())
+        owner = User.users[auth.username()]
         usr = owner.username
         my_shares = []
         other_shares = {}
