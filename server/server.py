@@ -696,10 +696,6 @@ class Shares(Resource_with_auth):
             if usr in bens:
                 if bens[0] == usr:
                     # the user shares the path
-                    # if "my_shares" not in shares:
-                    #     shares["my_shares"] = [path]
-                    # else:
-                    #     shares["my_shares"].append(path)
                     my_shares.append(path)
                 else:
                     #the user is a beneficiary
