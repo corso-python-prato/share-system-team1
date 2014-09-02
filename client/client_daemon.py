@@ -384,7 +384,7 @@ class ServerCommunicator(object):
         """Remove all the share"""
         self.msg["details"] = []
         request = {
-            "url" : "{}/share/{}".format(self.server_url,
+            "url" : "{}/shares/{}".format(self.server_url,
                 param["path"]),
             "data" : {}
         }
@@ -408,7 +408,7 @@ class ServerCommunicator(object):
         """Remove user from share"""
         self.msg["details"] = []
         request = {
-            "url" : "{}/share/{}/{}".format(self.server_url,
+            "url" : "{}/shares/{}/{}".format(self.server_url,
                 param["path"], param["ben"]),
             "data" : {}
         }
