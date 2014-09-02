@@ -722,12 +722,27 @@ class TestShare(unittest.TestCase):
         )
         self.assertEqual(received.status_code, 400)
 
+        # check if it aborts, when the beneficiary is the owner
+        received = self.tc.post(
+            "{}shares/{}/{}".format(_API_PREFIX, "ciao.txt", self.owner),
+            headers=self.owner_headers
+        )
+        self.assertEqual(received.status_code, 400)
+
         # share a file
         received = self.tc.post(
             "{}shares/{}/{}".format(_API_PREFIX, "ciao.txt", self.ben1),
             headers=self.owner_headers
         )
         self.assertEqual(received.status_code, 200)
+
+        # check if it aborts, when the resource is yet shared with that
+        # beneficiary
+        received = self.tc.post(
+            "{}shares/{}/{}".format(_API_PREFIX, "ciao.txt", self.ben1),
+            headers=self.owner_headers
+        )
+        self.assertEqual(received.status_code, 400)
 
         # share the subdir
         received = self.tc.post(

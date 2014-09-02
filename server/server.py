@@ -302,15 +302,19 @@ class User(object):
         User.save_users()
 
     def add_share(self, client_path, beneficiary):
+        if self.username == beneficiary:
+            return "You can not share things with yourself."
+
         try:
             server_path = self.paths[client_path][0]
             ben = User.users[beneficiary]
         except KeyError:
-            # invalid client_path or the beneficiary is not an user
-            return False
+            return "Invalid client_path or the beneficiary is not an user"
 
         if server_path not in User.shared_resources:
             User.shared_resources[server_path] = [self.username, beneficiary]
+        elif beneficiary in User.shared_resources[server_path]:
+            return "Resource yet shared with that beneficiary"
         else:
             User.shared_resources[server_path].append(beneficiary)
 
@@ -613,8 +617,9 @@ class Shares(Resource):
     def post(self, client_path, beneficiary):
         owner = User.users[auth.username()]
 
-        if not owner.add_share(client_path, beneficiary):
-            abort(HTTP_BAD_REQUEST)     # TODO: choice the code
+        result = owner.add_share(client_path, beneficiary)
+        if result is not True:
+            return result, HTTP_BAD_REQUEST
         else:
             return HTTP_OK              # TODO: timestamp is needed here?
 
