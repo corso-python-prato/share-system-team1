@@ -183,17 +183,17 @@ class ServerCommunicatorTest(unittest.TestCase):
                 httpretty.Response(body='{}',status=404),
                 httpretty.Response(body='{}',status=400)
             ])
-        httpretty.register_uri(httpretty.POST, 'http://127.0.0.1:5000/API/v1/share/path_to_share/beneficiary',
+        httpretty.register_uri(httpretty.POST, 'http://127.0.0.1:5000/API/v1/shares/path_to_share/beneficiary',
             responses=[
                 httpretty.Response(body='{}',status=201),
                 httpretty.Response(body='{}',status=400)
             ])
-        httpretty.register_uri(httpretty.DELETE, 'http://127.0.0.1:5000/API/v1/share/shared_path',
+        httpretty.register_uri(httpretty.DELETE, 'http://127.0.0.1:5000/API/v1/shares/shared_path',
             responses=[
                 httpretty.Response(body='{}',status=200),
                 httpretty.Response(body='{}',status=400)
             ])
-        httpretty.register_uri(httpretty.DELETE, 'http://127.0.0.1:5000/API/v1/share/shared_path/beneficiary',
+        httpretty.register_uri(httpretty.DELETE, 'http://127.0.0.1:5000/API/v1/shares/shared_path/beneficiary',
             responses=[
                 httpretty.Response(body='{}',status=200),
                 httpretty.Response(body='{}',status=400)
