@@ -261,6 +261,19 @@ class RawBoxCmd(cmd.Cmd):
         except ValueError:
             Message("INFO", self.do_add_share.__doc__)
 
+    def do_remove_share(self, path):
+        """
+        remove a shared resource
+        Expected: remove_share <path>
+        (the path starts from the RawBox root)
+        
+        """
+        try:
+            if check_shareable_path(path):
+                self.executer._remove_share(path)
+
+        except ValueError:
+            Message("INFO", self.do_remove_share.__doc__)
     def do_q(self, line=None):
         """ exit from RawBox"""
         if take_input('[Exit] are you sure? y/n ') == 'y':
