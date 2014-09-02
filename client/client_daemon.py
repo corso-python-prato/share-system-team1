@@ -398,7 +398,7 @@ class ServerCommunicator(object):
         self.msg["result"] = response.status_code
 
         if response.status_code == 200:
-            self.msg["details"].append["Shares removed"]
+            self.msg["details"].append("Shares removed")
         elif response.status_code == 400:
             self.msg["details"].append("Error, shares not removed")
 
