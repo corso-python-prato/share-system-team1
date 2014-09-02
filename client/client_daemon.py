@@ -361,7 +361,7 @@ class ServerCommunicator(object):
         Share a resource with a beneficiary """
         self.msg["details"] = []
         request = {
-            "url": "{}/share/{}/{}".format(
+            "url": "{}/shares/{}/{}".format(
                 self.server_url, param["path"], param["ben"]
             )
         }
