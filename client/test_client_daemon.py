@@ -183,6 +183,21 @@ class ServerCommunicatorTest(unittest.TestCase):
                 httpretty.Response(body='{}',status=404),
                 httpretty.Response(body='{}',status=400)
             ])
+        httpretty.register_uri(httpretty.POST, 'http://127.0.0.1:5000/API/v1/share/path_to_share/beneficiary',
+            responses=[
+                httpretty.Response(body='{}',status=201),
+                httpretty.Response(body='{}',status=400)
+            ])
+        httpretty.register_uri(httpretty.DELETE, 'http://127.0.0.1:5000/API/v1/share/shared_path',
+            responses=[
+                httpretty.Response(body='{}',status=200),
+                httpretty.Response(body='{}',status=400)
+            ])
+        httpretty.register_uri(httpretty.DELETE, 'http://127.0.0.1:5000/API/v1/share/shared_path/beneficiary',
+            responses=[
+                httpretty.Response(body='{}',status=200),
+                httpretty.Response(body='{}',status=400)
+            ])
 
         self.dir = "/tmp/home/test_rawbox/folder"
         client_daemon.CONFIG_DIR_PATH = self.dir
@@ -540,7 +555,31 @@ class ServerCommunicatorTest(unittest.TestCase):
         msg3 = self.server_comm.activate_user({"user": self.username, "code": code})
         self.assertEqual(msg3["result"], 400)
         self.assertEqual(msg3["details"][0], "Bad request")
+
+    def test_add_share(self):
+        msg1 = self.server_comm.add_share({"path": "path_to_share","ben": "beneficiary" })
+        self.assertEqual(msg1["result"], 201)
+        self.assertEqual(msg1["details"][0], "Added share!")
+        msg2 = self.server_comm.add_share({"path": "path_to_share","ben": "beneficiary" })
+        self.assertEqual(msg2["result"], 400)
+        self.assertEqual(msg2["details"][0], "Bad request")
+
+    def test_remove_share(self):
+        msg1 = self.server_comm.remove_share({"path": "shared_path", "ben": "beneficiary"})
+        self.assertEqual(msg1["result"], 200)
+        self.assertEqual(msg1["details"][0], "Shares removed")
+        msg2 = self.server_comm.remove_share({"path": "shared_path", "ben": "beneficiary"})
+        self.assertEqual(msg2["result"], 400)
+        self.assertEqual(msg2["details"][0], "Error, shares not removed")
     
+    def test_remove_beneficiary(self):
+        msg1 = self.server_comm.remove_beneficiary({"path": "shared_path","ben": "beneficiary" })
+        self.assertEqual(msg1["result"], 200)
+        self.assertEqual(msg1["details"][0], "User removed from sahres")
+        msg2 = self.server_comm.remove_beneficiary({"path": "shared_path","ben": "beneficiary" })
+        self.assertEqual(msg2["result"], 400)
+        self.assertEqual(msg2["details"][0], "Cannot remove user from shares")
+
     def test_syncronize(self):
         def my_try_request(*args, **kwargs):
             class obj (object):
