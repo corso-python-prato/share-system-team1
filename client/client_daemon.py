@@ -417,16 +417,26 @@ class FileSystemOperator(object):
 def load_config():
 
     abs_path = os.path.dirname(os.path.abspath(__file__))
-    crash_log_path = os.path.join(abs_path, 'RawBox_crash_report.log')
+    crash_log_path = os.path.join(abs_path, "RawBox_crash_report.log")
     config_ini = ConfigParser.ConfigParser()
     config_ini.read(FILE_CONFIG)
+    dir_path = os.path.join(os.path.expanduser("~"), "RawBox")
     user_exists = True
     config = None
+    default_daemon_config = {
+        "server_url": "http://{}:{}/{}".format(SERVER_URL, SERVER_PORT, API_PREFIX),
+        "crash_repo_path": crash_log_path,
+        "stdout_log_level": "DEBUG",
+        "file_log_level": "ERROR",
+        "dir_path": dir_path,
+        "snapshot_file_path": "snapshot_file.json"
+    }
 
     try:
         config = {
             "host": config_ini.get('cmd', 'host'),
             "port": config_ini.get('cmd', 'port'),
+            "server_url": config_ini.get('daemon_communication', 'server_url'),
             "server_url": "http://{}:{}/{}".format(
                 config_ini.get('daemon_communication', 'server_url'),
                 config_ini.get('daemon_communication', 'server_port'),
@@ -440,16 +450,9 @@ def load_config():
             "snapshot_file_path": config_ini.get('daemon_communication', 'snapshot_file_path')
         }
     except ConfigParser.NoSectionError:
-        dir_path = os.path.join(os.path.expanduser("~"), "RawBox")
-        config_ini.add_section('daemon_communication')
-        config_ini.set('daemon_communication', 'snapshot_file_path', 'snapshot_file.json')
-        config_ini.set('daemon_communication', 'dir_path', dir_path)
-        config_ini.set('daemon_communication', 'server_url', SERVER_URL)
-        config_ini.set('daemon_communication', 'server_port', SERVER_PORT)
-        config_ini.set('daemon_communication', 'api_prefix', API_PREFIX)
-        config_ini.set('daemon_communication', 'crash_repo_path', crash_log_path)
-        config_ini.set('daemon_communication', 'stdout_log_level', "DEBUG")
-        config_ini.set('daemon_communication', 'file_log_level', "ERROR")
+        config_ini.add_section("daemon_communication")
+        for option, value in default_daemon_config.items():
+            config_ini.set("daemon_communication", option, value)
 
         snapshot_file = config_ini.get('daemon_communication', 'snapshot_file_path')
         config = {
