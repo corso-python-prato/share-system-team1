@@ -575,7 +575,7 @@ class ServerCommunicatorTest(unittest.TestCase):
     def test_remove_beneficiary(self):
         msg1 = self.server_comm.remove_beneficiary({"path": "shared_path","ben": "beneficiary" })
         self.assertEqual(msg1["result"], 200)
-        self.assertEqual(msg1["details"][0], "User removed from sahres")
+        self.assertEqual(msg1["details"][0], "User removed from shares")
         msg2 = self.server_comm.remove_beneficiary({"path": "shared_path","ben": "beneficiary" })
         self.assertEqual(msg2["result"], 400)
         self.assertEqual(msg2["details"][0], "Cannot remove user from shares")
