@@ -146,6 +146,21 @@ class RawBoxExecuter(object):
         self.comm_sock.send_message("add_share", param)
         self.print_response(self.comm_sock.read_message())
 
+    def _remove_share(self, path):
+        param = {
+            'path': path,
+        }
+        self.comm_sock.send_message("remove_share", param)
+        self.print_response(self.comm_sock.read_message())
+
+    def _remove_beneficiary(self, path, ben):
+        param = {
+            'path': path,
+            'ben': ben,
+        }
+        self.comm_sock.send_message("remove_beneficiary", param)
+        self.print_response(self.comm_sock.read_message())
+
     def print_response(self, response):
         ''' print response from the daemon.
             the response is a dictionary as:
@@ -229,22 +244,44 @@ class RawBoxCmd(cmd.Cmd):
     def do_add_share(self, line):
         """
         share a resource with a beneficiary.
-        Expected: add_share path beneficiary
+        Expected: add_share <path> <beneficiary>
         (the path starts from the RawBox root)
         """
         try:
             path, ben = line.split()
-            # check if the path is in the RawBox root
-            if len(path.split("/")) != 1:
-                Message(
-                    "WARNING",
-                    "A shared resource has to be in the RawBox root"
-                )
-
-            self.executer._add_share(path, ben)
+            if check_shareable_path(path):
+                self.executer._add_share(path, ben)
 
         except ValueError:
             Message("INFO", self.do_add_share.__doc__)
+
+    def do_remove_share(self, path):
+        """
+        remove a shared resource
+        Expected: remove_share <path>
+        (the path starts from the RawBox root)
+        
+        """
+        try:
+            if check_shareable_path(path):
+                self.executer._remove_share(path)
+
+        except ValueError:
+            Message("INFO", self.do_remove_share.__doc__)
+    
+    def do_remove_beneficiary(self, line):
+        """ Remove user from shares.
+            type: remove_beneficiary <path> <ben>
+        """
+        try:
+            path, ben = line.split()
+            if check_shareable_path(path):
+                if take_input(
+                        ('User {} will be removed from the share,'
+                        ' are you sure? y/n ').format(ben)) == 'y':
+                    self.executer._remove_beneficiary(path, ben)
+        except (IndexError, ValueError):
+            Message('INFO', self.do_remove_beneficiary.__doc__)
 
     def do_q(self, line=None):
         """ exit from RawBox"""
@@ -255,18 +292,6 @@ class RawBoxCmd(cmd.Cmd):
         """ exit from RawBox"""
         if take_input('[Exit] are you sure? y/n ') == 'y':
             return True
-
-    def do_remove_beneficiary(self, line):
-        """ Remove user from shares.
-            type: remove_beneficiary <user>
-        """
-        try:
-            if take_input('User {} will be removed, are you shure? y/n') == 'y':
-                command = line.spilt()[0]
-                user = line.spilt()[1]
-                self.executer._remove_beneficiary()
-        except IndexError:
-            Message('INFO', self.do_remove_beneficiary.__doc__)
 
 
 def main():
