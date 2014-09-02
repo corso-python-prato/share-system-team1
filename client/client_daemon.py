@@ -422,7 +422,7 @@ def load_config():
     config_ini.read(FILE_CONFIG)
     dir_path = os.path.join(os.path.expanduser("~"), "RawBox")
     user_exists = True
-    config = None
+    config = {}
     default_daemon_config = {
         "server_url": "http://{}:{}/{}".format(SERVER_URL, SERVER_PORT, API_PREFIX),
         "crash_repo_path": crash_log_path,
@@ -437,12 +437,6 @@ def load_config():
             "host": config_ini.get('cmd', 'host'),
             "port": config_ini.get('cmd', 'port'),
             "server_url": config_ini.get('daemon_communication', 'server_url'),
-            "server_url": "http://{}:{}/{}".format(
-                config_ini.get('daemon_communication', 'server_url'),
-                config_ini.get('daemon_communication', 'server_port'),
-                config_ini.get('daemon_communication', 'api_prefix'),
-            ),
-
             "crash_repo_path": config_ini.get('daemon_communication', 'crash_repo_path'),
             "stdout_log_level": config_ini.get('daemon_communication', 'stdout_log_level'),
             "file_log_level": config_ini.get('daemon_communication', 'file_log_level'),
@@ -454,26 +448,15 @@ def load_config():
         for option, value in default_daemon_config.items():
             config_ini.set("daemon_communication", option, value)
 
-        snapshot_file = config_ini.get('daemon_communication', 'snapshot_file_path')
-        config = {
-            "host": config_ini.get('cmd', 'host'),
-            "port": config_ini.get('cmd', 'port'),
-            "server_url": "http://{}:{}/{}".format(
-                config_ini.get('daemon_communication', 'server_url'),
-                config_ini.get('daemon_communication', 'server_port'),
-                config_ini.get('daemon_communication', 'api_prefix')
-            ),
-            "crash_repo_path": config_ini.get('daemon_communication', 'crash_repo_path'),
-            "stdout_log_level": config_ini.get('daemon_communication', 'stdout_log_level'),
-            "file_log_level": config_ini.get('daemon_communication', 'file_log_level'),
-            "dir_path": config_ini.get('daemon_communication', 'dir_path'),
-            "snapshot_file_path": snapshot_file
-        }
+        for section in config_ini.sections():
+            for option, value in config_ini.items(section):
+                    config.update({option: value})
+
         try:
             os.makedirs(dir_path)
         except OSError:
             pass
-        with open(snapshot_file, 'w') as snapshot:
+        with open(config["snapshot_file_path"], 'w') as snapshot:
             json.dump({"timestamp": 0, "snapshot": ""}, snapshot)
 
     try:
