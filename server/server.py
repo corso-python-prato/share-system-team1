@@ -12,6 +12,7 @@ import shutil
 import time
 import json
 import os
+import traceback
 
 
 HTTP_OK = 200
@@ -37,6 +38,21 @@ EMAIL_SETTINGS_INI = os.path.join(SERVER_ROOT, "email_settings.ini")
 parser = reqparse.RequestParser()
 parser.add_argument("task", type=str)
 
+
+def create_traceback_report(local_vars, traceback):
+    msg = ""
+    obj = "RawBox Server Error Dump"
+    msg+="--Traceback--\n\n"
+    msg+=str(traceback)
+    msg+="\n\n-------------\n\n"
+    msg+="--Local variables dump--\n\n"
+    for k,v in local_vars.iteritems():
+        msg+= "name:" + k + " "
+        msg+= "value:" + str(v) + " "
+        msg+= "type:" + str(type(v)) + " "
+        msg+="\n\n"
+
+    return obj, msg
 
 def to_md5(full_path=None, block_size=2 ** 20, file_object=False):
     """ if path is a file, return a md5;
@@ -88,7 +104,8 @@ class User(object):
         except IOError:
             # The json file is not present. It will be created a new structure
             # from scratch.
-            pass
+            obj, msg = create_traceback_report(locals(), traceback.format_exc())
+            send_mail("address_to_define", obj, msg)
         # If the json file is corrupted, it will be raised a ValueError here.
         # In that case, please remove the corrupted file.
         else:
@@ -264,6 +281,8 @@ class User(object):
                     os.rmdir(os.path.join(USERS_DIRECTORIES, server_subdir))
                 except OSError:
                     # the directory is not empty
+                    obj, msg = create_traceback_report(locals(), traceback.format_exc())
+                    send_mail("address_to_define", obj, msg)
                     break
                 else:
                     # step 2: remove from shared beneficiary's paths
