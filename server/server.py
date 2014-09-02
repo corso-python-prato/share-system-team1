@@ -418,7 +418,7 @@ class UsersApi(Resource):
         """Delete the user who is making the request
         """
         current_username = auth.username()
-        current_user = User.get_user(current_username)
+        current_user = User.users[current_username]
         if current_username == username:
             current_user.delete_user(username)
             return "user deleted", HTTP_OK
@@ -609,7 +609,7 @@ class Actions(Resource_with_auth):
             return abort(HTTP_NOT_FOUND)
 
 
-class Shares(Resource):
+class Shares(Resource_with_auth):
     def post(self, client_path, beneficiary):
         owner = User.users[auth.username()]
 
@@ -670,6 +670,31 @@ class Shares(Resource):
         else:
             return self._remove_share(owner, server_path, client_path)
 
+    def get(self):
+        owner = User.users[auth.username()]
+        usr = owner.username
+        my_shares = []
+        other_shares = {}
+        for path, bens in User.shared_resources.iteritems():
+            path =  "/".join((path.split("/")[1:]))
+            if usr in bens:
+                if bens[0] == usr:
+                    # the user shares the path
+                    my_shares.append(path)
+                else:
+                    #the user is a beneficiary
+                    path = "shares/{}/{}".format(bens[0], path)
+                    if bens[0] not in other_shares:
+                        other_shares[bens[0]] = [path]
+                    else:
+                        other_shares[bens[0]].append(path)
+        shares = {
+            "my_shares": my_shares,
+            "other_shares": other_shares
+        }
+
+        return shares, HTTP_OK
+
 
 def mail_config_init():
     config = ConfigParser.ConfigParser()
@@ -719,6 +744,7 @@ api.add_resource(
     "{}files/".format(_API_PREFIX))
 api.add_resource(
     Shares,
+    "{}shares/".format(_API_PREFIX),
     "{}shares/<path:client_path>".format(_API_PREFIX),
     "{}shares/<path:client_path>/<string:beneficiary>".format(_API_PREFIX))
 

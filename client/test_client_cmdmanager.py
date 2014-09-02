@@ -52,6 +52,9 @@ class MockExecuter(object):
     def _delete_user(self, username):
         RawBoxCmdTest.called = True
 
+    def _get_shares_list(self):
+        RawBoxCmdTest.called = True
+
 
 class RawBoxCmdTest(unittest.TestCase):
 
@@ -70,6 +73,10 @@ class RawBoxCmdTest(unittest.TestCase):
 
     def test_do_delete(self):
         self.rawbox_cmd.onecmd('delete pippo@pippa.it')
+        self.assertTrue(RawBoxCmdTest.called)
+
+    def test_do_get_shares_list(self):
+        self.rawbox_cmd.onecmd('get_shares_list')
         self.assertTrue(RawBoxCmdTest.called)
 
 
@@ -197,6 +204,7 @@ class TestRawBoxExecuter(unittest.TestCase):
         self.assertNotEquals(TestRawBoxExecuter.username, self.wrong_user2)
         self.assertNotEquals(TestRawBoxExecuter.username, self.wrong_user3)
         self.assertEquals(TestRawBoxExecuter.username, self.correct_user)
+
 
 if __name__ == '__main__':
     unittest.main()
