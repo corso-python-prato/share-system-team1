@@ -274,6 +274,21 @@ class RawBoxCmd(cmd.Cmd):
 
         except ValueError:
             Message("INFO", self.do_remove_share.__doc__)
+    
+    def do_remove_beneficiary(self, line):
+        """ Remove user from shares.
+            type: remove_beneficiary <path> <ben>
+        """
+        try:
+            path, ben = line.split()
+            if check_shareable_path(path):
+                if take_input(
+                        ('User {} will be removed from the share,'
+                        ' are you sure? y/n ').format(ben)) == 'y':
+                    self.executer._remove_beneficiary(path, ben)
+        except (IndexError, ValueError):
+            Message('INFO', self.do_remove_beneficiary.__doc__)
+
     def do_q(self, line=None):
         """ exit from RawBox"""
         if take_input('[Exit] are you sure? y/n ') == 'y':
