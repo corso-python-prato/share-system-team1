@@ -146,6 +146,12 @@ class RawBoxExecuter(object):
         self.comm_sock.send_message("add_share", param)
         self.print_response(self.comm_sock.read_message())
 
+    def _remove_share(self, path):
+        param = {
+            'path': path,
+        }
+        self.comm_sock.send_message("remove_share", param)
+        self.print_response(self.comm_sock.read_message())
     def print_response(self, response):
         ''' print response from the daemon.
             the response is a dictionary as:
