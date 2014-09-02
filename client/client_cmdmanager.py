@@ -249,14 +249,8 @@ class RawBoxCmd(cmd.Cmd):
         """
         try:
             path, ben = line.split()
-            # check if the path is in the RawBox root
-            if len(path.split("/")) != 1:
-                Message(
-                    "WARNING",
-                    "A shared resource has to be in the RawBox root"
-                )
-
-            self.executer._add_share(path, ben)
+            if check_shareable_path(path):
+                self.executer._add_share(path, ben)
 
         except ValueError:
             Message("INFO", self.do_add_share.__doc__)
