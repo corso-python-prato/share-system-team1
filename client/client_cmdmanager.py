@@ -244,7 +244,7 @@ class RawBoxCmd(cmd.Cmd):
     def do_add_share(self, line):
         """
         share a resource with a beneficiary.
-        Expected: add_share path beneficiary
+        Expected: add_share <path> <beneficiary>
         (the path starts from the RawBox root)
         """
         try:
