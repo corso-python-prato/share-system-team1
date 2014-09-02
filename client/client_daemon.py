@@ -389,7 +389,7 @@ class ServerCommunicator(object):
             "data" : {}
         }
 
-        success_log = "All shares removed"
+        success_log = "The resource is no more shared"
         error_log = "ERROR on removing all the shares"
 
         response = self._try_request(requests.delete, success_log,
