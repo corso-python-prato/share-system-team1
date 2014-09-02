@@ -368,8 +368,12 @@ class ServerCommunicator(object):
         
         success_log = "share added with {}!".format(param["ben"])
         error_log = "ERROR in adding a share with {}".format(param["ben"])
+
         
         r = self._try_request(requests.post, success_log, error_log, **request)
+
+        self.msg["result"] = r.status_code
+        
         if r.status_code == 400:
             self.msg["details"].append("Bad request")
         elif r.status_code == 201:
