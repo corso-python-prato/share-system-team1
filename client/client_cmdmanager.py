@@ -11,6 +11,8 @@ import re
 import os
 
 FILE_CONFIG = "config.ini"
+config = ConfigParser.ConfigParser()
+config.read(FILE_CONFIG)
 
 
 def take_input(message, password=False):
@@ -19,6 +21,26 @@ def take_input(message, password=False):
     else:
         return getpass.getpass(message)
 
+
+def check_shareable_path(path):
+    # check if the path is in the RawBox root
+    if len(path.split("/")) != 1:
+        Message(
+            "WARNING",
+            ("A shared resource has to be in the RawBox root."
+             "Please do not use '/'")
+        )
+        return False
+
+    # check if the resource exists
+    dir_path = config.get("daemon_communication", "dir_path")
+    if not os.path.exists(os.path.join(dir_path, path)):
+        Message(
+            "WARNING",
+            "The specified resource doesn't exist"
+        )
+        return False
+    return True
 
 class RawBoxExecuter(object):
 
@@ -253,8 +275,6 @@ def main():
     else:
         os.system('clear')
 
-    config = ConfigParser.ConfigParser()
-    config.read(FILE_CONFIG)
     host = config.get('cmd', 'host')
     port = config.get('cmd', 'port')
     comm_sock = CmdMessageClient(host, int(port))
