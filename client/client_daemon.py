@@ -233,7 +233,6 @@ class ServerCommunicator(object):
             self.snapshot_manager.save_snapshot(r.text)
 
     def create_user(self, param):
-
         self.msg["details"] = []
         error_log = "User creation error"
         success_log = "user created!"
@@ -250,7 +249,8 @@ class ServerCommunicator(object):
         }
 
         response = self._try_request(
-            requests.post, success_log, error_log, **request)
+            requests.post, success_log, error_log, **request
+        )
 
         self.msg["result"] = response.status_code
 
@@ -269,7 +269,6 @@ class ServerCommunicator(object):
         return self.msg
 
     def get_user(self, param):
-
         self.msg["details"] = []
         error_log = "cannot get user data"
         success_log = "user data retrived"
@@ -361,7 +360,7 @@ class ServerCommunicator(object):
         Share a resource with a beneficiary """
         self.msg["details"] = []
         request = {
-            "url": "{}/share/{}/{}".format(
+            "url": "{}/shares/{}/{}".format(
                 self.server_url, param["path"], param["ben"]
             )
         }
@@ -369,9 +368,7 @@ class ServerCommunicator(object):
         success_log = "share added with {}!".format(param["ben"])
         error_log = "ERROR in adding a share with {}".format(param["ben"])
 
-        
         r = self._try_request(requests.post, success_log, error_log, **request)
-
         self.msg["result"] = r.status_code
         
         if r.status_code == 400:
@@ -384,48 +381,47 @@ class ServerCommunicator(object):
         """Remove all the share"""
         self.msg["details"] = []
         request = {
-            "url" : "{}/share/{}".format(self.server_url,
-                param["path"]),
+            "url" : "{}/shares/{}".format(self.server_url, param["path"]),
             "data" : {}
         }
 
         success_log = "All shares removed"
         error_log = "ERROR on removing all the shares"
 
-        response = self._try_request(requests.delete, success_log,
-            error_log, **request)
-
+        response = self._try_request(
+            requests.delete, success_log, error_log, **request
+        )
         self.msg["result"] = response.status_code
 
         if response.status_code == 200:
             self.msg["details"].append("Shares removed")
         elif response.status_code == 400:
             self.msg["details"].append("Error, shares not removed")
-
         return self.msg
 
     def remove_beneficiary(self, param):
         """Remove user from share"""
         self.msg["details"] = []
         request = {
-            "url" : "{}/share/{}/{}".format(self.server_url,
-                param["path"], param["ben"]),
+            "url" : "{}/shares/{}/{}".format(
+                self.server_url,
+                param["path"], param["ben"]
+            ),
             "data" : {}
         }
 
         success_log = "Removed user {} from shares".format(param["ben"])
         error_log = "ERROR on removing user {} from shares".format(param["ben"])
 
-        response = self._try_request(requests.delete, success_log,
-            error_log, **request)
-
+        response = self._try_request(
+            requests.delete, success_log, error_log, **request
+        )
         self.msg["result"] = response.status_code
 
         if response.status_code == 200:
             self.msg["details"].append("User removed from sahres")
         elif response.status_code == 400:
             self.msg["details"].append("Cannot remove user from shares")
-
         return self.msg
 
 
