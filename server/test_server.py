@@ -998,14 +998,14 @@ class EmailTest(unittest.TestCase):
 
         server.PENDING_USERS = TEST_PENDING_USERS
 
-        EmailTest.email = "test@rawbox.com"
-        EmailTest.obj = "test"
-        EmailTest.content = "test content"
+        self.email = "test@rawbox.com"
+        self.obj = "test"
+        self.content = "test content"
 
-        EmailTest.user = "user_mail@demo.it"
-        EmailTest.psw = "password_demo"
-        EmailTest.code = "5f8e441f01abc7b3e312917efb52cc12"  # os.urandom(16).encode('hex')
-        self.url = "".join((server._API_PREFIX, "Users/", EmailTest.user))
+        self.user = "user_mail@demo.it"
+        self.psw = "password_demo"
+        self.code = "5f8e441f01abc7b3e312917efb52cc12"  # os.urandom(16).encode('hex')
+        self.url = "".join((server._API_PREFIX, "Users/", self.user))
 
     def tearDown(self):
         server.User.users = {}
@@ -1014,13 +1014,13 @@ class EmailTest(unittest.TestCase):
 
     def test_create_user_email(self):
         data = {
-            "psw": EmailTest.psw
+            "psw": self.psw
         }
         with self.mail.record_messages() as outbox:
             self.tc.post(self.url, data=data, headers=None)
             self.assertEqual(len(outbox), 1)
             with open(server.PENDING_USERS, "r") as pending_file:
-                code = json.load(pending_file)[EmailTest.user]["code"]
+                code = json.load(pending_file)[self.user]["code"]
                 self.assertEqual(outbox[0].body, code)
 
 
@@ -1079,10 +1079,10 @@ class UserActions(unittest.TestCase):
         open(TEST_USER_DATA, "w").close()
         server.USERS_DATA = TEST_USER_DATA
 
-        UserActions.user = "user_mail@demo.it"
-        UserActions.psw = "password_demo"
-        UserActions.code = "5f8e441f01abc7b3e312917efb52cc12"  # os.urandom(16).encode('hex')
-        self.url = "".join((server._API_PREFIX, "Users/", UserActions.user))
+        self.user = "user_mail@demo.it"
+        self.psw = "password_demo"
+        self.code = "5f8e441f01abc7b3e312917efb52cc12"  # os.urandom(16).encode('hex')
+        self.url = "".join((server._API_PREFIX, "Users/", self.user))
 
     def tearDown(self):
         server.User.users = {}
@@ -1098,7 +1098,7 @@ class UserActions(unittest.TestCase):
 
     def test_create_user(self):
         data = {
-            "psw": UserActions.psw
+            "psw": self.psw
         }
         before_request_time = time.time()
         response = self.tc.post(self.url, data=data, headers=None)
@@ -1108,47 +1108,47 @@ class UserActions(unittest.TestCase):
         with open(server.PENDING_USERS, "r") as pending_file:
             data = json.load(pending_file)
             user = data.keys()[0]
-            self.assertEqual(user, UserActions.user)
-            psw = data[UserActions.user]["password"]
-            self.assertTrue(sha256_crypt.verify(UserActions.psw, psw))
-            code = data[UserActions.user]["code"]
+            self.assertEqual(user, self.user)
+            psw = data[self.user]["password"]
+            self.assertTrue(sha256_crypt.verify(self.psw, psw))
+            code = data[self.user]["code"]
             self.assertIsNotNone(code)
             self.assertEqual(len(code), 32)
-            request_time = data[UserActions.user]["timestamp"]
+            request_time = data[self.user]["timestamp"]
             self.assertTrue(before_request_time < request_time < after_request_time)
 
     def test_create_user_missing_password(self):
         data = {}
 
-        self.inject_user(TEST_USER_DATA, UserActions.user, UserActions.psw)
+        self.inject_user(TEST_USER_DATA, self.user, self.psw)
         response = self.tc.post(self.url, data=data, headers=None)
         self.assertEqual(response.status_code, server.HTTP_BAD_REQUEST)
 
     def test_create_user_that_is_arleady_pending(self):
         data = {
-            "psw": UserActions.psw
+            "psw": self.psw
         }
 
-        self.inject_user(TEST_PENDING_USERS, UserActions.user, UserActions.psw)
+        self.inject_user(TEST_PENDING_USERS, self.user, self.psw)
         response = self.tc.post(self.url, data=data, headers=None)
         self.assertEqual(response.status_code, server.HTTP_CONFLICT)
 
     def test_create_user_that_is_arleady_active(self):
         data = {
-            "psw": UserActions.psw
+            "psw": self.psw
         }
 
-        self.inject_user(TEST_USER_DATA, UserActions.user, UserActions.psw)
+        self.inject_user(TEST_USER_DATA, self.user, self.psw)
         response = self.tc.post(self.url, data=data, headers=None)
         self.assertEqual(response.status_code, server.HTTP_CONFLICT)
 
     def test_activate_user(self):
 
         data = {
-            "code": UserActions.code
+            "code": self.code
         }
 
-        self.inject_user(TEST_PENDING_USERS, UserActions.user, UserActions.psw, UserActions.code)
+        self.inject_user(TEST_PENDING_USERS, self.user, self.psw, self.code)
         response = self.tc.put(self.url, data=data, headers=None)
         self.assertEqual(response.status_code, server.HTTP_CREATED)
 
@@ -1156,29 +1156,29 @@ class UserActions(unittest.TestCase):
 
         data = {}
 
-        self.inject_user(TEST_PENDING_USERS, UserActions.user, UserActions.psw)
+        self.inject_user(TEST_PENDING_USERS, self.user, self.psw)
         response = self.tc.put(self.url, data=data, headers=None)
         self.assertEqual(response.status_code, server.HTTP_BAD_REQUEST)
 
     def test_activate_user_that_is_arleady_active(self):
         data = {
-            "code": UserActions.code
+            "code": self.code
         }
 
-        self.inject_user(TEST_USER_DATA, UserActions.user, UserActions.psw, UserActions.code)
+        self.inject_user(TEST_USER_DATA, self.user, self.psw, self.code)
         response = self.tc.put(self.url, data=data, headers=None)
         self.assertEqual(response.status_code, server.HTTP_CONFLICT)
 
     def test_activate_user_that_is_not_the_last_pending_user(self):
         data = {
-            "code": UserActions.code
+            "code": self.code
         }
 
         self.inject_user(TEST_PENDING_USERS,
                          "fake_user@demo.it",
                          sha256_crypt.encrypt("fake_password"),
                          "this0is0a0fake0code0long32char00")
-        self.inject_user(TEST_PENDING_USERS, UserActions.user, UserActions.psw, UserActions.code)
+        self.inject_user(TEST_PENDING_USERS, self.user, self.psw, self.code)
         response = self.tc.put(self.url, data=data, headers=None)
         self.assertEqual(response.status_code, server.HTTP_CREATED)
         self.assertTrue(os.path.exists(TEST_PENDING_USERS))
