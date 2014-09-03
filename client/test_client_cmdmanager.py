@@ -78,6 +78,14 @@ class RawBoxCmdTest(unittest.TestCase):
         self.rawbox_cmd.onecmd('delete pippo@pippa.it')
         self.assertTrue(RawBoxCmdTest.called)
 
+    def test_do_reset(self):
+        self.rawbox_cmd.onecmd('reset pippo@pippa.it')
+        self.assertTrue(RawBoxCmdTest.called)
+
+    def test_do_set(self):
+        self.rawbox_cmd.onecmd('set pippo@pippa.it code=codice')
+        self.assertTrue(RawBoxCmdTest.called)
+
 
 class TestRawBoxExecuter(unittest.TestCase):
 
