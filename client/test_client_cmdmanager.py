@@ -52,6 +52,12 @@ class MockExecuter(object):
     def _delete_user(self, username):
         RawBoxCmdTest.called = True
 
+    def _reset_password(self, username):
+        RawBoxCmdTest.called = True
+
+    def _set_password(self, username, code):
+        RawBoxCmdTest.called = True
+
 
 class RawBoxCmdTest(unittest.TestCase):
 
