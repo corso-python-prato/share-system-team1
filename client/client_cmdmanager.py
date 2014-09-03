@@ -148,6 +148,9 @@ class RawBoxExecuter(object):
 
         if not code:
             code = take_input('insert your code: ')
+        while len(code) != 32:
+            Message('WARNING', 'invalid code must be 32 character')
+            code = take_input('insert your code: ')
 
         password = take_input('insert your password: ', password=True)
         rpt_password = take_input('Repeat your password: ', password=True)
