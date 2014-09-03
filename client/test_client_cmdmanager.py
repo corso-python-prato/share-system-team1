@@ -219,5 +219,20 @@ class TestRawBoxExecuter(unittest.TestCase):
 
         self.assertEquals(TestRawBoxExecuter.username, self.correct_user)
 
+    def test_reset_pass_invalid_user(self):
+        mock_input.append(self.correct_user)
+        mock_input.append(self.wrong_user3)
+        mock_input.append(self.wrong_user2)
+        mock_input.append(self.wrong_user1)
+        mock_input.append(self.wrong_user0)
+
+        self.raw_box_exec._reset_password()
+
+        self.assertNotEquals(TestRawBoxExecuter.username, self.wrong_user0)
+        self.assertNotEquals(TestRawBoxExecuter.username, self.wrong_user1)
+        self.assertNotEquals(TestRawBoxExecuter.username, self.wrong_user2)
+        self.assertNotEquals(TestRawBoxExecuter.username, self.wrong_user3)
+        self.assertEquals(TestRawBoxExecuter.username, self.correct_user)
+
 if __name__ == '__main__':
     unittest.main()
