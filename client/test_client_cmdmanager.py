@@ -89,7 +89,7 @@ class TestRawBoxExecuter(unittest.TestCase):
         self.wrong_user1 = "@ceoijeo"   # nothing before "@" and no final ".something"
         self.wrong_user2 = ".user"      # nothing before "@" no "@" nothing after "@"
         self.wrong_user3 = "user.it"    # nothing before "@" and no "@"
-        self.correct_pwd = "password"
+        self.correct_pwd = "33>Password!"
         self.wrong_pwd = "pawssworowd"
         self.correct_code = "9fe2598cc1721ee1a61f5f1fclungo32"
         self.tooshort_code = "123tinycode123"
