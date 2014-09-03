@@ -84,6 +84,7 @@ class RawBoxCmdTest(unittest.TestCase):
         self.executer = MockExecuter()
         self.rawbox_cmd = RawBoxCmd(self.executer)
         RawBoxCmdTest.called = False
+        mock_input.append('y')
 
     def test_do_create(self):
         self.rawbox_cmd.onecmd('create user pippo@pippa.it')
