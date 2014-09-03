@@ -31,9 +31,11 @@ class MockCmdMessageClient(object):
         code and psw are used only respectively in
         activate_user and create_user
         """
-        TestRawBoxExecuter.username = param['user']
+        TestRawBoxExecuter.username = param.get('user')
         TestRawBoxExecuter.psw = param.get('psw', "empty")
         TestRawBoxExecuter.code = param.get('code', "empty")
+        TestRawBoxExecuter.pathtoshare = param.get('path')
+        TestRawBoxExecuter.ben = param.get('ben')
 
     def read_message(self):
         """override comm_sock.read_message
