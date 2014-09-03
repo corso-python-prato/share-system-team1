@@ -34,6 +34,7 @@ USERS_DATA = "user_data.json"
 PENDING_USERS = ".pending.tmp"
 CORRUPTED_DATA = "corrupted_data"
 EMAIL_SETTINGS_INI = "email_settings.ini"
+RESET_REQUESTS = ".reset_requests.tmp"
 
 SERVER_ROOT = os.path.dirname(__file__)
 USERS_DIRECTORIES = os.path.join(SERVER_ROOT, "user_dirs/")
