@@ -212,5 +212,12 @@ class TestRawBoxExecuter(unittest.TestCase):
         self.assertNotEquals(TestRawBoxExecuter.username, self.wrong_user3)
         self.assertEquals(TestRawBoxExecuter.username, self.correct_user)
 
+    def test_reset_pass(self):
+        mock_input.append(self.correct_user)
+
+        self.raw_box_exec._reset_password()
+
+        self.assertEquals(TestRawBoxExecuter.username, self.correct_user)
+
 if __name__ == '__main__':
     unittest.main()
