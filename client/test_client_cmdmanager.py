@@ -31,9 +31,11 @@ class MockCmdMessageClient(object):
         code and psw are used only respectively in
         activate_user and create_user
         """
-        TestRawBoxExecuter.username = param['user']
+        TestRawBoxExecuter.username = param.get('user')
         TestRawBoxExecuter.psw = param.get('psw', "empty")
         TestRawBoxExecuter.code = param.get('code', "empty")
+        TestRawBoxExecuter.pathtoshare = param.get('path')
+        TestRawBoxExecuter.ben = param.get('ben')
 
     def read_message(self):
         """override comm_sock.read_message
@@ -52,6 +54,29 @@ class MockExecuter(object):
     def _delete_user(self, username):
         RawBoxCmdTest.called = True
 
+    def _add_share(self,path, ben):
+        RawBoxCmdTest.called = True
+
+    def _remove_share(self, path):
+        RawBoxCmdTest.called = True
+
+    def _remove_beneficiary(self, path, ben):
+        RawBoxCmdTest.called = True
+
+class CheckShareablePathTest(unittest.TestCase):
+
+    def setUp(self):
+        self.correct_path = ""
+        self.wrong_path1 = "/wrong1/"
+        self.wrong_path2 = "wrong2"
+
+    def test_check_shareable_path(self):
+        resp = client_cmdmanager.check_shareable_path(self.correct_path)
+        self.assertTrue(resp)
+        resp = client_cmdmanager.check_shareable_path(self.wrong_path1)
+        self.assertFalse(resp)
+        resp = client_cmdmanager.check_shareable_path(self.wrong_path2)
+        self.assertFalse(resp)
 
 class RawBoxCmdTest(unittest.TestCase):
 
@@ -59,6 +84,7 @@ class RawBoxCmdTest(unittest.TestCase):
         self.executer = MockExecuter()
         self.rawbox_cmd = RawBoxCmd(self.executer)
         RawBoxCmdTest.called = False
+        mock_input.append('y')
 
     def test_do_create(self):
         self.rawbox_cmd.onecmd('create user pippo@pippa.it')
@@ -70,6 +96,18 @@ class RawBoxCmdTest(unittest.TestCase):
 
     def test_do_delete(self):
         self.rawbox_cmd.onecmd('delete pippo@pippa.it')
+        self.assertTrue(RawBoxCmdTest.called)
+
+    def test_do_add_share(self):
+        self.rawbox_cmd.onecmd('add_share shared_folder beneficiary')
+        self.assertTrue(RawBoxCmdTest.called)
+
+    def test_do_remove_share(self):
+        self.rawbox_cmd.onecmd('remove_share shared_folder')
+        self.assertTrue(RawBoxCmdTest.called)
+
+    def test_do_remove_beneficiary(self):
+        self.rawbox_cmd.onecmd('remove_beneficiary shared_folder beneficiary')
         self.assertTrue(RawBoxCmdTest.called)
 
 
@@ -91,6 +129,10 @@ class TestRawBoxExecuter(unittest.TestCase):
         TestRawBoxExecuter.username = "empty"
         TestRawBoxExecuter.psw = "empty"
         TestRawBoxExecuter.code = "empty"
+        TestRawBoxExecuter.pathtoshare = ""
+        TestRawBoxExecuter.ben = ""
+        self.pathtoshare = "mypath"
+        self.ben = "friend"
 
     def test_create_user(self):
         mock_input.append(self.correct_pwd)
@@ -197,6 +239,20 @@ class TestRawBoxExecuter(unittest.TestCase):
         self.assertNotEquals(TestRawBoxExecuter.username, self.wrong_user2)
         self.assertNotEquals(TestRawBoxExecuter.username, self.wrong_user3)
         self.assertEquals(TestRawBoxExecuter.username, self.correct_user)
+
+    def test_add_share(self):
+        self.raw_box_exec._add_share(self.pathtoshare, self.ben)
+        self.assertEquals(TestRawBoxExecuter.pathtoshare, self.pathtoshare)
+        self.assertEquals(TestRawBoxExecuter.ben, self.ben)
+
+    def test_remove_share(self):
+        self.raw_box_exec._remove_share(self.pathtoshare)
+        self.assertEquals(TestRawBoxExecuter.pathtoshare, self.pathtoshare)
+
+    def test_remove_beneficiary(self):
+        self.raw_box_exec._remove_beneficiary(self.pathtoshare, self.ben)
+        self.assertEquals(TestRawBoxExecuter.pathtoshare, self.pathtoshare)
+        self.assertEquals(TestRawBoxExecuter.ben, self.ben)
 
 if __name__ == '__main__':
     unittest.main()
