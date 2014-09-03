@@ -54,6 +54,14 @@ class MockExecuter(object):
     def _delete_user(self, username):
         RawBoxCmdTest.called = True
 
+    def _add_share(self,path, ben):
+        RawBoxCmdTest.called = True
+
+    def _remove_share(self, path):
+        RawBoxCmdTest.called = True
+
+    def _remove_beneficiary(self, path, ben):
+        RawBoxCmdTest.called = True
 
 class RawBoxCmdTest(unittest.TestCase):
 
