@@ -72,7 +72,7 @@ def PasswordChecker(clear_password):
     #if the password is too short
     if len(clear_password) <= 5:
         return "This password is too short, the password " + \
-            "must be at least 5 characters", HTTP_NOT_ACCEPTABLE
+            "must be at least 6 characters", HTTP_NOT_ACCEPTABLE
     #if the password is too common
     f = open(PASSWORD_NOT_ACCEPTED_DATA)
     lines = f.readlines()
