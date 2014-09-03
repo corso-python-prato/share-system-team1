@@ -240,5 +240,19 @@ class TestRawBoxExecuter(unittest.TestCase):
         self.assertNotEquals(TestRawBoxExecuter.username, self.wrong_user3)
         self.assertEquals(TestRawBoxExecuter.username, self.correct_user)
 
+    def test_add_share(self):
+        self.raw_box_exec._add_share(self.pathtoshare, self.ben)
+        self.assertEquals(TestRawBoxExecuter.pathtoshare, self.pathtoshare)
+        self.assertEquals(TestRawBoxExecuter.ben, self.ben)
+
+    def test_remove_share(self):
+        self.raw_box_exec._remove_share(self.pathtoshare)
+        self.assertEquals(TestRawBoxExecuter.pathtoshare, self.pathtoshare)
+
+    def test_remove_beneficiary(self):
+        self.raw_box_exec._remove_beneficiary(self.pathtoshare, self.ben)
+        self.assertEquals(TestRawBoxExecuter.pathtoshare, self.pathtoshare)
+        self.assertEquals(TestRawBoxExecuter.ben, self.ben)
+
 if __name__ == '__main__':
     unittest.main()
