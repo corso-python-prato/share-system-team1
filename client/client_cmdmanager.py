@@ -219,6 +219,22 @@ class RawBoxCmd(cmd.Cmd):
             if not user:
                 Message('INFO', self.do_reset.__doc__)
 
+    def do_set(self, line):
+        """
+        Set RawBox user's password after resetting request
+        <set> <email_user> <code>
+        """
+        user = None
+        code = None
+        try:
+            user = line.split()[0]
+            code = line.split()[1]
+            self.executer._set_password(user, code)
+        except IndexError:
+            if not user or not code:
+                Message('INFO', self.do_set.__doc__)
+
+
 def main():
     if platform.system() == 'Windows':
         os.system('cls')
