@@ -764,6 +764,18 @@ class TestShare(unittest.TestCase):
         )
 
     def test_can_write(self):
+        owner = "me"
+        self.assertTrue(
+            server.can_write(owner, owner + "/my_file.txt")
+        )
+        self.assertFalse(
+            server.can_write(owner, owner + "/shares/my_file.txt")
+        )
+        self.assertFalse(
+            server.can_write(owner, "other_user/my_file.txt")
+        )
+
+    def test_can_write_usage(self):
         # share a file with an user (create a share)
         # TODO: load this from json when the shares will be saved on file
         received = self.tc.post(

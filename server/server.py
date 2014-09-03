@@ -62,8 +62,11 @@ def can_write(username, server_path):
     This sharing system is in read-only mode.
     Check if an user is the owner of a file (or father directory).
     (the server_path begins with his name)
+    root/shares is a reserved name.
     """
-    return server_path.split('/')[0] == username
+    pieces = server_path.split('/')
+    return (pieces[0] == username) and \
+        ((len(pieces) == 1) or (pieces[1] != "shares"))
 
 
 class User(object):
