@@ -375,6 +375,32 @@ class ServerCommunicator(object):
 
         return self.msg
 
+    def set_password(self, param):
+
+        self.msg["details"] = []
+        error_log = "Cannot reset password"
+        success_log = "Password resetted"
+
+        server_url = "{}/Users/{}/reset".format(self.server_url, param["user"])
+
+        request = {
+            "url": server_url,
+            "data": {
+                "reset": param["reset"],
+                "code": param["code"],
+                "psw": param["psw"]
+            }
+        }
+
+        response = self._try_request(requests.put, success_log, error_log, **request)
+        if response.status_code == 202:
+            self.write_user_data(param["user"], param["psw"])
+            self.msg["details"].append("Your password has been resetted. Login needed!")
+        elif response.status_code == 404:
+            self.msg["details"].append("Wrong code or reset request not found")
+
+        return self.msg
+
 
 class FileSystemOperator(object):
 
