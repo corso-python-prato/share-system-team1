@@ -98,6 +98,18 @@ class RawBoxCmdTest(unittest.TestCase):
         self.rawbox_cmd.onecmd('delete pippo@pippa.it')
         self.assertTrue(RawBoxCmdTest.called)
 
+    def test_do_add_share(self):
+        self.rawbox_cmd.onecmd('add_share shared_folder beneficiary')
+        self.assertTrue(RawBoxCmdTest.called)
+
+    def test_do_remove_share(self):
+        self.rawbox_cmd.onecmd('remove_share shared_folder')
+        self.assertTrue(RawBoxCmdTest.called)
+
+    def test_do_remove_beneficiary(self):
+        self.rawbox_cmd.onecmd('remove_beneficiary shared_folder beneficiary')
+        self.assertTrue(RawBoxCmdTest.called)
+
 
 class TestRawBoxExecuter(unittest.TestCase):
 
