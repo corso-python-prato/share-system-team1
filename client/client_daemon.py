@@ -1003,7 +1003,9 @@ def main():
     client_command = {
         "create_user": server_com.create_user,
         "activate_user": server_com.activate_user,
-        "delete_user": server_com.delete_user
+        "delete_user": server_com.delete_user,
+        "reset_password": server_com.reset_password,
+        "set_password": server_com.set_password
     }
     sock_server = CmdMessageServer(
         config['host'],
