@@ -1,0 +1,20 @@
+{
+    "users": {
+        "Emilio@me.it": {
+            "paths": {
+                "": [
+                    "Emilio@me.it",
+                    null,
+                    1405076390.847102
+                ],
+                "ciao.txt": [
+                    "Emilio@me.it/ciao.txt",
+                    "6186badadb5fbb0416cd29a04e2d92d7",
+                    1405076398.984682
+                ]
+            },
+            "psw": "$5$rounds=110000$OVjTsVyPuEZKz6A9$4NVQSGn0w143dy4IvV.1Ky52Se5kCD2MGQDEsSMWSN6",
+            "timestamp": 1405082012.753577
+        }
+    }
+}
