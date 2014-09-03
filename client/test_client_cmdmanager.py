@@ -129,6 +129,10 @@ class TestRawBoxExecuter(unittest.TestCase):
         TestRawBoxExecuter.username = "empty"
         TestRawBoxExecuter.psw = "empty"
         TestRawBoxExecuter.code = "empty"
+        TestRawBoxExecuter.pathtoshare = ""
+        TestRawBoxExecuter.ben = ""
+        self.pathtoshare = "mypath"
+        self.ben = "friend"
 
     def test_create_user(self):
         mock_input.append(self.correct_pwd)
