@@ -452,10 +452,8 @@ def load_config():
             for option, value in config_ini.items(section):
                     config.update({option: value})
 
-        try:
+        if not os.path.isdir(dir_path):
             os.makedirs(dir_path)
-        except OSError:
-            pass
         with open(config["snapshot_file_path"], 'w') as snapshot:
             json.dump({"timestamp": 0, "snapshot": ""}, snapshot)
 
