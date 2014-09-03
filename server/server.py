@@ -488,8 +488,6 @@ class UsersApi(Resource):
         if username in User.users:
             return "This user is already active", HTTP_CONFLICT
 
-        pending = self.load_pending_users()
-
         if username in pending:
             if code == pending[username]["code"]:
                 User(username, pending[username]["password"])
