@@ -249,8 +249,12 @@ class RawBoxCmd(cmd.Cmd):
         """
         try:
             path, ben = line.split()
-            if check_shareable_path(path):
-                self.executer._add_share(path, ben)
+            # check if the user try to share with himself
+            if ben != config.get('daemon_user_data', 'username'):
+                if check_shareable_path(path):
+                    self.executer._add_share(path, ben)
+            else:
+                Message("INFO", self.do_add_share.__doc__)
 
         except ValueError:
             Message("INFO", self.do_add_share.__doc__)
