@@ -7,7 +7,7 @@
 
 # from watchdog.observers import Observer
 from watchdog.observers.polling import PollingObserver as Observer
-from watchdog.events import FileSystemEventHandler
+from watchdog.events import PatternMatchingEventHandler
 from requests.auth import HTTPBasicAuth
 import ConfigParser
 import requests
@@ -591,9 +591,12 @@ def load_config():
     return config, user_exists
 
 
-class DirectoryEventHandler(FileSystemEventHandler):
+class DirectoryEventHandler(PatternMatchingEventHandler):
 
     def __init__(self, cmd, snap):
+        super(DirectoryEventHandler, self).__init__(
+            ignore_patterns=[os.path.join(CONFIG_DIR_PATH, "shares/*")]
+        )
         self.cmd = cmd
         self.snap = snap
         self.paths_ignored = []
