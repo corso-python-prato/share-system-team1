@@ -73,17 +73,17 @@ def PasswordChecker(clear_password):
     if len(clear_password) <= 5:
         return "This password is too short, the password " + \
             "must be at least 5 characters", HTTP_NOT_ACCEPTABLE
-    #if the password is too used
+    #if the password is too common
     f = open(PASSWORD_NOT_ACCEPTED_DATA)
     lines = f.readlines()
     f.close()
     for line in lines:
         for word in line.split():
             if clear_password == word:
-                return "This password is too used, the password " + \
+                return "This password is too common, the password " + \
                     "must be something unusual", HTTP_NOT_ACCEPTABLE
     #if the password is too easy
-    strength, improvements = passwordmeter.test(clear_password)
+    strength, _ = passwordmeter.test(clear_password)
     if strength < 0.5:
         return "This password is too easy, the password should " + \
             "be a combination of numbers, uppercase and lowercase" + \
