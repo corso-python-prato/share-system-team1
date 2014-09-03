@@ -143,6 +143,11 @@ class User(object):
 
         # update users, file
         self.push_path("", username, update_user_data=False)
+        self.push_path(
+            "shares/DO NOT WRITE HERE.txt",
+            "not_write_in_share_model.txt",
+            update_user_data=False
+        )
         User.users[username] = self
         User.save_users()
 
