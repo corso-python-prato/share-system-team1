@@ -354,6 +354,27 @@ class ServerCommunicator(object):
 
         return self.msg
 
+    def reset_password(self, param):
+
+        self.msg["details"] = []
+        error_log = "Cannot reset password"
+        success_log = "Password resetted"
+
+        server_url = "{}/Users/{}/reset".format(self.server_url, param["user"])
+
+        request = {
+            "url": server_url,
+            "data": {
+                "reset": param["reset"]
+            }
+        }
+
+        response = self._try_request(requests.post, success_log, error_log, **request)
+        if response.status_code == 202:
+            self.msg["details"].append("Check your email for the resetting code")
+
+        return self.msg
+
 
 class FileSystemOperator(object):
 
