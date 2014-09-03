@@ -116,6 +116,25 @@ class RawBoxExecuter(object):
             self.comm_sock.send_message(command_type, param)
             self.print_response(self.comm_sock.read_message())
 
+    def _reset_password(self, username=None):
+        """ reset RawBox user's password """
+        command_type = 'reset_password'
+
+        if not username:
+            username = take_input('insert your email: ')
+        email_regex = re.compile('[^@]+@[^@]+\.[^@]+')
+        while not email_regex.match(username):
+            Message('WARNING', 'invalid email')
+            username = take_input('insert your email: ')
+
+        param = {
+            'user': username,
+            'reset': True
+        }
+
+        self.comm_sock.send_message(command_type, param)
+        self.print_response(self.comm_sock.read_message())
+
     def print_response(self, response):
         ''' print response from the daemon.
             the response is a dictionary as:
