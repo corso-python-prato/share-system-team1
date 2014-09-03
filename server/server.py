@@ -35,11 +35,11 @@ USERS_DATA = "user_data.json"
 PENDING_USERS = ".pending.tmp"
 CORRUPTED_DATA = "corrupted_data"
 EMAIL_SETTINGS_INI = "email_settings.ini"
+PASSWORD_NOT_ACCEPTED_DATA = "password_not_accepted.txt"
 
 SERVER_ROOT = os.path.dirname(__file__)
 USERS_DIRECTORIES = os.path.join(SERVER_ROOT, "user_dirs/")
 USERS_DATA = os.path.join(SERVER_ROOT, "user_data.json")
-PASSWORD_NOT_ACCEPTED_DATA = "password_not_accepted.txt"
 
 parser = reqparse.RequestParser()
 parser.add_argument("task", type=str)
@@ -72,12 +72,11 @@ def can_write(username, server_path):
     """
     return server_path.split('/')[0] == username
 
-
 def PasswordChecker(clear_password):
     #if the password is too short
     if len(clear_password) <= 5:
-        return "This password is too short, the password \
-        must be at least 5 characters", HTTP_NOT_ACCEPTABLE
+        return "This password is too short, the password " + \
+            "must be at least 5 characters", HTTP_NOT_ACCEPTABLE
     #if the password is too used
     f = open(PASSWORD_NOT_ACCEPTED_DATA)
     lines = f.readlines()
@@ -85,22 +84,22 @@ def PasswordChecker(clear_password):
     for line in lines:
         for word in line.split():
             if clear_password == word:
-                return "This password is too used, the password \
-                must be something unusual", HTTP_NOT_ACCEPTABLE
+                return "This password is too used, the password " + \
+                    "must be something unusual", HTTP_NOT_ACCEPTABLE
     #if the password is too easy
     strength, improvements = passwordmeter.test(clear_password)
     if strength < 0.5:
-        return "This password is too easy, the password should \
-        be a combination of numbers, uppercase and lowercase \
-        characters and special characters", HTTP_NOT_ACCEPTABLE
+        return "This password is too easy, the password should " + \
+            "be a combination of numbers, uppercase and lowercase" + \
+            "characters and special characters", HTTP_NOT_ACCEPTABLE
     return clear_password
 
 
 class User(object):
     """
     Maintaining two dictionaries:
-        · paths     = { client_path : [server_path, md5/None, timestamp] }
-        None instead of the md5 means that the path is a directory.
+        · paths = { client_path : [server_path, md5/None, timestamp] }
+    None instead of the md5 means that the path is a directory.
         · shared_resources: { server_path : [owner, ben1, ben2, ...] }
     The full path to access to the file is a join between USERS_DIRECTORIES and
     the server_path.
@@ -117,8 +116,8 @@ class User(object):
             ud.close()
         # if error, create new structure from scratch
         except IOError:
-            pass                # missing file
-        except ValueError:      # invalid json
+            pass # missing file
+        except ValueError: # invalid json
             os.remove(USERS_DATA)
         else:
             for u, v in saved["users"].iteritems():
@@ -155,7 +154,7 @@ class User(object):
             self.timestamp = from_dict["timestamp"]
             User.users[username] = self
             return
-        psw_hash = sha256_crypt.encrypt(clear_password)
+
         full_path = os.path.join(USERS_DIRECTORIES, username)
         try:
             os.mkdir(full_path)
@@ -168,7 +167,7 @@ class User(object):
         #self.psw = psw_hash
 
         # path of each file and each directory of the user:
-        #     { client_path : [server_path, md5, timestamp] }
+        # { client_path : [server_path, md5, timestamp] }
         self.paths = {}
 
         # timestamp of the last change in the user's files
@@ -235,8 +234,8 @@ class User(object):
         """
         path_parts = server_path.split("/")
         # if len(path_parts) > 3:
-        #     # shared resource has to be in owner's root
-        #     return False
+        # # shared resource has to be in owner's root
+        # return False
 
         resource_name = path_parts.pop()
         return os.path.join("shares", self.username, resource_name)
@@ -281,9 +280,9 @@ class User(object):
 
     def rm_path(self, client_path):
         """
-        Remove the path from the paths dictionary. If there are empty
-        directories, remove them from the filesystem.
-        """
+Remove the path from the paths dictionary. If there are empty
+directories, remove them from the filesystem.
+"""
         now = time.time()
         self.timestamp = now
 
@@ -381,11 +380,11 @@ class UsersApi(Resource):
             try:
                 with open(PENDING_USERS, "r") as p_u:
                     pending = json.load(p_u)
-            except ValueError:  # PENDING_USERS exists but is corrupted
+            except ValueError: # PENDING_USERS exists but is corrupted
                 if os.path.getsize(PENDING_USERS) > 0:
                     shutil.copy(PENDING_USERS, CORRUPTED_DATA)
                     os.remove(PENDING_USERS)
-                else:           # PENDING_USERS exists but is empty
+                else: # PENDING_USERS exists but is empty
                     pending = {}
         return pending
 
@@ -394,23 +393,23 @@ class UsersApi(Resource):
         Expected {"psw": <password>}
         save pending as
         {<username>:
-            {
-            "password": <password>,
-            "code": <activation_code>
-            "timestamp": <timestamp>
-            }
+        {
+        "password": <password>,
+        "code": <activation_code>
+        "timestamp": <timestamp>
+        }
         }"""
         pending = self.load_pending_users()
-
         try:
             psw = request.form["psw"]
         except KeyError:
             return "Missing password", HTTP_BAD_REQUEST
-
         if username in pending:
             return "This user have arleady a pending request", HTTP_CONFLICT
         elif username in User.users:
             return "This user already exists", HTTP_CONFLICT
+        if psw is not PasswordChecker(psw):
+            return PasswordChecker(psw)
         else:
             psw_hash = sha256_crypt.encrypt(psw)
             code = os.urandom(16).encode('hex')
@@ -456,7 +455,7 @@ class UsersApi(Resource):
     @auth.login_required
     def delete(self, username):
         """Delete the user who is making the request
-        """
+"""
         current_username = auth.username()
         current_user = User.get_user(current_username)
         if current_username == username:
@@ -469,8 +468,8 @@ class UsersApi(Resource):
 class Files(Resource_with_auth):
     def _diffs(self):
         """ Send a JSON with the timestamp of the last change in user
-        directories and an md5 for each file
-        Expected GET method without path """
+directories and an md5 for each file
+Expected GET method without path """
         u = User.get_user(auth.username())
         tree = {}
         for p, v in u.paths.iteritems():
@@ -499,8 +498,8 @@ class Files(Resource_with_auth):
 
     def _download(self, client_path):
         """Download
-        Returns file content as a byte string
-        Expected GET method with path"""
+Returns file content as a byte string
+Expected GET method with path"""
         u = User.get_user(auth.username())
         try:
             full_path = os.path.join(
@@ -525,9 +524,9 @@ class Files(Resource_with_auth):
 
     def put(self, client_path):
         """ Update
-        Updates an existing file
-        Expected as POST data:
-        { "file_content" : <file>} """
+Updates an existing file
+Expected as POST data:
+{ "file_content" : <file>} """
         u = User.get_user(auth.username())
 
         try:
@@ -550,9 +549,9 @@ class Files(Resource_with_auth):
 
     def post(self, client_path):
         """ Upload
-        Upload a new file
-        Expected as POST data:
-        { "file_content" : <file>} """
+Upload a new file
+Expected as POST data:
+{ "file_content" : <file>} """
         u = User.get_user(auth.username())
 
         if client_path in u.paths:
@@ -630,7 +629,7 @@ class Actions(Resource_with_auth):
             else:
                 shutil.move(full_src, full_dest)
         except shutil.Error:
-            return abort(HTTP_CONFLICT)         # TODO: check.
+            return abort(HTTP_CONFLICT) # TODO: check.
         else:
             # update the structure
             if keep_the_original:
@@ -658,9 +657,9 @@ class Shares(Resource):
         owner = User.get_user(auth.username())
 
         if not owner.add_share(client_path, beneficiary):
-            abort(HTTP_BAD_REQUEST)     # TODO: choice the code
+            abort(HTTP_BAD_REQUEST) # TODO: choice the code
         else:
-            return HTTP_OK              # TODO: timestamp is needed here?
+            return HTTP_OK # TODO: timestamp is needed here?
 
     def _remove_beneficiary(self, owner, server_path, client_path,
                             beneficiary):
@@ -721,10 +720,10 @@ def mail_config_init():
     config = ConfigParser.ConfigParser()
     if config.read(EMAIL_SETTINGS_INI):
         app.config.update(
-                MAIL_SERVER =config.get('email', 'smtp_address'),
-                MAIL_PORT = config.getint('email', 'smtp_port'),
-                MAIL_USERNAME = config.get('email', 'smtp_username'),
-                MAIL_PASSWORD = config.get('email', 'smtp_password')
+            MAIL_SERVER = config.get('email', 'smtp_address'),
+            MAIL_PORT = config.getint('email', 'smtp_port'),
+            MAIL_USERNAME = config.get('email', 'smtp_username'),
+            MAIL_PASSWORD = config.get('email', 'smtp_password')
         )
         mail = Mail(app)
         return mail
@@ -734,7 +733,7 @@ def mail_config_init():
 
 def send_mail(receiver, obj, content):
     """ Send an email to the 'receiver', with the
-    specified object ('obj') and the specified 'content' """
+specified object ('obj') and the specified 'content' """
     mail = mail_config_init()
     msg = Message(
         obj,
@@ -755,30 +754,11 @@ def verify_password(username, password):
         return sha256_crypt.verify(password, u.psw)
 
 
-@app.route("{}create_user".format(_API_PREFIX), methods=["POST"])
-def create_user():
-        """ Expected as POST data:
-        { "user": <username>, "psw": <password> } """
-        try:
-            user = request.form["user"]
-            psw = request.form["psw"]
-        except KeyError:
-            abort(HTTP_BAD_REQUEST)
-
-        if user in User.users:
-            return "This user already exists", HTTP_CONFLICT
-        elif psw is not PasswordChecker(psw):
-            return PasswordChecker(psw)
-        else:
-            User(user, psw)
-            return "user created", HTTP_CREATED
-
-
 def main():
     if not os.path.isdir(USERS_DIRECTORIES):
         os.makedirs(USERS_DIRECTORIES)
     User.user_class_init()
-    app.run(host="0.0.0.0", debug=True)         # TODO: remove debug=True
+    app.run(host="0.0.0.0", debug=True) # TODO: remove debug=True
 
 api.add_resource(UsersApi, "{}Users/<string:username>".format(_API_PREFIX))
 api.add_resource(Actions, "{}actions/<string:cmd>".format(_API_PREFIX))
