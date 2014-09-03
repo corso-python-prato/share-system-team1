@@ -1295,6 +1295,14 @@ class UserActions(unittest.TestCase):
             shutil.rmtree(TEST_DIRECTORY)
             os.mkdir(TEST_DIRECTORY)
 
+        shutil.copy(
+            os.path.join(
+                os.path.dirname(__file__),
+                "user_dirs/not_write_in_share_model.txt"
+            ),
+            TEST_DIRECTORY
+        )
+
         server.USERS_DIRECTORIES = TEST_DIRECTORY
 
         server.PENDING_USERS = TEST_PENDING_USERS
@@ -1311,11 +1319,10 @@ class UserActions(unittest.TestCase):
             os.remove(TEST_PENDING_USERS)
         if os.path.exists(TEST_USER_DATA):
             os.remove(TEST_USER_DATA)
-        if os.path.exists(TEST_DIRECTORY):
-            try:
-                os.mkdir(TEST_DIRECTORY)
-            except OSError:
-                shutil.rmtree(TEST_DIRECTORY)
+        try:
+            shutil.rmtree(TEST_DIRECTORY)
+        except OSError:
+            pass
 
     def test_create_user(self):
         data = {

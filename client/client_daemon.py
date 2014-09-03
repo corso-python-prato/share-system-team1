@@ -45,6 +45,13 @@ def get_abspath(rel_path):
         return "/".join([CONFIG_DIR_PATH, rel_path])
     return rel_path
 
+def initialize_directory():
+    shares_dir = os.path.join(CONFIG_DIR_PATH, "shares")
+    try:
+        os.makedirs(shares_dir)
+    except OSError:
+        pass
+
 
 class ServerCommunicator(object):
 
@@ -347,6 +354,7 @@ class ServerCommunicator(object):
 
         if response.status_code == 201:
             self.write_user_data(activate=True)
+            initialize_directory()
             self.msg["details"].append("You have now entered RawBox")
         elif response.status_code == 404:
             self.msg["details"].append("User not found")
@@ -567,10 +575,7 @@ def load_config():
             "dir_path": config_ini.get('daemon_communication', 'dir_path'),
             "snapshot_file_path": snapshot_file
         }
-        try:
-            os.makedirs(dir_path)
-        except OSError:
-            pass
+
         with open(snapshot_file, 'w') as snapshot:
             json.dump({"timestamp": 0, "snapshot": ""}, snapshot)
 
