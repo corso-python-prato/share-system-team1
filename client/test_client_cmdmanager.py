@@ -63,6 +63,21 @@ class MockExecuter(object):
     def _remove_beneficiary(self, path, ben):
         RawBoxCmdTest.called = True
 
+class CheckShareablePathTest(unittest.TestCase):
+
+    def setUp(self):
+        self.correct_path = ""
+        self.wrong_path1 = "/wrong1/"
+        self.wrong_path2 = "wrong2"
+
+    def test_check_shareable_path(self):
+        resp = client_cmdmanager.check_shareable_path(self.correct_path)
+        self.assertTrue(resp)
+        resp = client_cmdmanager.check_shareable_path(self.wrong_path1)
+        self.assertFalse(resp)
+        resp = client_cmdmanager.check_shareable_path(self.wrong_path2)
+        self.assertFalse(resp)
+
 class RawBoxCmdTest(unittest.TestCase):
 
     def setUp(self):
