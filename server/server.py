@@ -365,6 +365,19 @@ class UsersApi(Resource):
                     pending = {}
         return pending
 
+    def load_reset_requests(self):
+        reset_requests = {}
+        if os.path.isfile(RESET_REQUESTS):
+            try:
+                with open(RESET_REQUESTS, "r") as reset_rq:
+                    reset_requests = json.load(reset_rq)
+            except ValueError:  # RESET_REQUESTS exists but is corrupted
+                if os.path.getsize(RESET_REQUESTS) > 0:
+                    shutil.move(RESET_REQUESTS, CORRUPTED_DATA)
+                else:
+                    return reset_requests
+        return reset_requests
+
     def post(self, username):
         """Create a user registration request
         Expected {"psw": <password>}
