@@ -813,7 +813,10 @@ def main():
     User.user_class_init()
     app.run(host="0.0.0.0", debug=True)         # TODO: remove debug=True
 
-api.add_resource(UsersApi, "{}Users/<string:username>".format(_API_PREFIX))
+api.add_resource(
+    UsersApi,
+    "{}Users/<string:username>".format(_API_PREFIX),
+    "{}Users/<string:username>/reset".format(_API_PREFIX))
 api.add_resource(Actions, "{}actions/<string:cmd>".format(_API_PREFIX))
 api.add_resource(
     Files,
