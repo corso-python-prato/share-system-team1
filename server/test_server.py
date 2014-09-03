@@ -25,6 +25,37 @@ TEST_USER_DATA = os.path.join(TEST_ROOT, TEST_USER_DATA)
 TEST_PENDING_USERS = os.path.join(TEST_ROOT, TEST_PENDING_USERS)
 
 
+def add_pending_user(user, psw=None, code=None):
+    underskin_user = {}
+
+    if os.path.exists(TEST_PENDING_USERS):
+        with open(TEST_PENDING_USERS, "r") as tmp_file:
+            underskin_user = json.load(tmp_file)
+
+    underskin_user[user] = {
+        "password": psw,
+        "code": code,
+        "timestamp": time.time()}
+    with open(TEST_PENDING_USERS, "w") as tmp_file:
+        json.dump(underskin_user, tmp_file)
+
+
+def add_active_user(user, psw=None):
+    underskin_user = {}
+
+    if not os.path.exists(TEST_USER_DATA):
+        open(TEST_USER_DATA, "w").close()
+
+    underskin_user[user] = {
+        "paths": {"": ["user_dirs/fake_root", False, 1405197042.793583]},
+        "psw": psw,
+        "timestamp": 1405197042.793476
+    }
+    server.User.users = underskin_user
+    with open(TEST_USER_DATA, "w") as tmp_file:
+        json.dump(underskin_user, tmp_file)
+
+
 def server_setup(root):
     server.SERVER_ROOT = root
     server.USERS_DIRECTORIES = os.path.join(root, "user_dirs/")
@@ -1032,34 +1063,6 @@ class UserActions(unittest.TestCase):
     MAIL_PASSWORD = "smtp_password"
     TESTING = True
 
-    def inject_user(self, inject_dest, user, psw=None, code=None):
-        underskin_user = {}
-
-        if not os.path.exists(inject_dest):
-            open(inject_dest, "w").close()
-
-        if os.path.getsize(inject_dest) > 0:
-            with open(inject_dest, "r") as tmp_file:
-                underskin_user = json.load(tmp_file)
-
-        if inject_dest == TEST_PENDING_USERS:
-            underskin_user[user] = {
-                "password": psw,
-                "code": code,
-                "timestamp": time.time()}
-            with open(inject_dest, "w") as tmp_file:
-                json.dump(underskin_user, tmp_file)
-
-        if inject_dest == TEST_USER_DATA:
-            underskin_user[user] = {
-                "paths": {"": ["user_dirs/fake_root", False, 1405197042.793583]},
-                "psw": psw,
-                "timestamp": 1405197042.793476
-            }
-            server.User.users = underskin_user
-            with open(inject_dest, "w") as tmp_file:
-                json.dump(underskin_user, tmp_file)
-
     def setUp(self):
         self.app = server.Flask(__name__)
         self.app.config.from_object(__name__)
@@ -1128,7 +1131,7 @@ class UserActions(unittest.TestCase):
             "psw": self.psw
         }
 
-        self.inject_user(TEST_PENDING_USERS, self.user, self.psw)
+        add_active_user(self.user, self.psw)
         response = self.tc.post(self.url, data=data, headers=None)
         self.assertEqual(response.status_code, server.HTTP_CONFLICT)
 
@@ -1137,25 +1140,23 @@ class UserActions(unittest.TestCase):
             "psw": self.psw
         }
 
-        self.inject_user(TEST_USER_DATA, self.user, self.psw)
+        add_active_user(self.user, self.psw)
         response = self.tc.post(self.url, data=data, headers=None)
         self.assertEqual(response.status_code, server.HTTP_CONFLICT)
 
     def test_activate_user(self):
-
         data = {
             "code": self.code
         }
 
-        self.inject_user(TEST_PENDING_USERS, self.user, self.psw, self.code)
+        add_pending_user(self.user, self.psw, self.code)
         response = self.tc.put(self.url, data=data, headers=None)
         self.assertEqual(response.status_code, server.HTTP_CREATED)
 
     def test_activate_user_missing_code(self):
-
         data = {}
 
-        self.inject_user(TEST_PENDING_USERS, self.user, self.psw)
+        add_pending_user(self.user, self.psw)
         response = self.tc.put(self.url, data=data, headers=None)
         self.assertEqual(response.status_code, server.HTTP_BAD_REQUEST)
 
@@ -1164,7 +1165,7 @@ class UserActions(unittest.TestCase):
             "code": self.code
         }
 
-        self.inject_user(TEST_USER_DATA, self.user, self.psw, self.code)
+        add_active_user(self.user, self.psw)
         response = self.tc.put(self.url, data=data, headers=None)
         self.assertEqual(response.status_code, server.HTTP_CONFLICT)
 
@@ -1173,11 +1174,10 @@ class UserActions(unittest.TestCase):
             "code": self.code
         }
 
-        self.inject_user(TEST_PENDING_USERS,
-                         "fake_user@demo.it",
+        add_pending_user("fake_user@demo.it",
                          sha256_crypt.encrypt("fake_password"),
                          "this0is0a0fake0code0long32char00")
-        self.inject_user(TEST_PENDING_USERS, self.user, self.psw, self.code)
+        add_pending_user(self.user, self.psw, self.code)
         response = self.tc.put(self.url, data=data, headers=None)
         self.assertEqual(response.status_code, server.HTTP_CREATED)
         self.assertTrue(os.path.exists(TEST_PENDING_USERS))
