@@ -379,7 +379,8 @@ class UsersApi(Resource):
         return reset_requests
 
     def post(self, username):
-        """Create a user registration request
+        """
+        Create a user registration request
         Expected {"psw": <password>}
         save pending as
         {<username>:
@@ -388,7 +389,23 @@ class UsersApi(Resource):
             "code": <activation_code>
             "timestamp": <timestamp>
             }
-        }"""
+        }
+        if request.form["reset"] is True, it is a reset password request.
+        In this case it saves request in a file, reset_requests, as
+        {<username>: <resetting code>}
+        """
+        try:
+            if request.form["reset"]:
+                reset_requests = self.load_reset_requests()
+                code = os.urandom(16).encode('hex')
+                send_mail(username, "RawBox' s resetting code", code)
+                reset_requests[username] = code
+                with open(RESET_REQUESTS, "w") as reset_rq:
+                    json.dump(reset_requests, reset_rq)
+                return "User added to resetting requests", HTTP_ACCEPTED
+        except KeyError:
+            pass
+
         pending = self.load_pending_users()
 
         try:
@@ -397,7 +414,7 @@ class UsersApi(Resource):
             return "Missing password", HTTP_BAD_REQUEST
 
         if username in pending:
-            return "This user have arleady a pending request", HTTP_CONFLICT
+            return "This user have already a pending request", HTTP_CONFLICT
         elif username in User.users:
             return "This user already exists", HTTP_CONFLICT
         else:
