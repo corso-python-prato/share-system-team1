@@ -369,7 +369,7 @@ class ServerCommunicator(object):
             try:
                 my_shares = response.json()
                 self.msg["details"].append("Shares list downloaded")
-                sub_res = ""
+                sub_res = []
                 if my_shares["my_shares"]:
                     sub_res.append("My shares:\n")
                     sub_res.append(str(my_shares["my_shares"]))
@@ -377,7 +377,7 @@ class ServerCommunicator(object):
                     sub_res.append("Other shares:\n")
                     sub_res.append(str(my_shares["other_shares"]))
                 if sub_res != "":
-                    res = "".join(("\nList of shares\n", sub_res))
+                    res = "".join(("\nList of shares\n", "".join(sub_res)))
                 else:
                     res = "No shares found"
                 self.msg["details"].append(res)
