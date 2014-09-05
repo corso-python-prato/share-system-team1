@@ -74,7 +74,7 @@ class User(object):
     Maintaining two dictionaries:
         · paths     = { client_path : [server_path, md5/None, timestamp] }
         None instead of the md5 means that the path is a directory.
-        · shared_resources: { server_path : [owner, ben1, ben2, ...] }
+        · shared_resources: { server_path : [ben1, ben2, ...] }
     The full path to access to the file is a join between USERS_DIRECTORIES and
     the server_path.
     """
@@ -217,8 +217,7 @@ class User(object):
         Search a shared father for the resource. If it exists, return the
         shared resource name and the ben_path, else return False.
         """
-        for shared_server_path, beneficiaries in \
-                User.shared_resources.iteritems():
+        for shared_server_path in User.shared_resources.iterkeys():
             if server_path.startswith(shared_server_path):
                 ben_path = server_path.replace(
                     shared_server_path,
@@ -241,7 +240,7 @@ class User(object):
             share, ben_path = is_shared
 
             # upgrade every beneficiaries
-            for ben_name in User.shared_resources[share][1:]:
+            for ben_name in User.shared_resources[share]:
                 ben_user = User.users[ben_name]
                 if not only_modify:
                     ben_user.paths[ben_path] = file_meta
@@ -279,7 +278,7 @@ class User(object):
                     if is_shared:
                         shared_server_path, ben_path = is_shared
                         for ben_name in \
-                                User.shared_resources[shared_server_path][1:]:
+                                User.shared_resources[shared_server_path]:
                             ben_user = User.users[ben_name]
                             del ben_user.paths[ben_path]
                     # step 3: remove from paths
@@ -290,7 +289,7 @@ class User(object):
         is_shared = self._get_ben_path(self.paths[client_path][0])
         if is_shared:
             shared_server_path, ben_path = is_shared
-            for ben_name in User.shared_resources[shared_server_path][1:]:
+            for ben_name in User.shared_resources[shared_server_path]:
                 ben_user = User.users[ben_name]
                 del ben_user.paths[ben_path]
                 ben_user.timestamp = now
@@ -320,7 +319,7 @@ class User(object):
             return "Invalid client_path or the beneficiary is not an user"
 
         if server_path not in User.shared_resources:
-            User.shared_resources[server_path] = [self.username, beneficiary]
+            User.shared_resources[server_path] = [beneficiary]
         elif beneficiary in User.shared_resources[server_path]:
             return "Resource yet shared with that beneficiary"
         else:
@@ -642,9 +641,8 @@ class Shares(Resource):
             # or the resource is shared, but not with this beneficiary
             abort(HTTP_BAD_REQUEST)
 
-        if len(User.shared_resources[server_path]) == 1:
+        if len(User.shared_resources[server_path]) == 0:
             # the resource isn't shared with anybody.
-            # (the first user in the list is the owner)
             del User.shared_resources[server_path]
 
         # remove every resource which isn't shared anymore
@@ -660,7 +658,7 @@ class Shares(Resource):
 
     def _remove_share(self, owner, server_path, client_path):
         try:
-            for ben in User.shared_resources[server_path][1:]:
+            for ben in User.shared_resources[server_path]:
                 self._remove_beneficiary(owner, server_path, client_path, ben)
         except KeyError:
             abort(HTTP_BAD_REQUEST)

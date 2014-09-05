@@ -896,7 +896,7 @@ class TestShare(unittest.TestCase):
         self.assertIn(server_path, server.User.shared_resources)
         self.assertEqual(
             server.User.shared_resources[server_path],
-            [self.owner, self.ben2]
+            [self.ben2]
         )
 
         # remove the second user
