@@ -1,11 +1,14 @@
 #!/usr/bin/env python
 #-*- coding: utf-8 -*-
 
+import unittest
+import os
+
 from client_cmdmanager import RawBoxExecuter
 from client_cmdmanager import RawBoxCmd
 import client_cmdmanager
-import unittest
 
+CONFIG_DEMO = os.path.join(os.path.dirname(__file__), "test_mock/config.ini")
 mock_input = []
 
 
@@ -75,20 +78,20 @@ class MockExecuter(object):
         RawBoxCmdTest.called = True
 
 
-
 class CheckShareablePathTest(unittest.TestCase):
-
     def setUp(self):
-        self.correct_path = ""
-        self.wrong_path1 = "/wrong1/"
-        self.wrong_path2 = "wrong2"
+        self.config_bak = client_cmdmanager.FILE_CONFIG
+        client_cmdmanager.config.read(CONFIG_DEMO)
+
+    def tearDown(self):
+        client_cmdmanager.config.read(self.config_bak)
 
     def test_check_shareable_path(self):
-        resp = client_cmdmanager.check_shareable_path(self.correct_path)
+        resp = client_cmdmanager.check_shareable_path(".")
         self.assertTrue(resp)
-        resp = client_cmdmanager.check_shareable_path(self.wrong_path1)
+        resp = client_cmdmanager.check_shareable_path("/withslashes/")
         self.assertFalse(resp)
-        resp = client_cmdmanager.check_shareable_path(self.wrong_path2)
+        resp = client_cmdmanager.check_shareable_path("inexistent")
         self.assertFalse(resp)
 
 
