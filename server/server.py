@@ -25,7 +25,18 @@ HTTP_NOT_ACCEPTABLE = 406
 HTTP_CONFLICT = 409
 
 app = Flask(__name__)
-api = Api(app)
+
+
+class MyApi(Api):
+    def handle_error(self, e):
+        code = getattr(e, 'code', 500)
+        if code == 500:
+            obj, msg = create_traceback_report(locals(), traceback.format_exc())
+            send_mail("email", obj, msg)
+            return self.make_response({"message": "text", "error_code": "_"}, 500)
+        return super(MyApi, self).handle_error(e)
+
+api = MyApi(app)
 auth = HTTPBasicAuth()
 _API_PREFIX = "/API/v1/"
 
@@ -40,6 +51,7 @@ PASSWORD_NOT_ACCEPTED_DATA = os.path.join(SERVER_ROOT, "password_not_accepted.tx
 
 parser = reqparse.RequestParser()
 parser.add_argument("task", type=str)
+
 
 
 def create_traceback_report(local_vars, traceback):
@@ -130,8 +142,6 @@ class User(object):
 
             # The json file is not present. It will be created a new structure
             # from scratch.
-            obj, msg = create_traceback_report(locals(), traceback.format_exc())
-            send_mail("address_to_define", obj, msg)
         # If the json file is corrupted, it will be raised a ValueError here.
         # In that case, please remove the corrupted file.
         else:
@@ -307,8 +317,6 @@ directories, remove them from the filesystem.
                     os.rmdir(os.path.join(USERS_DIRECTORIES, server_subdir))
                 except OSError:
                     # the directory is not empty
-                    obj, msg = create_traceback_report(locals(), traceback.format_exc())
-                    send_mail("address_to_define", obj, msg)
                     break
                 else:
                     # step 2: remove from shared beneficiary's paths
@@ -777,7 +785,7 @@ def main():
     if not os.path.isdir(USERS_DIRECTORIES):
         os.makedirs(USERS_DIRECTORIES)
     User.user_class_init()
-    app.run(host="0.0.0.0", debug=True) # TODO: remove debug=True
+    app.run(host="0.0.0.0", debug=False) # TODO: remove debug=True
 
 api.add_resource(UsersApi, "{}Users/<string:username>".format(_API_PREFIX))
 api.add_resource(Actions, "{}actions/<string:cmd>".format(_API_PREFIX))
