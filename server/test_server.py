@@ -1111,6 +1111,8 @@ class UserActions(unittest.TestCase):
             os.remove(TEST_PENDING_USERS)
         if os.path.exists(TEST_USER_DATA):
             os.remove(TEST_USER_DATA)
+        if os.path.exists(TEST_RESET_REQUESTS):
+            os.remove(TEST_RESET_REQUESTS)
         if os.path.exists(TEST_DIRECTORY):
             try:
                 os.mkdir(TEST_DIRECTORY)
