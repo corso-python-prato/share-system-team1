@@ -704,8 +704,8 @@ class Shares(Resource_with_auth):
     def get(self):
         me = User.users[auth.username()]
 
-        # [client_path1, client_path2, ...]
-        my_shares = []
+        # {client_path1: [ben1, ben2]}
+        my_shares = {}
 
         # {owner : client_path}
         other_shares = {}
@@ -713,11 +713,12 @@ class Shares(Resource_with_auth):
         for server_path, bens in User.shared_resources.iteritems():
             parts = server_path.split("/")
             ownername = parts[0]
-            client_path = "/".join(parts[1:])
-            owner = User.users[ownername]
+
             if ownername == me.username:
-                my_shares.append(me.paths[client_path])
+                client_path = "/".join(parts[1:])
+                my_shares[client_path] = bens
             elif me.username in bens:
+                owner = User.users[ownername]
                 other_shares[ownername] = (owner._get_shared_root(server_path))
 
         shares = {
