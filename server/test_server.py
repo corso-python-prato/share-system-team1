@@ -1063,6 +1063,11 @@ class UserActions(unittest.TestCase):
             with open(inject_dest, "w") as tmp_file:
                 json.dump(underskin_user, tmp_file)
 
+        if inject_dest == TEST_RESET_REQUESTS:
+            underskin_user[user] = code
+            with open(inject_dest, "w") as tmp_file:
+                json.dump(underskin_user, tmp_file)
+
         if inject_dest == TEST_USER_DATA:
             underskin_user[user] = {
                 "paths": {"": ["user_dirs/fake_root", False, 1405197042.793583]},
