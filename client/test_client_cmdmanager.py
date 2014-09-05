@@ -18,6 +18,12 @@ def mock_print_response(a, b):
 RawBoxExecuter.print_response = mock_print_response
 
 
+def mock_check_shareable_path(path):
+    """used for testing do_add_share, 
+    do_remove_share, do_remove_beneficiary"""
+    return True
+
+
 class MockCmdMessageClient(object):
 
     def send_message(self, _, param):
@@ -87,6 +93,7 @@ class RawBoxCmdTest(unittest.TestCase):
     def setUp(self):
         self.executer = MockExecuter()
         self.rawbox_cmd = RawBoxCmd(self.executer)
+        client_cmdmanager.check_shareable_path = mock_check_sharable_path
         RawBoxCmdTest.called = False
         mock_input.append('y')
 
