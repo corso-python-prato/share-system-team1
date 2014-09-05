@@ -1244,6 +1244,18 @@ class UserActions(unittest.TestCase):
         response = self.tc.put(self.url2, data=data, headers=None)
         self.assertEqual(response.status_code, server.HTTP_NOT_FOUND)
 
+    def test_set_password_pending_user(self):
+        data = {
+            "reset": True,
+            "code": UserActions.code,
+            "psw": UserActions.psw
+        }
+
+        self.inject_user(TEST_PENDING_USERS, UserActions.user)
+        self.inject_user(TEST_RESET_REQUESTS, UserActions.user, code=UserActions.code)
+        response = self.tc.put(self.url2, data=data, headers=None)
+        self.assertEqual(response.status_code, server.HTTP_ACCEPTED)
+
 if __name__ == '__main__':
     # TODO: these things, here, are ok for nose?
     server.app.config.update(TESTING=True)
