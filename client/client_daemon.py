@@ -25,7 +25,7 @@ import asyncore
 SERVER_URL = "localhost"
 SERVER_PORT = "5000"
 API_PREFIX = "API/v1"
-CONFIG_DIR_PATH = ""
+CONFIG_DIR_PATH = None        # RawBox root
 FILE_CONFIG = "config.ini"
 
 logger = logging.getLogger('RawBox')
@@ -738,7 +738,6 @@ class DirSnapshotManager(object):
 
     def instant_snapshot(self):
         """ create a snapshot of directory """
-
         dir_snapshot = {}
         for root, dirs, files in os.walk(CONFIG_DIR_PATH):
             for f in files:

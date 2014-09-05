@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+#-*- coding: utf-8 -*-
+
 from client_cmdmanager import RawBoxExecuter
 from client_cmdmanager import RawBoxCmd
 import client_cmdmanager
@@ -14,7 +17,7 @@ client_cmdmanager.take_input = mock_take_input
 
 
 def mock_print_response(a, b):
-        pass
+    pass
 RawBoxExecuter.print_response = mock_print_response
 
 
@@ -63,6 +66,7 @@ class MockExecuter(object):
     def _remove_beneficiary(self, path, ben):
         RawBoxCmdTest.called = True
 
+
 class CheckShareablePathTest(unittest.TestCase):
 
     def setUp(self):
@@ -77,6 +81,7 @@ class CheckShareablePathTest(unittest.TestCase):
         self.assertFalse(resp)
         resp = client_cmdmanager.check_shareable_path(self.wrong_path2)
         self.assertFalse(resp)
+
 
 class RawBoxCmdTest(unittest.TestCase):
 
@@ -253,6 +258,7 @@ class TestRawBoxExecuter(unittest.TestCase):
         self.raw_box_exec._remove_beneficiary(self.pathtoshare, self.ben)
         self.assertEquals(TestRawBoxExecuter.pathtoshare, self.pathtoshare)
         self.assertEquals(TestRawBoxExecuter.ben, self.ben)
+
 
 if __name__ == '__main__':
     unittest.main()

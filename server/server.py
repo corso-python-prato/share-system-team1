@@ -204,12 +204,7 @@ class User(object):
         """
         From a server_path, generate a valid shared root.
         """
-        path_parts = server_path.split("/")
-        # if len(path_parts) > 3:
-        #     # shared resource has to be in owner's root
-        #     return False
-
-        resource_name = path_parts.pop()
+        resource_name = server_path.split("/")[-1]
         return os.path.join("shares", self.username, resource_name)
 
     def _get_ben_path(self, server_path):

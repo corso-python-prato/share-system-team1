@@ -671,6 +671,9 @@ class TestUser(unittest.TestCase):
 
 
 class TestShare(unittest.TestCase):
+    # TODO: to make indipendent tests here, we need to save the shares in some
+    # way. It is a task. We can easily save them in a json, or wait for the
+    # implementation of the database.
     root = os.path.join(
         os.path.dirname(__file__),
         "demo_test/test_share"
@@ -777,7 +780,6 @@ class TestShare(unittest.TestCase):
 
     def test_can_write_usage(self):
         # share a file with an user (create a share)
-        # TODO: load this from json when the shares will be saved on file
         received = self.tc.post(
             "{}shares/{}/{}".format(
                 _API_PREFIX, "can_write", self.ben1
@@ -835,7 +837,7 @@ class TestShare(unittest.TestCase):
             )
             self.assertEqual(received.status_code, 403)
 
-    def test_share_subdirectory(self):
+    def test_share_in_a_subdirectory(self):
         received = self.tc.post(
             "{}shares/{}/{}".format(
                 _API_PREFIX, "subdir/ciao.txt", self.ben1
