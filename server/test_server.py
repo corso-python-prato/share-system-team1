@@ -1205,6 +1205,22 @@ class UserActions(unittest.TestCase):
         self.assertEqual(response.status_code, server.HTTP_CREATED)
         self.assertTrue(os.path.exists(TEST_PENDING_USERS))
 
+    def test_reset_password(self):
+        data = {
+            "reset": True
+        }
+
+        response = self.tc.post(self.url2, data=data, headers=None)
+        self.assertEqual(response.status_code, server.HTTP_ACCEPTED)
+
+        with open(server.RESET_REQUESTS, "r") as reset_requests:
+            data = json.load(reset_requests)
+            user = data.keys()[0]
+            self.assertEqual(user, UserActions.user)
+            code = data[UserActions.user]
+            self.assertIsNotNone(code)
+            self.assertEqual(len(code), 32)
+
 if __name__ == '__main__':
     # TODO: these things, here, are ok for nose?
     server.app.config.update(TESTING=True)
