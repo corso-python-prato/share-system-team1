@@ -97,7 +97,7 @@ class RawBoxCmdTest(unittest.TestCase):
     def setUp(self):
         self.executer = MockExecuter()
         self.rawbox_cmd = RawBoxCmd(self.executer)
-        client_cmdmanager.check_shareable_path = mock_check_sharable_path
+        client_cmdmanager.check_shareable_path = mock_check_shareable_path
         RawBoxCmdTest.called = False
         mock_input.append('y')
 
