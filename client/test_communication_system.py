@@ -1,10 +1,11 @@
 #! /usr/bin/env python
 # -*- coding:utf-8 -*-
 
-import communication_system
 import unittest
 import struct
 import json
+
+import communication_system
 
 
 class TestCmdMessageClient(unittest.TestCase):

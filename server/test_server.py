@@ -12,8 +12,8 @@ import json
 import time
 import os
 
-import server
 from server import _API_PREFIX
+import server
 
 
 TEST_DIRECTORY = "test_users_dirs/"

@@ -12,6 +12,7 @@ from requests.auth import HTTPBasicAuth
 import ConfigParser
 import requests
 import argparse
+import asyncore
 import hashlib
 import logging
 import shutil
@@ -20,7 +21,6 @@ import json
 import os
 
 from communication_system import CmdMessageServer
-import asyncore
 
 SERVER_URL = "localhost"
 SERVER_PORT = "5000"

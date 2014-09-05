@@ -1,19 +1,14 @@
-from client_daemon import DirSnapshotManager
-from client_daemon import DirectoryEventHandler
-from client_daemon import ServerCommunicator
-from client_daemon import FileSystemOperator
-from client_daemon import CommandExecuter
-from client_daemon import get_abspath
-from client_daemon import get_relpath
+#!/usr/bin/env python
+#-*- coding: utf-8 -*-
 
 #Watchdog event import for event_handler test
-from watchdog.events import FileDeletedEvent
 from watchdog.events import FileModifiedEvent
+from watchdog.events import FileDeletedEvent
 from watchdog.events import FileCreatedEvent
-from watchdog.events import FileMovedEvent
-from watchdog.events import DirDeletedEvent
 from watchdog.events import DirModifiedEvent
+from watchdog.events import DirDeletedEvent
 from watchdog.events import DirCreatedEvent
+from watchdog.events import FileMovedEvent
 from watchdog.events import DirMovedEvent
 import ConfigParser
 import client_daemon
@@ -27,6 +22,14 @@ import shutil
 import copy
 import json
 import os
+
+from client_daemon import DirectoryEventHandler
+from client_daemon import DirSnapshotManager
+from client_daemon import ServerCommunicator
+from client_daemon import FileSystemOperator
+from client_daemon import CommandExecuter
+from client_daemon import get_abspath
+from client_daemon import get_relpath
 
 
 class TestEnvironment(object):

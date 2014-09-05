@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 #-*- coding: utf-8 -*-
 
-from communication_system import CmdMessageClient
 from colorMessage import Message
 import ConfigParser
 import platform
@@ -9,6 +8,8 @@ import getpass
 import cmd
 import re
 import os
+
+from communication_system import CmdMessageClient
 
 FILE_CONFIG = "config.ini"
 config = ConfigParser.ConfigParser()
@@ -41,6 +42,7 @@ def check_shareable_path(path):
         )
         return False
     return True
+
 
 class RawBoxExecuter(object):
 
@@ -271,7 +273,6 @@ class RawBoxCmd(cmd.Cmd):
         remove a shared resource
         Expected: remove_share <path>
         (the path starts from the RawBox root)
-        
         """
         try:
             if check_shareable_path(path):
@@ -279,7 +280,7 @@ class RawBoxCmd(cmd.Cmd):
 
         except ValueError:
             Message("INFO", self.do_remove_share.__doc__)
-    
+
     def do_remove_beneficiary(self, line):
         """ Remove beneficiary from shares.
             type: remove_beneficiary <path> <ben>

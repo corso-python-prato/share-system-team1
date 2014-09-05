@@ -25,7 +25,7 @@ RawBoxExecuter.print_response = mock_print_response
 
 
 def mock_check_shareable_path(path):
-    """used for testing do_add_share, 
+    """used for testing do_add_share,
     do_remove_share, do_remove_beneficiary"""
     return True
 
@@ -54,8 +54,8 @@ class MockCmdMessageClient(object):
         it's useless for testing"""
         pass
 
-class MockExecuter(object):
 
+class MockExecuter(object):
     def _create_user(self, username):
         RawBoxCmdTest.called = True
 
@@ -65,7 +65,7 @@ class MockExecuter(object):
     def _delete_user(self, username):
         RawBoxCmdTest.called = True
 
-    def _add_share(self,path, ben):
+    def _add_share(self, path, ben):
         RawBoxCmdTest.called = True
 
     def _remove_share(self, path):
@@ -73,7 +73,7 @@ class MockExecuter(object):
 
     def _remove_beneficiary(self, path, ben):
         RawBoxCmdTest.called = True
-    
+
     def _get_shares_list(self):
         RawBoxCmdTest.called = True
 
@@ -134,19 +134,27 @@ class RawBoxCmdTest(unittest.TestCase):
 
 
 class TestRawBoxExecuter(unittest.TestCase):
-
     def setUp(self):
         self.comm_sock = MockCmdMessageClient()
         self.correct_user = "user@server.it"
-        self.wrong_user0 = "user"       # no "@" and no final ".something"
-        self.wrong_user1 = "@ceoijeo"   # nothing before "@" and no final ".something"
-        self.wrong_user2 = ".user"      # nothing before "@" no "@" nothing after "@"
-        self.wrong_user3 = "user.it"    # nothing before "@" and no "@"
+
+        # no "@" and no final ".something"
+        self.wrong_user0 = "user"
+
+        # nothing before "@" and no final ".something"
+        self.wrong_user1 = "@ceoijeo"
+
+        # nothing before "@" no "@" nothing after "@"
+        self.wrong_user2 = ".user"
+
+        # nothing before "@" and no "@"
+        self.wrong_user3 = "user.it"
+
         self.correct_pwd = "33>Password!"
         self.wrong_pwd = "pawssworowd"
         self.correct_code = "9fe2598cc1721ee1a61f5f1fclungo32"
         self.tooshort_code = "123tinycode123"
-        self.toolong_code = "questocodiceeveramentelunghissimo111109091230191209"
+        self.toolong_code = "questocodiceeveramentelunghissimo1111090912301919"
         self.raw_box_exec = RawBoxExecuter(self.comm_sock)
         TestRawBoxExecuter.username = "empty"
         TestRawBoxExecuter.psw = "empty"
