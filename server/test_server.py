@@ -18,6 +18,7 @@ from server import _API_PREFIX
 TEST_DIRECTORY = "test_users_dirs/"
 TEST_USER_DATA = "test_user_data.json"
 TEST_PENDING_USERS = "test_user_pending.tmp"
+TEST_RESET_REQUESTS = "test_reset_requests.tmp"
 
 
 def server_setup(root):
