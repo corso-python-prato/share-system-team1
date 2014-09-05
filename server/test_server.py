@@ -689,6 +689,7 @@ class TestShare(unittest.TestCase):
 
     def tearDown(self):
         os.remove(server.USERS_DATA)
+        server.User.shared_resources = {}
 
     def test_add_share(self):
         # check if it aborts, when the beneficiary doesn't exist
