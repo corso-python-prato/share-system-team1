@@ -42,7 +42,6 @@ class MockCmdMessageClient(object):
         it's useless for testing"""
         pass
 
-
 class MockExecuter(object):
 
     def _create_user(self, username):
@@ -109,7 +108,6 @@ class RawBoxCmdTest(unittest.TestCase):
     def test_do_remove_beneficiary(self):
         self.rawbox_cmd.onecmd('remove_beneficiary shared_folder beneficiary')
         self.assertTrue(RawBoxCmdTest.called)
-
 
 class TestRawBoxExecuter(unittest.TestCase):
 
