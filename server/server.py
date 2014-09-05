@@ -702,28 +702,28 @@ class Shares(Resource_with_auth):
             return self._remove_share(owner, server_path, client_path)
 
     def get(self):
-        owner = User.users[auth.username()]
-        usr = owner.username
+        me = User.users[auth.username()]
+
+        # [client_path1, client_path2, ...]
         my_shares = []
+
+        # {owner : client_path}
         other_shares = {}
-        for path, bens in User.shared_resources.iteritems():
-            path = "/".join((path.split("/")[1:]))
-            if usr in bens:
-                if bens[0] == usr:
-                    # the user shares the path
-                    my_shares.append(path)
-                else:
-                    #the user is a beneficiary
-                    path = "shares/{}/{}".format(bens[0], path)
-                    if bens[0] not in other_shares:
-                        other_shares[bens[0]] = [path]
-                    else:
-                        other_shares[bens[0]].append(path)
+
+        for server_path, bens in User.shared_resources.iteritems():
+            parts = server_path.split("/")
+            ownername = parts[0]
+            client_path = "/".join(parts[1:])
+            owner = User.users[ownername]
+            if ownername == me.username:
+                my_shares.append(me.paths[client_path])
+            elif me.username in bens:
+                other_shares[ownername] = (owner._get_shared_root(server_path))
+
         shares = {
             "my_shares": my_shares,
             "other_shares": other_shares
         }
-
         return shares, HTTP_OK
 
 
