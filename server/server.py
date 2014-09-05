@@ -310,7 +310,9 @@ class User(object):
 
     def add_share(self, client_path, beneficiary):
         if self.username == beneficiary:
-            return "You can not share things with yourself."
+            return "You can't share things with yourself."
+        if len(client_path.split("/")) > 1:
+            return "You can't share something in a subdir."
 
         try:
             server_path = self.paths[client_path][0]

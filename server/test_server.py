@@ -835,6 +835,15 @@ class TestShare(unittest.TestCase):
             )
             self.assertEqual(received.status_code, 403)
 
+    def test_share_subdirectory(self):
+        received = self.tc.post(
+            "{}shares/{}/{}".format(
+                _API_PREFIX, "subdir/ciao.txt", self.ben1
+            ),
+            headers=self.owner_headers
+        )
+        self.assertEqual(received.status_code, 400)
+
     def test_remove_beneficiary(self):
         # test if aborts when the resource is not on the server
         received = self.tc.delete(
