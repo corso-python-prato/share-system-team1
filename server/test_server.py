@@ -1094,6 +1094,8 @@ class UserActions(unittest.TestCase):
 
         server.PENDING_USERS = TEST_PENDING_USERS
 
+        server.RESET_REQUESTS = TEST_RESET_REQUESTS
+
         open(TEST_USER_DATA, "w").close()
         server.USERS_DATA = TEST_USER_DATA
 
