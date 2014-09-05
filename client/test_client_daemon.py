@@ -183,6 +183,15 @@ class ServerCommunicatorTest(unittest.TestCase):
                 httpretty.Response(body='{}',status=404),
                 httpretty.Response(body='{}',status=400)
             ])
+        httpretty.register_uri(httpretty.POST, 'http://127.0.0.1:5000/API/v1/Users/usernameFarlocco/reset',
+            responses=[
+                httpretty.Response(body='{}',status=202)
+            ])
+        httpretty.register_uri(httpretty.PUT, 'http://127.0.0.1:5000/API/v1/Users/usernameFarlocco/reset',
+            responses=[
+                httpretty.Response(body='{}',status=202),
+                httpretty.Response(body='{}',status=404)
+            ])
 
         self.dir = "/tmp/home/test_rawbox/folder"
         client_daemon.CONFIG_DIR_PATH = self.dir
