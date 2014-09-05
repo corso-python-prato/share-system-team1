@@ -396,6 +396,9 @@ class ServerCommunicator(object):
         }
 
         response = self._try_request(requests.put, success_log, error_log, **request)
+
+        self.msg["result"] = response.status_code
+
         if response.status_code == 202:
             self.write_user_data(param["user"], param["psw"])
             self.msg["details"].append("Your password has been resetted. Login needed!")
