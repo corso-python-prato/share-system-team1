@@ -553,6 +553,17 @@ class ServerCommunicatorTest(unittest.TestCase):
         self.assertEqual(msg["details"][0], "Check your email for the resetting code")
         self.assertEqual(msg["result"], 202)
 
+    def test_set_password(self):
+        code = "qwerty12345"
+        msg1 = self.server_comm.set_password({"user": self.username, "reset": True,
+                                              "code": code, "psw": "new_password"})
+        self.assertEqual(msg1["result"], 202)
+        self.assertEqual(msg1["details"][0], "Your password has been resetted. Login needed!")
+
+        msg2 = self.server_comm.set_password({"user": self.username, "reset": True,
+                                              "code": code, "psw": "new_password"})
+        self.assertEqual(msg2["result"], 404)
+        self.assertEqual(msg2["details"][0], "Wrong code or reset request not found")
     
     def test_syncronize(self):
         def my_try_request(*args, **kwargs):
