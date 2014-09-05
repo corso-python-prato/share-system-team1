@@ -376,8 +376,8 @@ class ServerCommunicator(object):
                 if my_shares["other_shares"]:
                     sub_res.append("Other shares:\n")
                     sub_res.append(str(my_shares["other_shares"]))
-                if sub_res != "":
-                    res = "".join(("\nList of shares\n", "".join(sub_res)))
+                if sub_res:
+                    res = "".join(["\nList of shares\n"] + sub_res)
                 else:
                     res = "No shares found"
                 self.msg["details"].append(res)
