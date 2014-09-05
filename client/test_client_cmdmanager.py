@@ -21,6 +21,12 @@ def mock_print_response(a, b):
 RawBoxExecuter.print_response = mock_print_response
 
 
+def mock_check_shareable_path(path):
+    """used for testing do_add_share, 
+    do_remove_share, do_remove_beneficiary"""
+    return True
+
+
 class MockCmdMessageClient(object):
 
     def send_message(self, _, param):
@@ -45,7 +51,6 @@ class MockCmdMessageClient(object):
         it's useless for testing"""
         pass
 
-
 class MockExecuter(object):
 
     def _create_user(self, username):
@@ -65,6 +70,10 @@ class MockExecuter(object):
 
     def _remove_beneficiary(self, path, ben):
         RawBoxCmdTest.called = True
+    
+    def _get_shares_list(self):
+        RawBoxCmdTest.called = True
+
 
 
 class CheckShareablePathTest(unittest.TestCase):
@@ -88,6 +97,7 @@ class RawBoxCmdTest(unittest.TestCase):
     def setUp(self):
         self.executer = MockExecuter()
         self.rawbox_cmd = RawBoxCmd(self.executer)
+        client_cmdmanager.check_shareable_path = mock_check_sharable_path
         RawBoxCmdTest.called = False
         mock_input.append('y')
 
@@ -115,6 +125,10 @@ class RawBoxCmdTest(unittest.TestCase):
         self.rawbox_cmd.onecmd('remove_beneficiary shared_folder beneficiary')
         self.assertTrue(RawBoxCmdTest.called)
 
+    def test_do_get_shares_list(self):
+        self.rawbox_cmd.onecmd('get_shares_list')
+        self.assertTrue(RawBoxCmdTest.called)
+
 
 class TestRawBoxExecuter(unittest.TestCase):
 
@@ -125,7 +139,7 @@ class TestRawBoxExecuter(unittest.TestCase):
         self.wrong_user1 = "@ceoijeo"   # nothing before "@" and no final ".something"
         self.wrong_user2 = ".user"      # nothing before "@" no "@" nothing after "@"
         self.wrong_user3 = "user.it"    # nothing before "@" and no "@"
-        self.correct_pwd = "password"
+        self.correct_pwd = "33>Password!"
         self.wrong_pwd = "pawssworowd"
         self.correct_code = "9fe2598cc1721ee1a61f5f1fclungo32"
         self.tooshort_code = "123tinycode123"

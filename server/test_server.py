@@ -346,8 +346,8 @@ class TestFilesAPI(unittest.TestCase):
             pass
 
         # rv = self.tc.post(
-        #     _API_PREFIX + "create_user",
-        #     data=data
+        # _API_PREFIX + "create_user",
+        # data=data
         # )
         # self.assertEqual(rv.status_code, 201)
 
@@ -648,26 +648,6 @@ class TestActionsAPI(unittest.TestCase):
             headers=self.headers
         )
         self.assertEqual(received.status_code, 404)
-
-
-class TestUser(unittest.TestCase):
-    root = os.path.join(
-        os.path.dirname(__file__),
-        "demo_test"
-    )
-
-    def setUp(self):
-        server.app.config.update(TESTING=True)
-        server.app.testing = True
-
-        server_setup(TestUser.root)
-
-    def tearDown(self):
-        try:
-            os.remove(server.USERS_DATA)
-        except OSError:
-            pass
-        shutil.rmtree(server.USERS_DIRECTORIES)
 
 
 class TestShare(unittest.TestCase):
@@ -1060,6 +1040,49 @@ class TestShare(unittest.TestCase):
             server.User.shared_resources
         )
 
+    def test_get_shares_list(self):
+        # share the subdir
+        received = self.tc.post(
+            "{}shares/{}/{}".format(
+                _API_PREFIX, "shared_directory", self.ben1
+            ),
+            headers=self.owner_headers
+        )
+        self.assertEqual(received.status_code, 200)
+        #check if the shared path is added to the beneficiary's paths
+        self.assertIn(
+            "shares/{}/shared_directory".format(self.owner),
+            server.User.users[self.ben1].paths
+        )
+        #check if the content of the shared path is added to the beneficiary's paths
+        self.assertIn(
+            "shares/{}/shared_directory/interesting_file.txt".format(
+                self.owner
+            ),
+            server.User.users[self.ben1].paths
+        )
+        #get the shares list of the beneficiary
+        received = self.tc.get(
+            "{}shares/".format(
+                _API_PREFIX
+            ),
+            headers=make_headers(self.ben1, "password")
+        )
+        self.assertEqual(received.status_code, 200)
+        #check that the beneficiary doesn't have a list of paths
+        self.assertFalse(json.loads(received.get_data())["my_shares"])
+        #get the shares list of the owner
+        received = self.tc.get(
+            "{}shares/".format(
+                _API_PREFIX
+            ),
+            headers=self.owner_headers
+        )
+        self.assertEqual(received.status_code, 200)
+        #check that the owner has the personal shares in the list
+        self.assertTrue(json.loads(received.get_data())["my_shares"])
+
+
 
 class TestServerInternalErrors(unittest.TestCase):
     root = os.path.join(
@@ -1216,7 +1239,7 @@ class EmailTest(unittest.TestCase):
     obj = "test"
     content = "test content"
     user = "user_mail@demo.it"
-    psw = "password_demo"
+    psw = "33password_demo.PA"
     code = "5f8e441f01abc7b3e312917efb52cc12"  # os.urandom(16).encode('hex')
 
     def setUp(self):
@@ -1348,6 +1371,27 @@ class UserActions(unittest.TestCase):
             pass
 
     def test_create_user(self):
+        data = {
+            "psw": "pro"
+        }
+
+        response = self.tc.post(self.url, data=data, headers=None)
+        self.assertEqual(response.status_code, server.HTTP_NOT_ACCEPTABLE)
+
+        data = {
+            "psw": "123456"
+        }
+
+        response = self.tc.post(self.url, data=data, headers=None)
+        self.assertEqual(response.status_code, server.HTTP_NOT_ACCEPTABLE)
+
+        data = {
+            "psw": "provasemplice"
+        }
+
+        response = self.tc.post(self.url, data=data, headers=None)
+        self.assertEqual(response.status_code, server.HTTP_NOT_ACCEPTABLE)
+
         data = {
             "psw": UserActions.psw
         }

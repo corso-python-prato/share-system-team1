@@ -6,6 +6,7 @@ from flask.ext.mail import Mail, Message
 from passlib.hash import sha256_crypt
 from flask.ext.httpauth import HTTPBasicAuth
 from flask import Flask, request
+import passwordmeter
 import ConfigParser
 import hashlib
 import shutil
@@ -19,6 +20,7 @@ HTTP_CREATED = 201
 HTTP_BAD_REQUEST = 400
 HTTP_FORBIDDEN = 403
 HTTP_NOT_FOUND = 404
+HTTP_NOT_ACCEPTABLE = 406
 HTTP_CONFLICT = 409
 
 app = Flask(__name__)
@@ -33,6 +35,7 @@ USERS_DATA = os.path.join(SERVER_ROOT, "user_data.json")
 PENDING_USERS = os.path.join(SERVER_ROOT, ".pending.tmp")
 CORRUPTED_DATA = os.path.join(SERVER_ROOT, "corrupted_data.json")
 EMAIL_SETTINGS_INI = os.path.join(SERVER_ROOT, "email_settings.ini")
+PASSWORD_NOT_ACCEPTED_DATA = os.path.join(SERVER_ROOT, "password_not_accepted.txt")
 
 parser = reqparse.RequestParser()
 parser.add_argument("task", type=str)
@@ -68,11 +71,33 @@ def can_write(username, server_path):
     return (pieces[0] == username) and \
         ((len(pieces) == 1) or (pieces[1] != "shares"))
 
+def PasswordChecker(clear_password):
+    #if the password is too short
+    if len(clear_password) <= 5:
+        return "This password is too short, the password " + \
+            "must be at least 6 characters", HTTP_NOT_ACCEPTABLE
+    #if the password is too common
+    f = open(PASSWORD_NOT_ACCEPTED_DATA)
+    lines = f.readlines()
+    f.close()
+    for line in lines:
+        for word in line.split():
+            if clear_password == word:
+                return "This password is too common, the password " + \
+                    "must be something unusual", HTTP_NOT_ACCEPTABLE
+    #if the password is too easy
+    strength, _ = passwordmeter.test(clear_password)
+    if strength < 0.5:
+        return "This password is too easy, the password should " + \
+            "be a combination of numbers, uppercase and lowercase" + \
+            "characters and special characters", HTTP_NOT_ACCEPTABLE
+    return clear_password
+
 
 class User(object):
     """
     Maintaining two dictionaries:
-        · paths     = { client_path : [server_path, md5/None, timestamp] }
+        · paths = { client_path : [server_path, md5/None, timestamp] }
         None instead of the md5 means that the path is a directory.
         · shared_resources: { server_path : [ben1, ben2, ...] }
     The full path to access to the file is a join between USERS_DIRECTORIES and
@@ -89,6 +114,7 @@ class User(object):
             saved = json.load(ud)
             ud.close()
         except IOError:
+
             # The json file is not present. It will be created a new structure
             # from scratch.
             pass
@@ -135,7 +161,7 @@ class User(object):
         self.psw = password
 
         # path of each file and each directory of the user:
-        #     { client_path : [server_path, md5, timestamp] }
+        # { client_path : [server_path, md5, timestamp] }
         self.paths = {}
 
         # timestamp of the last change in the user's files
@@ -354,7 +380,6 @@ class UsersApi(Resource):
         except IOError:
             # there aren't PENDING_USERS
             pending = {}
-
         return pending
 
     def post(self, username):
@@ -369,16 +394,16 @@ class UsersApi(Resource):
             }
         }"""
         pending = self.load_pending_users()
-
         try:
             psw = request.form["psw"]
         except KeyError:
             return "Missing password", HTTP_BAD_REQUEST
-
         if username in pending:
             return "This user have already a pending request", HTTP_CONFLICT
         elif username in User.users:
             return "This user already exists", HTTP_CONFLICT
+        if psw is not PasswordChecker(psw):
+            return PasswordChecker(psw)
         else:
             psw_hash = sha256_crypt.encrypt(psw)
             code = os.urandom(16).encode('hex')
@@ -426,7 +451,7 @@ class UsersApi(Resource):
         """Delete the user who is making the request
         """
         current_username = auth.username()
-        current_user = User.get_user(current_username)
+        current_user = User.users[current_username]
         if current_username == username:
             current_user.delete_user(username)
             return "user deleted", HTTP_OK
@@ -493,7 +518,6 @@ class Files(Resource_with_auth):
         Expected as POST data:
         { "file_content" : <file>} """
         u = User.users[auth.username()]
-
         try:
             server_path = u.paths[client_path][0]
         except KeyError:
@@ -594,7 +618,7 @@ class Actions(Resource_with_auth):
             else:
                 shutil.move(full_src, full_dest)
         except shutil.Error:
-            return abort(HTTP_CONFLICT)         # TODO: check.
+            return abort(HTTP_CONFLICT) # TODO: check.
         else:
             # update the structure
             if keep_the_original:
@@ -617,7 +641,7 @@ class Actions(Resource_with_auth):
             return abort(HTTP_NOT_FOUND)
 
 
-class Shares(Resource):
+class Shares(Resource_with_auth):
     def post(self, client_path, beneficiary):
         owner = User.users[auth.username()]
 
@@ -625,7 +649,7 @@ class Shares(Resource):
         if result is not True:
             return result, HTTP_BAD_REQUEST
         else:
-            return HTTP_OK              # TODO: timestamp is needed here?
+            return HTTP_OK # TODO: timestamp is needed here?
 
     def _remove_beneficiary(self, owner, server_path, client_path,
                             beneficiary):
@@ -678,6 +702,31 @@ class Shares(Resource):
         else:
             return self._remove_share(owner, server_path, client_path)
 
+    def get(self):
+        owner = User.users[auth.username()]
+        usr = owner.username
+        my_shares = []
+        other_shares = {}
+        for path, bens in User.shared_resources.iteritems():
+            path =  "/".join((path.split("/")[1:]))
+            if usr in bens:
+                if bens[0] == usr:
+                    # the user shares the path
+                    my_shares.append(path)
+                else:
+                    #the user is a beneficiary
+                    path = "shares/{}/{}".format(bens[0], path)
+                    if bens[0] not in other_shares:
+                        other_shares[bens[0]] = [path]
+                    else:
+                        other_shares[bens[0]].append(path)
+        shares = {
+            "my_shares": my_shares,
+            "other_shares": other_shares
+        }
+
+        return shares, HTTP_OK
+
 
 def mail_config_init():
     config = ConfigParser.ConfigParser()
@@ -717,7 +766,7 @@ def main():
     if not os.path.isdir(USERS_DIRECTORIES):
         os.makedirs(USERS_DIRECTORIES)
     User.user_class_init()
-    app.run(host="0.0.0.0", debug=True)         # TODO: remove debug=True
+    app.run(host="0.0.0.0", debug=True) # TODO: remove debug=True
 
 api.add_resource(UsersApi, "{}Users/<string:username>".format(_API_PREFIX))
 api.add_resource(Actions, "{}actions/<string:cmd>".format(_API_PREFIX))
@@ -727,6 +776,7 @@ api.add_resource(
     "{}files/".format(_API_PREFIX))
 api.add_resource(
     Shares,
+    "{}shares/".format(_API_PREFIX),
     "{}shares/<path:client_path>".format(_API_PREFIX),
     "{}shares/<path:client_path>/<string:beneficiary>".format(_API_PREFIX))
 

@@ -45,6 +45,7 @@ def get_abspath(rel_path):
         return "/".join([CONFIG_DIR_PATH, rel_path])
     return rel_path
 
+
 def initialize_directory():
     shares_dir = os.path.join(CONFIG_DIR_PATH, "shares")
     try:
@@ -266,6 +267,9 @@ class ServerCommunicator(object):
                 "Check your email for the activation code")
             logger.info("user: {} psw: {} created!".format(username, password))
             self.write_user_data(param["user"], param["psw"], activate=False)
+        elif response.status_code == 406:
+            logger.warning("{}".format(response.text))
+            self.msg["details"].append("{}".format(response.text))
         elif response.status_code == 409:
             logger.warning("user: {} psw: {} already exists!".format(username, password))
             self.msg["details"].append("User already exists")
@@ -430,6 +434,38 @@ class ServerCommunicator(object):
             self.msg["details"].append("User removed from shares")
         elif response.status_code == 400:
             self.msg["details"].append("Cannot remove user from shares")
+        return self.msg
+
+    def get_shares_list(self, param=None):
+        self.msg["details"] = []
+        error_log = "List shares error"
+        success_log = "List shares downloaded!"
+        server_url = "{}/shares/".format(self.server_url)
+        request = {"url": server_url}
+        response = self._try_request(requests.get, success_log, error_log, **request)
+
+        self.msg["result"] = response.status_code
+        if response.status_code != 401:
+            try:
+                my_shares = response.json()
+                self.msg["details"].append("Shares list downloaded")
+                sub_res = ""
+                if my_shares["my_shares"]:
+                    sub_res.append("My shares:\n")
+                    sub_res.append(str(my_shares["my_shares"]))
+                if my_shares["other_shares"]:
+                    sub_res.append("Other shares:\n")
+                    sub_res.append(str(my_shares["other_shares"]))
+                if sub_res != "":
+                    res = "".join(("\nList of shares\n", sub_res))
+                else:
+                    res = "No shares found"
+                self.msg["details"].append(res)
+            except ValueError:
+                self.msg["details"].append("Shares not found")
+        else:
+            self.msg["details"].append("Unauthorized access")
+
         return self.msg
 
 
@@ -1023,7 +1059,7 @@ def main():
     snapshot_manager = DirSnapshotManager(
         snapshot_file_path=config['snapshot_file_path'],
     )
-
+    
     server_com = ServerCommunicator(
         server_url=config['server_url'],
         username=None,
@@ -1036,7 +1072,8 @@ def main():
         "delete_user": server_com.delete_user,
         "add_share": server_com.add_share,
         "remove_share": server_com.remove_share,
-        "remove_beneficiary": server_com.remove_beneficiary
+        "remove_beneficiary": server_com.remove_beneficiary,
+        "get_shares_list": server_com.get_shares_list
     }
     sock_server = CmdMessageServer(
         config['host'],
