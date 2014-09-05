@@ -113,8 +113,8 @@ class ServerCommunicator(object):
 
             server_timestamp = float(sync.json()['timestamp'])
             logger.debug("".format("SERVER SAY: ", server_snapshot, server_timestamp, "\n"))
-            command_list = self.snapshot_manager.syncronize_dispatcher(server_timestamp, server_snapshot)
-            self.executer.syncronize_executer(command_list)
+            command_list = self.snapshot_manager.synchronize_dispatcher(server_timestamp, server_snapshot)
+            self.executer.synchronize_executer(command_list)
             self.snapshot_manager.save_timestamp(server_timestamp)
 
     def get_url_relpath(self, abs_path):
@@ -839,7 +839,7 @@ class DirSnapshotManager(object):
             if path_timestamp['path'] == new_path:
                 return path_timestamp['timestamp'] < self.last_status['timestamp']
 
-    def syncronize_dispatcher(self, server_timestamp, server_snapshot):
+    def synchronize_dispatcher(self, server_timestamp, server_snapshot):
         """ return the list of command to do """
         new_client_paths, new_server_paths, equal_paths = self.diff_snapshot_paths(
             self.local_full_snapshot, server_snapshot)
@@ -934,7 +934,7 @@ class CommandExecuter(object):
         self.local = file_system_op
         self.remote = server_com
 
-    def syncronize_executer(self, command_list):
+    def synchronize_executer(self, command_list):
         logger.debug("EXECUTER\n")
 
         def error(*args, **kwargs):

@@ -84,7 +84,7 @@ class ServerCommunicatorTest(unittest.TestCase):
                 self.action = False
                 self.body = False
 
-            def syncronize_dispatcher(self, server_timestamp, server_snapshot):
+            def synchronize_dispatcher(self, server_timestamp, server_snapshot):
                 self.server_timestamp = server_timestamp
                 self.server_snapshot = server_snapshot
                 return ['command']
@@ -580,7 +580,7 @@ class ServerCommunicatorTest(unittest.TestCase):
         self.assertEqual(msg2["result"], 400)
         self.assertEqual(msg2["details"][0], "Cannot remove user from shares")
 
-    def test_syncronize(self):
+    def test_synchronize(self):
         def my_try_request(*args, **kwargs):
             class obj (object):
                 text = {
@@ -598,7 +598,7 @@ class ServerCommunicatorTest(unittest.TestCase):
             def __init__(self):
                 self.status = False
 
-            def syncronize_executer(self, command_list):
+            def synchronize_executer(self, command_list):
                 self.status = True
 
         executer = Executer()
@@ -959,7 +959,7 @@ class DirSnapshotManagerTest(unittest.TestCase):
             unsinked_server_snap, 'error/path')
         self.assertEqual(response, None)
 
-    def test_syncronize_dispatcher(self):
+    def test_synchronize_dispatcher(self):
         #server snapshot sinked with local path
         sinked_server_snap = {
             '81bcb26fd4acfaa5d0acc7eef1d3013a': [
@@ -1007,7 +1007,7 @@ class DirSnapshotManagerTest(unittest.TestCase):
 
         #Case: no deamon internal conflicts == timestamp
         expected_result = []
-        result = self.snapshot_manager.syncronize_dispatcher(
+        result = self.snapshot_manager.synchronize_dispatcher(
             server_timestamp=self.sinked_timestamp,
             server_snapshot=sinked_server_snap)
         self.assertEqual(result, expected_result)
@@ -1021,7 +1021,7 @@ class DirSnapshotManagerTest(unittest.TestCase):
             {'local_download': ['sub_dir_1/test_file_1.txt']},
             {'local_delete': ['sub_dir_2/test_file_3.txt']}
         ]
-        result = self.snapshot_manager.syncronize_dispatcher(
+        result = self.snapshot_manager.synchronize_dispatcher(
             server_timestamp=self.unsinked_timestamp,
             server_snapshot=unsinked_server_snap)
         self.assertEqual(result, expected_result)
@@ -1034,7 +1034,7 @@ class DirSnapshotManagerTest(unittest.TestCase):
             {'remote_update': ['sub_dir_1/test_file_1.txt', True]},
             {'remote_upload': ['sub_dir_2/test_file_3.txt']}
         ]
-        result = self.snapshot_manager.syncronize_dispatcher(
+        result = self.snapshot_manager.synchronize_dispatcher(
             server_timestamp=self.sinked_timestamp,
             server_snapshot=unsinked_server_snap)
         self.assertEqual(result, expected_result)
@@ -1074,7 +1074,7 @@ class DirSnapshotManagerTest(unittest.TestCase):
             {'remote_upload': ['sub_dir_2/test_file_2.txtcopy']},
             {'remote_delete': ['sub_dir_2/test_file_3.txt']},
         ]
-        result = self.snapshot_manager.syncronize_dispatcher(
+        result = self.snapshot_manager.synchronize_dispatcher(
             server_timestamp=self.unsinked_timestamp,
             server_snapshot=unsinked_server_snap)
         self.cmdListAsserEqual(result, expected_result)
@@ -1092,11 +1092,11 @@ class DirSnapshotManagerTest(unittest.TestCase):
         self.assertTrue(self.snapshot_manager.local_check())
 
     def test_is_syncro(self):
-        #Case: syncronized timestamp
+        #Case: synchronized timestamp
         self.assertTrue(
             self.snapshot_manager.is_syncro(self.sinked_timestamp))
 
-        #Case: unsyncronized timestamp
+        #Case: unsynchronized timestamp
         self.assertFalse(
             self.snapshot_manager.is_syncro(self.unsinked_timestamp))
 
@@ -1505,7 +1505,7 @@ class CommandExecuterTest(unittest.TestCase):
             self.file_system_op,
             self.server_comm)
 
-    def test_syncronize_executer(self):
+    def test_synchronize_executer(self):
         #Case: remote and local command error
 
         error_command_list = [
@@ -1513,7 +1513,7 @@ class CommandExecuterTest(unittest.TestCase):
             {'remote_errorcommand': 'sub_dir_1/test_file_1.txt'},
         ]
 
-        self.executer.syncronize_executer(error_command_list)
+        self.executer.synchronize_executer(error_command_list)
 
         self.assertFalse(self.file_system_op.copy)
         self.assertFalse(self.file_system_op.write)
@@ -1533,7 +1533,7 @@ class CommandExecuterTest(unittest.TestCase):
             {'remote_upload': ['upload/test/path']},
         ]
 
-        self.executer.syncronize_executer(command_list)
+        self.executer.synchronize_executer(command_list)
 
         self.assertEqual(
             self.file_system_op.copy,
