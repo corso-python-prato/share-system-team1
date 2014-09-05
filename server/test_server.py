@@ -868,12 +868,24 @@ class TestShare(unittest.TestCase):
             )
             self.assertEqual(received.status_code, 200)
 
-        # remove the first user from the share
+        # the owner tries to remove himself from the share (but he can't)
         received = self.tc.delete(
             "{}shares/{}/{}".format(
-                _API_PREFIX, "shared_with_two_bens.txt", self.ben1
+                _API_PREFIX, "shared_with_two_bens.txt", self.owner
             ),
             headers=self.owner_headers
+        )
+        self.assertEqual(received.status_code, 400)
+
+        # the beneficiary removes himself from the share (and he can)
+        path_to_remove = "/".join(
+            ["shares", self.owner, "shared_with_two_bens.txt"]
+        )
+        received = self.tc.delete(
+            "{}shares/{}/{}".format(
+                _API_PREFIX, path_to_remove, self.ben1
+            ),
+            headers=self.ben1_headers
         )
         self.assertEqual(received.status_code, 200)
 
