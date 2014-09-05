@@ -61,6 +61,10 @@ class MockExecuter(object):
 
     def _remove_beneficiary(self, path, ben):
         RawBoxCmdTest.called = True
+    
+    def _get_shares_list(self):
+        RawBoxCmdTest.called = True
+
 
 class CheckShareablePathTest(unittest.TestCase):
 
@@ -76,6 +80,7 @@ class CheckShareablePathTest(unittest.TestCase):
         self.assertFalse(resp)
         resp = client_cmdmanager.check_shareable_path(self.wrong_path2)
         self.assertFalse(resp)
+
 
 class RawBoxCmdTest(unittest.TestCase):
 
@@ -109,6 +114,11 @@ class RawBoxCmdTest(unittest.TestCase):
         self.rawbox_cmd.onecmd('remove_beneficiary shared_folder beneficiary')
         self.assertTrue(RawBoxCmdTest.called)
 
+    def test_do_get_shares_list(self):
+        self.rawbox_cmd.onecmd('get_shares_list')
+        self.assertTrue(RawBoxCmdTest.called)
+
+
 class TestRawBoxExecuter(unittest.TestCase):
 
     def setUp(self):
@@ -118,7 +128,7 @@ class TestRawBoxExecuter(unittest.TestCase):
         self.wrong_user1 = "@ceoijeo"   # nothing before "@" and no final ".something"
         self.wrong_user2 = ".user"      # nothing before "@" no "@" nothing after "@"
         self.wrong_user3 = "user.it"    # nothing before "@" and no "@"
-        self.correct_pwd = "password"
+        self.correct_pwd = "33>Password!"
         self.wrong_pwd = "pawssworowd"
         self.correct_code = "9fe2598cc1721ee1a61f5f1fclungo32"
         self.tooshort_code = "123tinycode123"
@@ -251,6 +261,7 @@ class TestRawBoxExecuter(unittest.TestCase):
         self.raw_box_exec._remove_beneficiary(self.pathtoshare, self.ben)
         self.assertEquals(TestRawBoxExecuter.pathtoshare, self.pathtoshare)
         self.assertEquals(TestRawBoxExecuter.ben, self.ben)
+
 
 if __name__ == '__main__':
     unittest.main()

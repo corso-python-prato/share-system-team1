@@ -145,11 +145,15 @@ class ServerCommunicatorTest(unittest.TestCase):
             httpretty.POST,
             'http://127.0.0.1:5000/API/v1/actions/copy')
         httpretty.register_uri(
+            httpretty.GET,
+            'http://127.0.0.1:5000/API/v1/shares/')
+        httpretty.register_uri(
             httpretty.POST,
             'http://127.0.0.1:5000/API/v1/Users/usernameFarlocco',
             responses=[
                 httpretty.Response(body='{}', status=201),
                 httpretty.Response(body='{}', status=409),
+                httpretty.Response(body='password too easy',status=406),
                 httpretty.Response(body='{"something wrong"}', status=400)
             ])
         httpretty.register_uri(httpretty.GET,
@@ -181,7 +185,7 @@ class ServerCommunicatorTest(unittest.TestCase):
             responses=[
                 httpretty.Response(body='{}',status=201),
                 httpretty.Response(body='{}',status=404),
-                httpretty.Response(body='{}',status=400)
+                httpretty.Response(body='{}',status=400),
             ])
         httpretty.register_uri(httpretty.POST, 'http://127.0.0.1:5000/API/v1/shares/path_to_share/beneficiary',
             responses=[
@@ -518,6 +522,9 @@ class ServerCommunicatorTest(unittest.TestCase):
         msg2 = self.server_comm.create_user({"user": self.username, "psw": self.password})
         self.assertEqual(msg2["result"], 409)
         self.assertEqual(msg2["details"][0], "User already exists")
+        msg4 = self.server_comm.create_user({"user": self.username, "psw": self.password})
+        self.assertEqual(msg4["result"], 406)
+        self.assertEqual(msg4["details"][0], "password too easy")
         msg3 = self.server_comm.create_user({"user": self.username, "psw": self.password})
         self.assertEqual(msg3["result"], 400)
         self.assertEqual(msg3["details"][0], "Bad request")
@@ -606,6 +613,12 @@ class ServerCommunicatorTest(unittest.TestCase):
         self.server_comm._try_request = my_try_request
         self.server_comm.synchronize("mock")
         self.assertEqual(executer.status, True)
+
+    def test_get_shares_list(self):
+        msg1 = self.server_comm.get_shares_list()
+        self.assertEqual(msg1["result"], 200)
+        self.assertIn(msg1["details"][0], ["Shares not found", "Shares list downloaded"])
+
 
 
 class FileSystemOperatorTest(unittest.TestCase):

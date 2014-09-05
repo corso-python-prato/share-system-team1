@@ -44,7 +44,11 @@ data = {'file_content': 'LOREM IPSIUM!', 'file_name': 'prova.txt'} http://127.0.
 
 
 #### SHARES ####
+#share a path
 curl -X POST localhost:5000/API/v1/shares/mypath/UserName -u UserName:password
+
+#get the list of shares
+curl -X GET localhost:5000/API/v1/shares/ -u UserName:password
 
 
 #### DEVELOPING SUITE ####

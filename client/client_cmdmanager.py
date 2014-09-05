@@ -161,6 +161,13 @@ class RawBoxExecuter(object):
         self.comm_sock.send_message("remove_beneficiary", param)
         self.print_response(self.comm_sock.read_message())
 
+    def _get_shares_list(self):
+        """retrieve the list of shares of a user """
+        command_type = 'get_shares_list'
+
+        self.comm_sock.send_message(command_type)
+        self.print_response(self.comm_sock.read_message())
+
     def print_response(self, response):
         ''' print response from the daemon.
             the response is a dictionary as:
@@ -289,6 +296,12 @@ class RawBoxCmd(cmd.Cmd):
                 Message('INFO', self.do_remove_beneficiary.__doc__)
         except (IndexError, ValueError):
             Message('INFO', self.do_remove_beneficiary.__doc__)
+
+    def do_get_shares_list(self, line=None):
+        """
+        share_list (get the list of the shares)
+        """
+        self.executer._get_shares_list()
 
     def do_q(self, line=None):
         """ exit from RawBox"""
