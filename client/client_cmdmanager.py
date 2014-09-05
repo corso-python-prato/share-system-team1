@@ -274,7 +274,7 @@ class RawBoxCmd(cmd.Cmd):
             Message("INFO", self.do_remove_share.__doc__)
     
     def do_remove_beneficiary(self, line):
-        """ Remove user from shares.
+        """ Remove beneficiary from shares.
             type: remove_beneficiary <path> <ben>
         """
         try:
