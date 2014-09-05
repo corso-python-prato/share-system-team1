@@ -1102,7 +1102,8 @@ class UserActions(unittest.TestCase):
         UserActions.user = "user_mail@demo.it"
         UserActions.psw = "password_demo"
         UserActions.code = "5f8e441f01abc7b3e312917efb52cc12"  # os.urandom(16).encode('hex')
-        self.url = "".join((server._API_PREFIX, "Users/", UserActions.user))
+        self.url = "".join((server._API_PREFIX, "Users/", UserActions.user))    #user creation
+        self.url2 = "".join((server._API_PREFIX, "Users/", UserActions.user, "/reset"))    #reset psw request
 
     def tearDown(self):
         server.User.users = {}
