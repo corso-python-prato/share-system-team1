@@ -1049,19 +1049,20 @@ class TestShare(unittest.TestCase):
             headers=self.owner_headers
         )
         self.assertEqual(received.status_code, 200)
-        #check if the shared path is added to the beneficiary's paths
+        # check if the shared path is added to the beneficiary's paths
         self.assertIn(
             "shares/{}/shared_directory".format(self.owner),
             server.User.users[self.ben1].paths
         )
-        #check if the content of the shared path is added to the beneficiary's paths
+        # check if the content of the shared path is added to the beneficiary's
+        # paths
         self.assertIn(
             "shares/{}/shared_directory/interesting_file.txt".format(
                 self.owner
             ),
             server.User.users[self.ben1].paths
         )
-        #get the shares list of the beneficiary
+        # get the shares list of the beneficiary
         received = self.tc.get(
             "{}shares/".format(
                 _API_PREFIX
@@ -1069,9 +1070,9 @@ class TestShare(unittest.TestCase):
             headers=make_headers(self.ben1, "password")
         )
         self.assertEqual(received.status_code, 200)
-        #check that the beneficiary doesn't have a list of paths
+        # check that the beneficiary doesn't have a list of paths
         self.assertFalse(json.loads(received.get_data())["my_shares"])
-        #get the shares list of the owner
+        # get the shares list of the owner
         received = self.tc.get(
             "{}shares/".format(
                 _API_PREFIX
@@ -1079,9 +1080,8 @@ class TestShare(unittest.TestCase):
             headers=self.owner_headers
         )
         self.assertEqual(received.status_code, 200)
-        #check that the owner has the personal shares in the list
+        # check that the owner has the personal shares in the list
         self.assertTrue(json.loads(received.get_data())["my_shares"])
-
 
 
 class TestServerInternalErrors(unittest.TestCase):

@@ -35,7 +35,9 @@ USERS_DATA = os.path.join(SERVER_ROOT, "user_data.json")
 PENDING_USERS = os.path.join(SERVER_ROOT, ".pending.tmp")
 CORRUPTED_DATA = os.path.join(SERVER_ROOT, "corrupted_data.json")
 EMAIL_SETTINGS_INI = os.path.join(SERVER_ROOT, "email_settings.ini")
-PASSWORD_NOT_ACCEPTED_DATA = os.path.join(SERVER_ROOT, "password_not_accepted.txt")
+PASSWORD_NOT_ACCEPTED_DATA = os.path.join(
+    SERVER_ROOT, "password_not_accepted.txt"
+)
 
 parser = reqparse.RequestParser()
 parser.add_argument("task", type=str)
@@ -70,6 +72,7 @@ def can_write(username, server_path):
     pieces = server_path.split('/')
     return (pieces[0] == username) and \
         ((len(pieces) == 1) or (pieces[1] != "shares"))
+
 
 def PasswordChecker(clear_password):
     #if the password is too short
@@ -114,7 +117,6 @@ class User(object):
             saved = json.load(ud)
             ud.close()
         except IOError:
-
             # The json file is not present. It will be created a new structure
             # from scratch.
             pass
@@ -159,9 +161,6 @@ class User(object):
         # OBJECT ATTRIBUTES
         self.username = username
         self.psw = password
-
-        # path of each file and each directory of the user:
-        # { client_path : [server_path, md5, timestamp] }
         self.paths = {}
 
         # timestamp of the last change in the user's files
@@ -618,7 +617,7 @@ class Actions(Resource_with_auth):
             else:
                 shutil.move(full_src, full_dest)
         except shutil.Error:
-            return abort(HTTP_CONFLICT) # TODO: check.
+            return abort(HTTP_CONFLICT)         # TODO: check.
         else:
             # update the structure
             if keep_the_original:
@@ -649,7 +648,7 @@ class Shares(Resource_with_auth):
         if result is not True:
             return result, HTTP_BAD_REQUEST
         else:
-            return HTTP_OK # TODO: timestamp is needed here?
+            return HTTP_OK          # TODO: timestamp is needed here?
 
     def _remove_beneficiary(self, owner, server_path, client_path,
                             beneficiary):
@@ -708,7 +707,7 @@ class Shares(Resource_with_auth):
         my_shares = []
         other_shares = {}
         for path, bens in User.shared_resources.iteritems():
-            path =  "/".join((path.split("/")[1:]))
+            path = "/".join((path.split("/")[1:]))
             if usr in bens:
                 if bens[0] == usr:
                     # the user shares the path
@@ -766,7 +765,7 @@ def main():
     if not os.path.isdir(USERS_DIRECTORIES):
         os.makedirs(USERS_DIRECTORIES)
     User.user_class_init()
-    app.run(host="0.0.0.0", debug=True) # TODO: remove debug=True
+    app.run(host="0.0.0.0", debug=True)         # TODO: remove debug=True
 
 api.add_resource(UsersApi, "{}Users/<string:username>".format(_API_PREFIX))
 api.add_resource(Actions, "{}actions/<string:cmd>".format(_API_PREFIX))
