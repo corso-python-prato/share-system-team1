@@ -346,8 +346,8 @@ class TestFilesAPI(unittest.TestCase):
             pass
 
         # rv = self.tc.post(
-        #     _API_PREFIX + "create_user",
-        #     data=data
+        # _API_PREFIX + "create_user",
+        # data=data
         # )
         # self.assertEqual(rv.status_code, 201)
 
@@ -1189,7 +1189,7 @@ class EmailTest(unittest.TestCase):
     obj = "test"
     content = "test content"
     user = "user_mail@demo.it"
-    psw = "password_demo"
+    psw = "33password_demo.PA"
     code = "5f8e441f01abc7b3e312917efb52cc12"  # os.urandom(16).encode('hex')
 
     def setUp(self):
@@ -1314,6 +1314,27 @@ class UserActions(unittest.TestCase):
                 shutil.rmtree(TEST_DIRECTORY)
 
     def test_create_user(self):
+        data = {
+            "psw": "pro"
+        }
+
+        response = self.tc.post(self.url, data=data, headers=None)
+        self.assertEqual(response.status_code, server.HTTP_NOT_ACCEPTABLE)
+
+        data = {
+            "psw": "123456"
+        }
+
+        response = self.tc.post(self.url, data=data, headers=None)
+        self.assertEqual(response.status_code, server.HTTP_NOT_ACCEPTABLE)
+
+        data = {
+            "psw": "provasemplice"
+        }
+
+        response = self.tc.post(self.url, data=data, headers=None)
+        self.assertEqual(response.status_code, server.HTTP_NOT_ACCEPTABLE)
+
         data = {
             "psw": UserActions.psw
         }

@@ -45,7 +45,6 @@ def get_abspath(rel_path):
         return "/".join([CONFIG_DIR_PATH, rel_path])
     return rel_path
 
-
 class ServerCommunicator(object):
 
     def __init__(self, server_url, username, password, snapshot_manager):
@@ -257,6 +256,9 @@ class ServerCommunicator(object):
                 "Check your email for the activation code")
             logger.info("user: {} psw: {} created!".format(username, password))
             self.write_user_data(param["user"], param["psw"], activate=False)
+        elif response.status_code == 406:
+            logger.warning("{}".format(response.text))
+            self.msg["details"].append("{}".format(response.text))
         elif response.status_code == 409:
             logger.warning("user: {} psw: {} already exists!".format(username, password))
             self.msg["details"].append("User already exists")

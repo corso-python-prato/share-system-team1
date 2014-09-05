@@ -153,6 +153,7 @@ class ServerCommunicatorTest(unittest.TestCase):
             responses=[
                 httpretty.Response(body='{}', status=201),
                 httpretty.Response(body='{}', status=409),
+                httpretty.Response(body='password too easy',status=406),
                 httpretty.Response(body='{"something wrong"}', status=400)
             ])
         httpretty.register_uri(httpretty.GET,
@@ -184,7 +185,7 @@ class ServerCommunicatorTest(unittest.TestCase):
             responses=[
                 httpretty.Response(body='{}',status=201),
                 httpretty.Response(body='{}',status=404),
-                httpretty.Response(body='{}',status=400)
+                httpretty.Response(body='{}',status=400),
             ])
 
         self.dir = "/tmp/home/test_rawbox/folder"
@@ -504,6 +505,9 @@ class ServerCommunicatorTest(unittest.TestCase):
         msg2 = self.server_comm.create_user({"user": self.username, "psw": self.password})
         self.assertEqual(msg2["result"], 409)
         self.assertEqual(msg2["details"][0], "User already exists")
+        msg4 = self.server_comm.create_user({"user": self.username, "psw": self.password})
+        self.assertEqual(msg4["result"], 406)
+        self.assertEqual(msg4["details"][0], "password too easy")
         msg3 = self.server_comm.create_user({"user": self.username, "psw": self.password})
         self.assertEqual(msg3["result"], 400)
         self.assertEqual(msg3["details"][0], "Bad request")
