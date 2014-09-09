@@ -31,6 +31,8 @@ from client_daemon import CommandExecuter
 from client_daemon import get_abspath
 from client_daemon import get_relpath
 
+SERVER_URL = "http://127.0.0.1:5000/API/v1/"
+
 
 class TestEnvironment(object):
 
@@ -137,74 +139,7 @@ class ServerCommunicatorTest(unittest.TestCase):
                 [httpretty.GET, "shares/"]]:
             httpretty.register_uri(
                 verb,
-                "http://127.0.0.1:5000/API/v1/" + uri
-            )
-
-        for verb, uri, responses in [
-                [
-                    httpretty.POST, "Users/usernameFarlocco",
-                    [
-                        httpretty.Response(body='{}', status=201),
-                        httpretty.Response(body='{}', status=409),
-                        httpretty.Response(body='password too easy',
-                                           status=406),
-                        httpretty.Response(body='{"something wrong"}',
-                                           status=400)
-                    ]
-                ],
-                [
-                    httpretty.GET, "user",
-                    [
-                        httpretty.Response(
-                            body='{"user":"usernameFarlocco","psw":"passwordSegretissima"}',
-                            status=200
-                        ),
-                        httpretty.Response(body='{}', status=404),
-                        httpretty.Response(body='{"something wrong"}',
-                                           status=400)
-                    ]
-                ],
-                [
-                    httpretty.DELETE, "Users/usernameFarlocco",
-                    [
-                        httpretty.Response(body='{}', status=200),
-                        httpretty.Response(body='{}', status=401),
-                        httpretty.Response(body='{}', status=400)
-                    ]
-                ],
-                [
-                    httpretty.PUT, "Users/usernameFarlocco",
-                    [
-                        httpretty.Response(body='{}', status=201),
-                        httpretty.Response(body='{}', status=404),
-                        httpretty.Response(body='{}', status=400)
-                    ]
-                ],
-                [
-                    httpretty.POST, "shares/path_to_share/beneficiary",
-                    [
-                        httpretty.Response(body='{}', status=201),
-                        httpretty.Response(body='{}', status=400)
-                    ]
-                ],
-                [
-                    httpretty.DELETE, "shares/shared_path",
-                    [
-                        httpretty.Response(body='{}', status=200),
-                        httpretty.Response(body='{}', status=400)
-                    ]
-                ],
-                [
-                    httpretty.DELETE, "shares/shared_path/beneficiary",
-                    [
-                        httpretty.Response(body='{}', status=200),
-                        httpretty.Response(body='{}', status=400)
-                    ]
-                ]]:
-            httpretty.register_uri(
-                verb,
-                "http://127.0.0.1:5000/API/v1/" + uri,
-                responses=responses
+                SERVER_URL + uri
             )
 
         httpretty.register_uri(
@@ -212,6 +147,75 @@ class ServerCommunicatorTest(unittest.TestCase):
             'http://127.0.0.1:5000/API/v1/files/f_for_cdaemon_test.txt',
             body='[{"title": "Test"}]',
             content_type="text/txt"
+        )
+        httpretty.register_uri(
+            httpretty.POST,
+            SERVER_URL + "Users/usernameFarlocco",
+            responses=[
+                httpretty.Response(body='{}', status=201),
+                httpretty.Response(body='{}', status=409),
+                httpretty.Response(body='password too easy',
+                                   status=406),
+                httpretty.Response(body='{"something wrong"}',
+                                   status=400)
+            ]
+        )
+        httpretty.register_uri(
+            httpretty.GET,
+            SERVER_URL + "user",
+            responses=[
+                httpretty.Response(
+                    body='{"user":"usernameFarlocco","psw":"passwordSegretissima"}',
+                    status=200
+                ),
+                httpretty.Response(body='{}', status=404),
+                httpretty.Response(
+                    body='{"something wrong"}',
+                    status=400
+                )
+            ]
+        )
+        httpretty.register_uri(
+            httpretty.DELETE,
+            SERVER_URL + "Users/usernameFarlocco",
+            responses=[
+                httpretty.Response(body='{}', status=200),
+                httpretty.Response(body='{}', status=401),
+                httpretty.Response(body='{}', status=400)
+            ]
+        )
+        httpretty.register_uri(
+            httpretty.PUT,
+            SERVER_URL + "Users/usernameFarlocco",
+            responses=[
+                httpretty.Response(body='{}', status=201),
+                httpretty.Response(body='{}', status=404),
+                httpretty.Response(body='{}', status=400)
+            ]
+        )
+        httpretty.register_uri(
+            httpretty.POST,
+            SERVER_URL + "shares/path_to_share/beneficiary",
+            responses=[
+                httpretty.Response(body='{}', status=201),
+                httpretty.Response(body='{}', status=400)
+            ]
+        )
+        httpretty.register_uri(
+            httpretty.DELETE,
+            SERVER_URL + "shares/shared_path",
+            responses=[
+                httpretty.Response(body='{}', status=200),
+                httpretty.Response(body='{}', status=400)
+            ]
+        )
+        httpretty.register_uri(
+            httpretty.DELETE,
+            SERVER_URL + "shares/shared_path/beneficiary",
+            responses=[
+                httpretty.Response(body='{}', status=200),
+                httpretty.Response(body='{}', status=400)
+            ]
         )
 
         httpretty.register_uri(
