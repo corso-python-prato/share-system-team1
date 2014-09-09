@@ -81,10 +81,10 @@ class MockExecuter(object):
 class CheckShareablePathTest(unittest.TestCase):
     def setUp(self):
         self.config_bak = client_cmdmanager.FILE_CONFIG
-        client_cmdmanager.config.read(CONFIG_DEMO)
+        client_cmdmanager.CONFIG.read(CONFIG_DEMO)
 
     def tearDown(self):
-        client_cmdmanager.config.read(self.config_bak)
+        client_cmdmanager.CONFIG.read(self.config_bak)
 
     def test_check_shareable_path(self):
         resp = client_cmdmanager.check_shareable_path(".")

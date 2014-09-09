@@ -12,8 +12,8 @@ import os
 from communication_system import CmdMessageClient
 
 FILE_CONFIG = "config.ini"
-config = ConfigParser.ConfigParser()
-config.read(FILE_CONFIG)
+CONFIG = ConfigParser.ConfigParser()
+CONFIG.read(FILE_CONFIG)
 
 
 def take_input(message, password=False):
@@ -34,7 +34,7 @@ def check_shareable_path(path):
         return False
 
     # check if the resource exists
-    dir_path = config.get("daemon_communication", "dir_path")
+    dir_path = CONFIG.get("daemon_communication", "dir_path")
     if not os.path.exists(os.path.join(dir_path, path)):
         Message(
             "WARNING",
@@ -259,7 +259,7 @@ class RawBoxCmd(cmd.Cmd):
         try:
             path, ben = line.split()
             # check if the user try to share with himself
-            if ben != config.get('daemon_user_data', 'username'):
+            if ben != CONFIG.get('daemon_user_data', 'username'):
                 if check_shareable_path(path):
                     self.executer._add_share(path, ben)
             else:
@@ -287,7 +287,7 @@ class RawBoxCmd(cmd.Cmd):
         """
         try:
             path, ben = line.split()
-            if ben != config.get('daemon_user_data', 'username'):
+            if ben != CONFIG.get('daemon_user_data', 'username'):
                 if check_shareable_path(path):
                     if take_input(
                             ('User {} will be removed from the share,'
@@ -321,8 +321,8 @@ def main():
     else:
         os.system('clear')
 
-    host = config.get('cmd', 'host')
-    port = config.get('cmd', 'port')
+    host = CONFIG.get('cmd', 'host')
+    port = CONFIG.get('cmd', 'port')
     comm_sock = CmdMessageClient(host, int(port))
     try:
         RawBoxCmd(RawBoxExecuter(comm_sock)).cmdloop()
