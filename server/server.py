@@ -6,7 +6,7 @@ from flask.ext.mail import Mail, Message
 from passlib.hash import sha256_crypt
 from flask.ext.httpauth import HTTPBasicAuth
 from flask import Flask, request
-from server_errors import *
+import passwordmeter
 import ConfigParser
 import hashlib
 import shutil
@@ -20,8 +20,8 @@ HTTP_CREATED = 201
 HTTP_BAD_REQUEST = 400
 HTTP_FORBIDDEN = 403
 HTTP_NOT_FOUND = 404
+HTTP_NOT_ACCEPTABLE = 406
 HTTP_CONFLICT = 409
-HTTP_GONE = 410
 
 app = Flask(__name__)
 api = Api(app)
@@ -29,15 +29,14 @@ auth = HTTPBasicAuth()
 _API_PREFIX = "/API/v1/"
 PROJECT_NAME = "RawBox"
 
-USERS_DIRECTORIES = "user_dirs/"
-USERS_DATA = "user_data.json"
-PENDING_USERS = ".pending.tmp"
-CORRUPTED_DATA = "corrupted_data"
-EMAIL_SETTINGS_INI = "email_settings.ini"
-
 SERVER_ROOT = os.path.dirname(__file__)
 USERS_DIRECTORIES = os.path.join(SERVER_ROOT, "user_dirs/")
-USERS_DATA = os.path.join(SERVER_ROOT, "user_data.json")
+USERS_DATA = os.path.join(SERVER_ROOT, "user_os.path.joindata.json")
+
+PENDING_USERS = os.path.join(SERVER_ROOT, ".pending.tmp")
+CORRUPTED_DATA = os.path.join(SERVER_ROOT, "corrupted_data.json")
+EMAIL_SETTINGS_INI = os.path.join(SERVER_ROOT, "email_settings.ini")
+PASSWORD_NOT_ACCEPTED_DATA = os.path.join(SERVER_ROOT, "password_not_accepted.txt")
 
 parser = reqparse.RequestParser()
 parser.add_argument("task", type=str)
@@ -71,11 +70,38 @@ def can_write(username, server_path):
     return server_path.split('/')[0] == username
 
 
+def PasswordChecker(clear_password):
+    #if the password is too short
+    if len(clear_password) <= 5:
+        return "This password is too short, the password " + \
+            "must be at least 6 characters", HTTP_NOT_ACCEPTABLE
+    #if the password is too common
+    f = open(PASSWORD_NOT_ACCEPTED_DATA)
+    lines = f.readlines()
+    f.close()
+    for line in lines:
+        for word in line.split():
+            if clear_password == word:
+                return "This password is too common, the password " + \
+                    "must be something unusual", HTTP_NOT_ACCEPTABLE
+    #if the password is too easy
+    strength, _ = passwordmeter.test(clear_password)
+    if strength < 0.5:
+        return "This password is too easy, the password should " + \
+            "be a combination of numbers, uppercase and lowercase" + \
+            "characters and special characters", HTTP_NOT_ACCEPTABLE
+    return clear_password
+
+
+class MissingConfigIni(Exception):
+    pass
+
+
 class User(object):
     """
     Maintaining two dictionaries:
-        · paths     = { client_path : [server_path, md5/None, timestamp] }
-        None instead of the md5 means that the path is a directory.
+        · paths = { client_path : [server_path, md5/None, timestamp] }
+    None instead of the md5 means that the path is a directory.
         · shared_resources: { server_path : [owner, ben1, ben2, ...] }
     The full path to access to the file is a join between USERS_DIRECTORIES and
     the server_path.
@@ -90,11 +116,13 @@ class User(object):
             ud = open(USERS_DATA, "r")
             saved = json.load(ud)
             ud.close()
-        # if error, create new structure from scratch
         except IOError:
-            pass                # missing file
-        except ValueError:      # invalid json
-            os.remove(USERS_DATA)
+
+            # The json file is not present. It will be created a new structure
+            # from scratch.
+            pass
+        # If the json file is corrupted, it will be raised a ValueError here.
+        # In that case, please remove the corrupted file.
         else:
             for u, v in saved["users"].iteritems():
                 User(u, None, from_dict=v)
@@ -113,16 +141,9 @@ class User(object):
         with open(filename, "w") as f:
             json.dump(to_save, f)
 
-    @classmethod
-    def get_user(cls, username):
-        try:
-            return cls.users[username]
-        except KeyError:
-            raise MissingUserError("User doesn't exist")
-
     # DYNAMIC METHODS
     def __init__(self, username, password, from_dict=None):
-        # if restoring the server
+        # if restoring the server:
         if from_dict:
             self.username = username
             self.psw = from_dict["psw"]
@@ -131,18 +152,19 @@ class User(object):
             User.users[username] = self
             return
 
+        # else, if a real new user is being created:
         full_path = os.path.join(USERS_DIRECTORIES, username)
-        try:
-            os.mkdir(full_path)
-        except OSError:
-            abort(HTTP_CONFLICT)
+        os.mkdir(full_path)
+        # If a directory with the same name of the user is already present,
+        # it will be raised an OSError here. It shouldn't happen, if the server
+        # works right.
 
         # OBJECT ATTRIBUTES
         self.username = username
         self.psw = password
 
         # path of each file and each directory of the user:
-        #     { client_path : [server_path, md5, timestamp] }
+        # { client_path : [server_path, md5, timestamp] }
         self.paths = {}
 
         # timestamp of the last change in the user's files
@@ -168,7 +190,6 @@ class User(object):
         # search the first directory father already present
         directory_path, filename = os.path.split(client_path)
         dir_list = directory_path.split("/")
-
         to_be_created = []
         while (len(dir_list) > 0) \
                 and (os.path.join(*dir_list) not in self.paths):
@@ -209,8 +230,8 @@ class User(object):
         """
         path_parts = server_path.split("/")
         # if len(path_parts) > 3:
-        #     # shared resource has to be in owner's root
-        #     return False
+        # # shared resource has to be in owner's root
+        # return False
 
         resource_name = path_parts.pop()
         return os.path.join("shares", self.username, resource_name)
@@ -231,8 +252,9 @@ class User(object):
                 return shared_server_path, ben_path
         return False
 
-    def push_path(self, client_path, server_path, update_user_data=True,
-                  only_modify=False):
+    def push_path(
+            self, client_path, server_path, update_user_data=True,
+            only_modify=False):
         md5 = to_md5(os.path.join(USERS_DIRECTORIES, server_path))
         now = time.time()
         file_meta = [server_path, md5, now]
@@ -244,7 +266,7 @@ class User(object):
 
             # upgrade every beneficiaries
             for ben_name in User.shared_resources[share][1:]:
-                ben_user = User.get_user(ben_name)
+                ben_user = User.users[ben_name]
                 if not only_modify:
                     ben_user.paths[ben_path] = file_meta
                 ben_user.timestamp = now
@@ -282,7 +304,7 @@ class User(object):
                         shared_server_path, ben_path = is_shared
                         for ben_name in \
                                 User.shared_resources[shared_server_path][1:]:
-                            ben_user = User.get_user(ben_name)
+                            ben_user = User.users[ben_name]
                             del ben_user.paths[ben_path]
                     # step 3: remove from paths
                     del self.paths[client_subdir]
@@ -293,7 +315,7 @@ class User(object):
         if is_shared:
             shared_server_path, ben_path = is_shared
             for ben_name in User.shared_resources[shared_server_path][1:]:
-                ben_user = User.get_user(ben_name)
+                ben_user = User.users[ben_name]
                 del ben_user.paths[ben_path]
                 ben_user.timestamp = now
             # if the shared resource is a removed file or an empty directory
@@ -308,7 +330,7 @@ class User(object):
     def delete_user(self, username):
         user_root = self.paths[""][0]
         del User.users[username]
-        shutil.rmtree(user_root)
+        shutil.rmtree(os.path.join(SERVER_ROOT, user_root))
         User.save_users()
 
     def add_share(self, client_path, beneficiary):
@@ -365,36 +387,35 @@ class UsersApi(Resource):
         Expected {"psw": <password>}
         save pending as
         {<username>:
-            {
-            "password": <password>,
-            "code": <activation_code>
-            "timestamp": <timestamp>
-            }
+        {
+        "password": <password>,
+        "code": <activation_code>
+        "timestamp": <timestamp>
+        }
         }"""
         pending = self.load_pending_users()
-
         try:
             psw = request.form["psw"]
         except KeyError:
             return "Missing password", HTTP_BAD_REQUEST
-
         if username in pending:
             return "This user have already a pending request", HTTP_CONFLICT
-        if username in User.users:
+        elif username in User.users:
             return "This user already exists", HTTP_CONFLICT
+        if psw is not PasswordChecker(psw):
+            return PasswordChecker(psw)
+        else:
+            psw_hash = sha256_crypt.encrypt(psw)
+            code = os.urandom(16).encode('hex')
+            send_mail(username, "RawBox activation code", code)
+            pending[username] = \
+                {"password": psw_hash,
+                 "code": code,
+                 "timestamp": time.time()}
 
-        psw_hash = sha256_crypt.encrypt(psw)
-        code = os.urandom(16).encode('hex')
-        mail_obj = "{} activation code".format(PROJECT_NAME)
-        send_mail(username, mail_obj, code)
-        pending[username] = \
-            {"password": psw_hash,
-             "code": code,
-             "timestamp": time.time()}
-
-        with open(PENDING_USERS, "w") as p_u:
-            json.dump(pending, p_u)
-        return "User added to pending users", HTTP_CREATED
+            with open(PENDING_USERS, "w") as p_u:
+                json.dump(pending, p_u)
+            return "User added to pending users", HTTP_CREATED
 
     def put(self, username):
         """Activate a pending user
@@ -426,16 +447,12 @@ class UsersApi(Resource):
             return "User need to be created", HTTP_NOT_FOUND
 
     @auth.login_required
-    def delete(self, username):
+    def delete(self):
         """Delete the user who is making the request
         """
         current_username = auth.username()
-        current_user = User.get_user(current_username)
-        if current_username == username:
-            current_user.delete_user(username)
-            return "user deleted", HTTP_OK
-        else:
-            return "access denied", HTTP_BAD_REQUEST
+        User.users[current_username].delete_user(current_username)
+        return "user deleted", HTTP_OK
 
 
 class Files(Resource_with_auth):
@@ -443,7 +460,7 @@ class Files(Resource_with_auth):
         """ Send a JSON with the timestamp of the last change in user
         directories and an md5 for each file
         Expected GET method without path """
-        u = User.get_user(auth.username())
+        u = User.users[auth.username()]
         tree = {}
         for p, v in u.paths.iteritems():
             if v[1] is None:
@@ -473,7 +490,7 @@ class Files(Resource_with_auth):
         """Download
         Returns file content as a byte string
         Expected GET method with path"""
-        u = User.get_user(auth.username())
+        u = User.users[auth.username()]
         try:
             full_path = os.path.join(
                 USERS_DIRECTORIES, u.paths[client_path][0]
@@ -481,13 +498,9 @@ class Files(Resource_with_auth):
         except KeyError:
             return "File unreachable", HTTP_NOT_FOUND
 
-        try:
-            f = open(full_path, "rb")
+        with open(full_path, "rb") as f:
             content = f.read()
-            f.close()
-            return content
-        except IOError:
-            abort(HTTP_GONE)
+        return content
 
     def get(self, client_path=None):
         if not client_path:
@@ -500,8 +513,7 @@ class Files(Resource_with_auth):
         Updates an existing file
         Expected as POST data:
         { "file_content" : <file>} """
-        u = User.get_user(auth.username())
-
+        u = User.users[auth.username()]
         try:
             server_path = u.paths[client_path][0]
         except KeyError:
@@ -525,7 +537,7 @@ class Files(Resource_with_auth):
         Upload a new file
         Expected as POST data:
         { "file_content" : <file>} """
-        u = User.get_user(auth.username())
+        u = User.users[auth.username()]
 
         if client_path in u.paths:
             # The file is already present. To modify it, use PUT, not POST
@@ -552,7 +564,7 @@ class Actions(Resource_with_auth):
         """ Expected as POST data:
         { "path" : <path>} """
         # check user and path
-        u = User.get_user(auth.username())
+        u = User.users[auth.username()]
         client_path = request.form["path"]
         try:
             server_path = u.paths[client_path][0]
@@ -579,7 +591,7 @@ class Actions(Resource_with_auth):
         depending on keep_the_original value
         Expected as POST data:
         { "file_src": <path>, "file_dest": <path> }"""
-        u = User.get_user(auth.username())
+        u = User.users[auth.username()]
         client_src = request.form["file_src"]
         client_dest = request.form["file_dest"]
 
@@ -602,7 +614,7 @@ class Actions(Resource_with_auth):
             else:
                 shutil.move(full_src, full_dest)
         except shutil.Error:
-            return abort(HTTP_CONFLICT)         # TODO: check.
+            return abort(HTTP_CONFLICT)  # TODO: check.
         else:
             # update the structure
             if keep_the_original:
@@ -625,22 +637,24 @@ class Actions(Resource_with_auth):
             return abort(HTTP_NOT_FOUND)
 
 
-class Shares(Resource):
+class Shares(Resource_with_auth):
     def post(self, client_path, beneficiary):
-        owner = User.get_user(auth.username())
+        owner = User.users[auth.username()]
 
         if not owner.add_share(client_path, beneficiary):
-            abort(HTTP_BAD_REQUEST)     # TODO: choice the code
+            abort(HTTP_BAD_REQUEST)  # TODO: choice the code
         else:
-            return HTTP_OK              # TODO: timestamp is needed here?
+            return HTTP_OK  # TODO: timestamp is needed here?
 
     def _remove_beneficiary(self, owner, server_path, client_path,
                             beneficiary):
         # remove the beneficiary from the shared resources list
         try:
-            ben_user = User.get_user(beneficiary)
+            ben_user = User.users[beneficiary]
             User.shared_resources[server_path].remove(beneficiary)
         except (KeyError, ValueError):
+            # beneficiary is not an user or the resource is not shared
+            # or the resource is shared, but not with this beneficiary
             abort(HTTP_BAD_REQUEST)
 
         if len(User.shared_resources[server_path]) == 1:
@@ -670,7 +684,7 @@ class Shares(Resource):
             return HTTP_OK
 
     def delete(self, client_path, beneficiary=None):
-        owner = User.get_user(auth.username())
+        owner = User.users[auth.username()]
         try:
             server_path = owner.paths[client_path][0]
         except KeyError:
@@ -684,9 +698,30 @@ class Shares(Resource):
         else:
             return self._remove_share(owner, server_path, client_path)
 
+    def get(self):
+        owner = User.users[auth.username()]
+        usr = owner.username
+        my_shares = []
+        other_shares = {}
+        for path, bens in User.shared_resources.iteritems():
+            path = "/".join((path.split("/")[1:]))
+            if usr in bens:
+                if bens[0] == usr:
+                    # the user shares the path
+                    my_shares.append(path)
+                else:
+                    #the user is a beneficiary
+                    path = "shares/{}/{}".format(bens[0], path)
+                    if bens[0] not in other_shares:
+                        other_shares[bens[0]] = [path]
+                    else:
+                        other_shares[bens[0]].append(path)
+        shares = {
+            "my_shares": my_shares,
+            "other_shares": other_shares
+        }
 
-class MissingConfigIni(Exception):
-    pass
+        return shares, HTTP_OK
 
 
 def mail_config_init():
@@ -704,7 +739,7 @@ def mail_config_init():
 
 def send_mail(receiver, obj, content):
     """ Send an email to the 'receiver', with the
-    specified object ('obj') and the specified 'content' """
+specified object ('obj') and the specified 'content' """
     mail = mail_config_init()
     msg = Message(
         obj,
@@ -717,21 +752,20 @@ def send_mail(receiver, obj, content):
 
 @auth.verify_password
 def verify_password(username, password):
-    try:
-        u = User.get_user(username)
-    except MissingUserError:
+    if username not in User.users:
         return False
     else:
-        return sha256_crypt.verify(password, u.psw)
+        return sha256_crypt.verify(password, User.users[username].psw)
 
 
 def main():
     if not os.path.isdir(USERS_DIRECTORIES):
         os.makedirs(USERS_DIRECTORIES)
     User.user_class_init()
-    app.run(host="0.0.0.0", debug=True)         # TODO: remove debug=True
+    app.run(host="0.0.0.0", debug=True)  # TODO: remove debug=True
 
-api.add_resource(UsersApi, "{}Users/<string:username>".format(_API_PREFIX))
+api.add_resource(UsersApi, "{}Users/<string:username>".format(_API_PREFIX),
+    "{}Users/".format(_API_PREFIX))
 api.add_resource(Actions, "{}actions/<string:cmd>".format(_API_PREFIX))
 api.add_resource(
     Files,
@@ -739,6 +773,7 @@ api.add_resource(
     "{}files/".format(_API_PREFIX))
 api.add_resource(
     Shares,
+    "{}shares/".format(_API_PREFIX),
     "{}shares/<path:client_path>".format(_API_PREFIX),
     "{}shares/<path:client_path>/<string:beneficiary>".format(_API_PREFIX))
 
