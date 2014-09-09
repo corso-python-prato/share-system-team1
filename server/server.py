@@ -25,19 +25,23 @@ HTTP_NOT_FOUND = 404
 HTTP_NOT_ACCEPTABLE = 406
 HTTP_CONFLICT = 409
 
+
 app = Flask(__name__)
 
 
 class MyApi(Api):
     def handle_error(self, e):
         code = getattr(e, 'code', 500)
-        if code == 500:
+        if code == 500 and not app.testing:
             obj, msg = create_traceback_report(sys.exc_info())
-            send_mail("email", obj, msg)
-            print obj
+            REPORT_EMAILS = load_emails()
+            if REPORT_EMAILS:
+                for mail in REPORT_EMAILS:
+                    send_mail(mail, obj, msg)
             print msg
             return self.make_response({"message": "text", "error_code": "_"}, 500)
         return super(MyApi, self).handle_error(e)
+
 
 api = MyApi(app)
 auth = HTTPBasicAuth()
@@ -50,11 +54,20 @@ USERS_DATA = os.path.join(SERVER_ROOT, "user_data.json")
 PENDING_USERS = os.path.join(SERVER_ROOT, ".pending.tmp")
 CORRUPTED_DATA = os.path.join(SERVER_ROOT, "corrupted_data.json")
 EMAIL_SETTINGS_INI = os.path.join(SERVER_ROOT, "email_settings.ini")
+EMAIL_REPORT_INI = os.path.join(SERVER_ROOT, "email_report.ini")
 PASSWORD_NOT_ACCEPTED_DATA = os.path.join(SERVER_ROOT, "password_not_accepted.txt")
 
 parser = reqparse.RequestParser()
 parser.add_argument("task", type=str)
 
+def load_emails():
+    try:
+        with open(EMAIL_REPORT_INI, "r") as f:
+            return f.read().split("\n")
+    except IOError:
+        pass
+    else:
+        return None
 
 
 def create_traceback_report(exc_params):
@@ -79,15 +92,17 @@ def create_traceback_report(exc_params):
     msg += "\n\n-------------\n\n"
     msg += "--Local variables dump--\n\n"
     for level in call_stack:
-        msg += "Frame:" + level.f_code.co_name + " "
-        msg += "\tModule:" + level.f_code.co_filename + " "
-        msg += "\tLine:" + str(level.f_lineno) + " "
-        msg += "\nVars: " + str(level.f_code.co_varnames) + " "
-        msg += "\n\n"
-        for k, v in level.f_locals.iteritems():
-            msg += "\t" + k + "=" + str(v)
-            msg += "\n"
-        msg += "\n\n"   
+        module = level.f_code.co_filename
+        if module == "server.py":
+            msg += "Frame:" + level.f_code.co_name + " "
+            msg += "\tModule:" + module + " "
+            msg += "\tLine:" + str(level.f_lineno) + " "
+            msg += "\nVars: " + str(level.f_code.co_varnames) + " "
+            msg += "\n\n"
+            for k, v in level.f_locals.iteritems():
+                msg += "\t" + k + "=" + str(v)
+                msg += "\n"
+            msg += "\n\n"   
     msg += "\n\n"
 
     return obj, msg
@@ -121,7 +136,6 @@ def can_write(username, server_path):
 
 def PasswordChecker(clear_password):
     #if the password is too short
-    print 4/0
     if len(clear_password) <= 5:
         return "This password is too short, the password " + \
             "must be at least 6 characters", HTTP_NOT_ACCEPTABLE
