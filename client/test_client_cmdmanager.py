@@ -8,7 +8,7 @@ from client_cmdmanager import RawBoxExecuter
 from client_cmdmanager import RawBoxCmd
 import client_cmdmanager
 
-CONFIG_DEMO = os.path.join(os.path.dirname(__file__), "test_mock/config.ini")
+CONFIG_DEMO = os.path.join(os.path.dirname(__file__), "demo_test/config.ini")
 mock_input = []
 
 
