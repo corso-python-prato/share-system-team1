@@ -14,6 +14,7 @@ import time
 import json
 import os
 import traceback
+import sys
 
 
 HTTP_OK = 200
@@ -31,8 +32,10 @@ class MyApi(Api):
     def handle_error(self, e):
         code = getattr(e, 'code', 500)
         if code == 500:
-            obj, msg = create_traceback_report(locals(), traceback.format_exc())
+            obj, msg = create_traceback_report(sys.exc_info())
             send_mail("email", obj, msg)
+            print obj
+            print msg
             return self.make_response({"message": "text", "error_code": "_"}, 500)
         return super(MyApi, self).handle_error(e)
 
@@ -54,18 +57,38 @@ parser.add_argument("task", type=str)
 
 
 
-def create_traceback_report(local_vars, traceback):
-    msg = ""
+def create_traceback_report(exc_params):
+    # get exception info
+    exc_type = exc_params[0]
+    exc_msg = exc_params[1]
+    # get the traceback object (stack of calls) 
+    tb = exc_params[2]
+    while True:
+        if not tb.tb_next:
+            break
+        tb = tb.tb_next
+    call_stack = []
+    last_frame = tb.tb_frame
+    while last_frame:
+        call_stack.append(last_frame)
+        last_frame = last_frame.f_back
+    call_stack.reverse()
     obj = "RawBox Server Error Dump"
-    msg+="--Traceback--\n\n"
-    msg+=str(traceback)
-    msg+="\n\n-------------\n\n"
-    msg+="--Local variables dump--\n\n"
-    for k,v in local_vars.iteritems():
-        msg+= "name:" + k + " "
-        msg+= "value:" + str(v) + " "
-        msg+= "type:" + str(type(v)) + " "
-        msg+="\n\n"
+    msg = "--Traceback--\n\n"
+    msg += str(traceback.format_exc())
+    msg += "\n\n-------------\n\n"
+    msg += "--Local variables dump--\n\n"
+    for level in call_stack:
+        msg += "Frame:" + level.f_code.co_name + " "
+        msg += "\tModule:" + level.f_code.co_filename + " "
+        msg += "\tLine:" + str(level.f_lineno) + " "
+        msg += "\nVars: " + str(level.f_code.co_varnames) + " "
+        msg += "\n\n"
+        for k, v in level.f_locals.iteritems():
+            msg += "\t" + k + "=" + str(v)
+            msg += "\n"
+        msg += "\n\n"   
+    msg += "\n\n"
 
     return obj, msg
 
@@ -98,6 +121,7 @@ def can_write(username, server_path):
 
 def PasswordChecker(clear_password):
     #if the password is too short
+    print 4/0
     if len(clear_password) <= 5:
         return "This password is too short, the password " + \
             "must be at least 6 characters", HTTP_NOT_ACCEPTABLE
@@ -139,7 +163,7 @@ class User(object):
             saved = json.load(ud)
             ud.close()
         except IOError:
-
+            pass
             # The json file is not present. It will be created a new structure
             # from scratch.
         # If the json file is corrupted, it will be raised a ValueError here.
