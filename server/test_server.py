@@ -1455,7 +1455,7 @@ class UserActions(unittest.TestCase):
         headers = make_headers(self.user, "password")
         root = os.path.join(TEST_ROOT, "demo_test/test_user_actions")
         shutil.copy(root + "/demo_user_data.json", root + "/user_data.json")
-        os.mkdir(os.path.join(root, "user_dirs", self.user))
+        os.makedirs(os.path.join(root, "user_dirs", self.user))
         server_setup(root)
         url = "".join((server._API_PREFIX, "Users/"))
         response = self.tc.delete(url, headers=headers)
