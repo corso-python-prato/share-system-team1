@@ -47,7 +47,7 @@ class MockCmdMessageClient(object):
         TestRawBoxExecuter.psw = param.get('psw', "empty")
         TestRawBoxExecuter.code = param.get('code', "empty")
         TestRawBoxExecuter.pathtoshare = param.get('path')
-        TestRawBoxExecuter.ben = param.get('ben')
+        TestRawBoxExecuter.beneficiary = param.get('beneficiary')
 
     def read_message(self):
         """override comm_sock.read_message
@@ -65,13 +65,13 @@ class MockExecuter(object):
     def _delete_user(self, username):
         RawBoxCmdTest.called = True
 
-    def _add_share(self, path, ben):
+    def _add_share(self, path, beneficiary):
         RawBoxCmdTest.called = True
 
     def _remove_share(self, path):
         RawBoxCmdTest.called = True
 
-    def _remove_beneficiary(self, path, ben):
+    def _remove_beneficiary(self, path, beneficiary):
         RawBoxCmdTest.called = True
 
     def _get_shares_list(self):
@@ -162,7 +162,7 @@ class TestRawBoxExecuter(unittest.TestCase):
         TestRawBoxExecuter.pathtoshare = ""
         TestRawBoxExecuter.ben = ""
         self.pathtoshare = "mypath"
-        self.ben = "friend"
+        self.beneficiary = "friend"
 
     def test_create_user(self):
         mock_input.append(self.correct_pwd)
@@ -271,18 +271,18 @@ class TestRawBoxExecuter(unittest.TestCase):
         self.assertEquals(TestRawBoxExecuter.username, self.correct_user)
 
     def test_add_share(self):
-        self.raw_box_exec._add_share(self.pathtoshare, self.ben)
+        self.raw_box_exec._add_share(self.pathtoshare, self.beneficiary)
         self.assertEquals(TestRawBoxExecuter.pathtoshare, self.pathtoshare)
-        self.assertEquals(TestRawBoxExecuter.ben, self.ben)
+        self.assertEquals(TestRawBoxExecuter.beneficiary, self.beneficiary)
 
     def test_remove_share(self):
         self.raw_box_exec._remove_share(self.pathtoshare)
         self.assertEquals(TestRawBoxExecuter.pathtoshare, self.pathtoshare)
 
     def test_remove_beneficiary(self):
-        self.raw_box_exec._remove_beneficiary(self.pathtoshare, self.ben)
+        self.raw_box_exec._remove_beneficiary(self.pathtoshare, self.beneficiary)
         self.assertEquals(TestRawBoxExecuter.pathtoshare, self.pathtoshare)
-        self.assertEquals(TestRawBoxExecuter.ben, self.ben)
+        self.assertEquals(TestRawBoxExecuter.beneficiary, self.beneficiary)
 
 
 if __name__ == '__main__':

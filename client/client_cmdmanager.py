@@ -140,10 +140,10 @@ class RawBoxExecuter(object):
             self.comm_sock.send_message(command_type, param)
             self.print_response(self.comm_sock.read_message())
 
-    def _add_share(self, path, ben):
+    def _add_share(self, path, beneficiary):
         param = {
             'path': path,
-            'ben': ben
+            'beneficiary': beneficiary
         }
         self.comm_sock.send_message("add_share", param)
         self.print_response(self.comm_sock.read_message())
@@ -155,10 +155,10 @@ class RawBoxExecuter(object):
         self.comm_sock.send_message("remove_share", param)
         self.print_response(self.comm_sock.read_message())
 
-    def _remove_beneficiary(self, path, ben):
+    def _remove_beneficiary(self, path, beneficiary):
         param = {
             'path': path,
-            'ben': ben,
+            'beneficiary': beneficiary,
         }
         self.comm_sock.send_message("remove_beneficiary", param)
         self.print_response(self.comm_sock.read_message())
@@ -257,11 +257,11 @@ class RawBoxCmd(cmd.Cmd):
         (the path starts from the RawBox root)
         """
         try:
-            path, ben = line.split()
+            path, beneficiary = line.split()
             # check if the user try to share with himself
-            if ben != CONFIG.get('daemon_user_data', 'username'):
+            if beneficiary != CONFIG.get('daemon_user_data', 'username'):
                 if check_shareable_path(path):
-                    self.executer._add_share(path, ben)
+                    self.executer._add_share(path, beneficiary)
             else:
                 Message("INFO", self.do_add_share.__doc__)
 
@@ -283,16 +283,16 @@ class RawBoxCmd(cmd.Cmd):
 
     def do_remove_beneficiary(self, line):
         """ Remove beneficiary from shares.
-            type: remove_beneficiary <path> <ben>
+            type: remove_beneficiary <path> <beneficiary>
         """
         try:
-            path, ben = line.split()
-            if ben != CONFIG.get('daemon_user_data', 'username'):
+            path, beneficiary = line.split()
+            if beneficiary != CONFIG.get('daemon_user_data', 'username'):
                 if check_shareable_path(path):
                     if take_input(
                             ('User {} will be removed from the share,'
-                            ' are you sure? y/n ').format(ben)) == 'y':
-                        self.executer._remove_beneficiary(path, ben)
+                            ' are you sure? y/n ').format(beneficiary)) == 'y':
+                        self.executer._remove_beneficiary(path, beneficiary)
             else:
                 Message('INFO', self.do_remove_beneficiary.__doc__)
         except (IndexError, ValueError):

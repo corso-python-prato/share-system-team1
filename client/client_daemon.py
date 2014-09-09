@@ -373,12 +373,12 @@ class ServerCommunicator(object):
         self.msg["details"] = []
         request = {
             "url": "{}/shares/{}/{}".format(
-                self.server_url, param["path"], param["ben"]
+                self.server_url, param["path"], param["beneficiary"]
             )
         }
         
-        success_log = "share added with {}!".format(param["ben"])
-        error_log = "ERROR in adding a share with {}".format(param["ben"])
+        success_log = "share added with {}!".format(param["beneficiary"])
+        error_log = "ERROR in adding a share with {}".format(param["beneficiary"])
 
         r = self._try_request(requests.post, success_log, error_log, **request)
         self.msg["result"] = r.status_code
@@ -417,13 +417,13 @@ class ServerCommunicator(object):
         request = {
             "url" : "{}/shares/{}/{}".format(
                 self.server_url,
-                param["path"], param["ben"]
+                param["path"], param["beneficiary"]
             ),
             "data" : {}
         }
 
-        success_log = "Removed user {} from shares".format(param["ben"])
-        error_log = "ERROR on removing user {} from shares".format(param["ben"])
+        success_log = "Removed user {} from shares".format(param["beneficiary"])
+        error_log = "ERROR on removing user {} from shares".format(param["beneficiary"])
 
         response = self._try_request(
             requests.delete, success_log, error_log, **request
