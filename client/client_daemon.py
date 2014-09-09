@@ -744,7 +744,7 @@ class DirSnapshotManager(object):
     def update_snapshot_delete(self, body):
         """ update of local full snapshot by delete request"""
         md5_file = self.find_file_md5(self.local_full_snapshot, get_relpath(body['src_path']), False)
-        logger.debug("find md5: " + md5_file)
+        logger.debug("find md5: {}".format(md5_file))
         if len(self.local_full_snapshot[md5_file]) == 1:
             del self.local_full_snapshot[md5_file]
         else:
@@ -805,10 +805,10 @@ class DirSnapshotManager(object):
                 for new_server_path in new_server_paths:  # 1) b 1
                     server_md5 = self.find_file_md5(server_snapshot, new_server_path)
                     if not server_md5 in self.local_full_snapshot:  # 1) b 1 I
-                        logger.debug("download:\t" + new_server_path)
+                        logger.debug("download:\t{}".format(new_server_path))
                         command_list.append({'local_download': [new_server_path]})
                     else:  # 1) b 1 II
-                        logger.debug("copy or rename:\t" + new_server_path)
+                        logger.debug("copy or rename:\t{}".format(new_server_path))
                         src_local_path = self.local_full_snapshot[server_md5][0]
                         command_list.append({'local_copy': [src_local_path, new_server_path]})
 
@@ -816,13 +816,13 @@ class DirSnapshotManager(object):
                     client_md5 = self.find_file_md5(self.local_full_snapshot, equal_path, False)
                     if client_md5 != self.find_file_md5(server_snapshot, equal_path):
                         #in this case i have a simple download because the update is a overwritten
-                        logger.debug("update download:\t" + equal_path)
+                        logger.debug("update download:\t{}".format(equal_path))
                         command_list.append({'local_download': [equal_path]})
                     else:
-                        logger.debug("no action:\t" + equal_path)
+                        logger.debug("no action:\t{}".format(equal_path))
 
                 for new_client_path in new_client_paths:  # 1) b 3
-                    logger.debug("remove local:\t" + new_client_path)
+                    logger.debug("remove local:\t{}".format(new_client_path))
                     command_list.append({'local_delete': [new_client_path]})
             else:
                 logger.debug("synchronized")
@@ -832,40 +832,40 @@ class DirSnapshotManager(object):
             if self.is_syncro(server_timestamp):  # 2) a
                 logger.debug("****\tpush all\t****")
                 for new_server_path in new_server_paths:  # 2) a 1
-                    logger.debug("remove:\t" + new_server_path)
+                    logger.debug("remove:\t{}".format(new_server_path))
                     command_list.append({'remote_delete': [new_server_path]})
                 for equal_path in equal_paths:  # 2) a 2
                     if self.find_file_md5(self.local_full_snapshot, equal_path, False) != self.find_file_md5(server_snapshot, equal_path):
-                        logger.debug("update:\t" + equal_path)
+                        logger.debug("update:\t{}".format(equal_path))
                         command_list.append({'remote_update': [equal_path, True]})
                     else:
-                        logger.debug("no action:\t" + equal_path)
+                        logger.debug("no action:\t{}".format(equal_path))
                 for new_client_path in new_client_paths:  # 2) a 3
-                    logger.debug("upload:\t" + new_client_path)
+                    logger.debug("upload:\t{}".format(new_client_path))
                     command_list.append({'remote_upload': [new_client_path]})
 
             elif not self.is_syncro(server_timestamp):  # 2) b
                 for new_server_path in new_server_paths:  # 2) b 1
                     server_md5 = self.find_file_md5(server_snapshot, new_server_path)
                     if self.check_files_timestamp(server_snapshot, new_server_path):
-                        logger.debug("delete remote:\t" + new_server_path)
+                        logger.debug("delete remote:\t{}".format(new_server_path))
                         command_list.append({'remote_delete': [new_server_path]})
                     else:
                         if not server_md5 in self.local_full_snapshot:  # 2) b 1 I
-                                logger.debug("download local:\t" + new_server_path)
+                                logger.debug("download local:\t{}".format(new_server_path))
                                 command_list.append({'local_download': [new_server_path]})
                         else:  # 2) b 1 II
-                            logger.debug("copy or rename:\t" + new_server_path)
+                            logger.debug("copy or rename:\t{}".format(new_server_path))
                             src_local_path = self.local_full_snapshot[server_md5][0]
                             command_list.append({'local_copy': [src_local_path, new_server_path]})
 
                 for equal_path in equal_paths:  # 2) b 2
                     if self.find_file_md5(self.local_full_snapshot, equal_path, False) != self.find_file_md5(server_snapshot, equal_path):
                         if self.check_files_timestamp(server_snapshot, equal_path):  # 2) b 2 I
-                            logger.debug("server push:\t" + equal_path)
+                            logger.debug("server push:\t{}".format(equal_path))
                             command_list.append({'remote_upload': [equal_path]})
                         else:  # 2) b 2 II
-                            logger.debug("create.conflicted:\t" + equal_path)
+                            logger.debug("create.conflicted:\t{}".format(equal_path))
                             conflicted_path = "{}/{}.conflicted".format(
                                 "/".join(equal_path.split('/')[:-1]),
                                 "".join(equal_path.split('/')[-1])
@@ -873,9 +873,9 @@ class DirSnapshotManager(object):
                             command_list.append({'local_copy': [equal_path, conflicted_path]})
                             command_list.append({'remote_upload': [conflicted_path]})
                     else:
-                        logger.debug("no action:\t" + equal_path)
+                        logger.debug("no action:\t{}".format(equal_path))
                 for new_client_path in new_client_paths:  # 2) b 3
-                    logger.debug("remove remote\t" + new_client_path)
+                    logger.debug("remove remote\t{}".format(new_client_path))
                     command_list.append({'remote_delete': [new_client_path]})
 
         return command_list
