@@ -708,12 +708,12 @@ class DirSnapshotManager(object):
 
     def save_snapshot(self, timestamp):
         """ save snapshot to file """
-        self.last_status['timestamp'] = timestamp
+        self.last_status['timestamp'] = float(timestamp)
         self.last_status['snapshot'] = self.global_md5()
 
         with open(self.snapshot_file_path, 'w') as f:
             f.write(
-                json.dumps({"timestamp": timestamp, "snapshot": self.last_status['snapshot']}))
+                json.dumps({"timestamp": float(timestamp), "snapshot": self.last_status['snapshot']}))
 
     def update_snapshot_upload(self, body):
         """ update of local full snapshot by upload request"""
