@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 #-*- coding: utf-8 -*-
 
-from colorMessage import Message
 import ConfigParser
 import platform
 import getpass
@@ -10,6 +9,8 @@ import re
 import os
 
 from communication_system import CmdMessageClient
+from colorMessage import Message
+
 
 FILE_CONFIG = "config.ini"
 CONFIG = ConfigParser.ConfigParser()
