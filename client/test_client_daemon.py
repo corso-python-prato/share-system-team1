@@ -78,8 +78,8 @@ class TestEnvironment(object):
 class ServerCommunicatorTest(unittest.TestCase):
 
     def setUp(self):
-        class DirSnapshotManager(object):
 
+        class DirSnapshotManager(object):
             def __init__(self):
                 self.server_snapshot = False
                 self.server_timestamp = False
@@ -127,84 +127,134 @@ class ServerCommunicatorTest(unittest.TestCase):
         self.mock_try_request = _try_request
 
         httpretty.enable()
-        httpretty.register_uri(
-            httpretty.POST,
-            'http://127.0.0.1:5000/API/v1/files/f_for_cdaemon_test.txt')
-        httpretty.register_uri(
-            httpretty.PUT,
-            'http://127.0.0.1:5000/API/v1/files/f_for_cdaemon_test.txt')
+
+        for verb, uri in [
+                [httpretty.POST, "files/f_for_cdaemon_test.txt"],
+                [httpretty.PUT, "files/f_for_cdaemon_test.txt"],
+                [httpretty.POST, "actions/delete"],
+                [httpretty.POST, "actions/move"],
+                [httpretty.POST, "actions/copy"],
+                [httpretty.GET, "shares/"]]:
+            httpretty.register_uri(
+                verb,
+                "http://127.0.0.1:5000/API/v1/" + uri
+            )
+
+        for verb, uri, responses in [
+                [
+                    httpretty.POST, "Users/usernameFarlocco",
+                    [
+                        httpretty.Response(body='{}', status=201),
+                        httpretty.Response(body='{}', status=409),
+                        httpretty.Response(body='password too easy',
+                                           status=406),
+                        httpretty.Response(body='{"something wrong"}',
+                                           status=400)
+                    ]
+                ],
+                [
+                    httpretty.GET, "user",
+                    [
+                        httpretty.Response(
+                            body='{"user":"usernameFarlocco","psw":"passwordSegretissima"}',
+                            status=200
+                        ),
+                        httpretty.Response(body='{}', status=404),
+                        httpretty.Response(body='{"something wrong"}',
+                                           status=400)
+                    ]
+                ],
+                [
+                    httpretty.DELETE, "Users/usernameFarlocco",
+                    [
+                        httpretty.Response(body='{}', status=200),
+                        httpretty.Response(body='{}', status=401),
+                        httpretty.Response(body='{}', status=400)
+                    ]
+                ],
+                [
+                    httpretty.PUT, "Users/usernameFarlocco",
+                    [
+                        httpretty.Response(body='{}', status=201),
+                        httpretty.Response(body='{}', status=404),
+                        httpretty.Response(body='{}', status=400)
+                    ]
+                ],
+                [
+                    httpretty.POST, "shares/path_to_share/beneficiary",
+                    [
+                        httpretty.Response(body='{}', status=201),
+                        httpretty.Response(body='{}', status=400)
+                    ]
+                ],
+                [
+                    httpretty.DELETE, "shares/shared_path",
+                    [
+                        httpretty.Response(body='{}', status=200),
+                        httpretty.Response(body='{}', status=400)
+                    ]
+                ],
+                [
+                    httpretty.DELETE, "shares/shared_path/beneficiary",
+                    [
+                        httpretty.Response(body='{}', status=200),
+                        httpretty.Response(body='{}', status=400)
+                    ]
+                ]]:
+            httpretty.register_uri(
+                verb,
+                "http://127.0.0.1:5000/API/v1/" + uri,
+                responses=responses
+            )
+
         httpretty.register_uri(
             httpretty.GET,
             'http://127.0.0.1:5000/API/v1/files/f_for_cdaemon_test.txt',
             body='[{"title": "Test"}]',
-            content_type="text/txt")
-        httpretty.register_uri(
-            httpretty.POST,
-            'http://127.0.0.1:5000/API/v1/actions/delete')
-        httpretty.register_uri(
-            httpretty.POST,
-            'http://127.0.0.1:5000/API/v1/actions/move')
-        httpretty.register_uri(
-            httpretty.POST,
-            'http://127.0.0.1:5000/API/v1/actions/copy')
+            content_type="text/txt"
+        )
+
         httpretty.register_uri(
             httpretty.GET,
-            'http://127.0.0.1:5000/API/v1/shares/')
-        httpretty.register_uri(
-            httpretty.POST,
-            'http://127.0.0.1:5000/API/v1/Users/usernameFarlocco',
-            responses=[
-                httpretty.Response(body='{}', status=201),
-                httpretty.Response(body='{}', status=409),
-                httpretty.Response(body='password too easy',status=406),
-                httpretty.Response(body='{"something wrong"}', status=400)
-            ])
-        httpretty.register_uri(httpretty.GET,
             'http://127.0.0.1:5000/API/v1/files',
             body=str({
-                '9406539a103956dc36cb7ad35547198c': [{"path": u'/Users/marc0/progetto/prove_deamon\\bla.txt', "timestamp": 123123}],
-                'a8f5f167f44f4964e6c998dee827110c': [{"path": u'vecchio.txt', "timestamp": 123122}],
-                'c21e1af364fa17cc80e0bbec2dd2ce5c': [{"path": u'/Users/marc0/progetto/prove_deamon\\asdas\\asdasd.txt', "timestamp": 123123}],
-                'd41d8cd98f00b204e9800998ecf8427e': [{"path": u'/Users/marc0/progetto/prove_deamon\\dsa.txt', "timestamp": 123122},  # old timestamp
-                                                    {"path": u'/Users/marc0/progetto/prove_deamon\\Nuovo documento di testo (2).txt', "timestamp": 123123},
-                                                    {"path": u'server path in piu copiata', "timestamp": 123123}],
-                'a8f5f167f44f4964e6c998dee827110b': [{"path": u'nuova path server con md5 nuovo', "timestamp": 123123}],
-                'a8f5f167f44f4964e6c998eee827110b': [{"path": u'nuova path server con md5 nuovo e timestamp minore', "timestamp": 123122}]}),
-                content_type="application/json"
+                '9406539a103956dc36cb7ad35547198c': [{
+                    "path": u'/Users/marc0/progetto/prove_deamon\\bla.txt',
+                    "timestamp": 123123
+                }],
+                'a8f5f167f44f4964e6c998dee827110c': [{
+                    "path": u'vecchio.txt',
+                    "timestamp": 123122
+                }],
+                'c21e1af364fa17cc80e0bbec2dd2ce5c': [{
+                    "path": u'/Users/marc0/progetto/prove_deamon\\asdas\\asdasd.txt',
+                    "timestamp": 123123
+                }],
+                'd41d8cd98f00b204e9800998ecf8427e': [
+                    {
+                        "path": u'/Users/marc0/progetto/prove_deamon\\dsa.txt',
+                        "timestamp": 123122
+                    },  # old timestamp
+                    {
+                        "path": u'/Users/marc0/progetto/prove_deamon\\Nuovo documento di testo (2).txt',
+                        "timestamp": 123123
+                    },
+                    {
+                        "path": u'server path in piu copiata',
+                        "timestamp": 123123
+                    }
+                ],
+                'a8f5f167f44f4964e6c998dee827110b': [{
+                    "path": u'nuova path server con md5 nuovo',
+                    "timestamp": 123123
+                }],
+                'a8f5f167f44f4964e6c998eee827110b': [{
+                    "path": u'nuova path server con md5 nuovo e timestamp minore',
+                    "timestamp": 123122
+                }]
+            }),
+            content_type="application/json"
         )
-        httpretty.register_uri(httpretty.GET, 'http://127.0.0.1:5000/API/v1/user',
-            responses=[
-                httpretty.Response(body='{"user":"usernameFarlocco","psw":"passwordSegretissima"}', status=200),
-                httpretty.Response(body='{}', status=404),
-                httpretty.Response(body='{"something wrong"}', status=400)
-            ])
-        httpretty.register_uri(httpretty.DELETE, 'http://127.0.0.1:5000/API/v1/Users/usernameFarlocco',
-            responses=[
-                httpretty.Response(body='{}',status=200),
-                httpretty.Response(body='{}',status=401),
-                httpretty.Response(body='{}',status=400)
-            ])
-        httpretty.register_uri(httpretty.PUT, 'http://127.0.0.1:5000/API/v1/Users/usernameFarlocco',
-            responses=[
-                httpretty.Response(body='{}',status=201),
-                httpretty.Response(body='{}',status=404),
-                httpretty.Response(body='{}',status=400),
-            ])
-        httpretty.register_uri(httpretty.POST, 'http://127.0.0.1:5000/API/v1/shares/path_to_share/beneficiary',
-            responses=[
-                httpretty.Response(body='{}',status=201),
-                httpretty.Response(body='{}',status=400)
-            ])
-        httpretty.register_uri(httpretty.DELETE, 'http://127.0.0.1:5000/API/v1/shares/shared_path',
-            responses=[
-                httpretty.Response(body='{}',status=200),
-                httpretty.Response(body='{}',status=400)
-            ])
-        httpretty.register_uri(httpretty.DELETE, 'http://127.0.0.1:5000/API/v1/shares/shared_path/beneficiary',
-            responses=[
-                httpretty.Response(body='{}',status=200),
-                httpretty.Response(body='{}',status=400)
-            ])
 
         self.dir = "/tmp/home/test_rawbox/folder"
         client_daemon.CONFIG_DIR_PATH = self.dir
