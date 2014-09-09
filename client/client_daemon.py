@@ -440,22 +440,24 @@ class ServerCommunicator(object):
         self.msg["details"] = []
         error_log = "List shares error"
         success_log = "List shares downloaded!"
-        server_url = "{}/shares/".format(self.server_url)
-        request = {"url": server_url}
-        response = self._try_request(requests.get, success_log, error_log, **request)
+        request = {"url": "{}/shares/".format(self.server_url)}
+        response = self._try_request(
+            requests.get, success_log, error_log, **request
+        )
 
         self.msg["result"] = response.status_code
         if response.status_code != 401:
             try:
-                my_shares = response.json()
+                shares = response.json()
                 self.msg["details"].append("Shares list downloaded")
                 sub_res = []
-                if my_shares["my_shares"]:
+                if shares["my_shares"]:
                     sub_res.append("My shares:\n")
                     sub_res.append(str(my_shares["my_shares"]))
-                if my_shares["other_shares"]:
+                if shares["other_shares"]:
                     sub_res.append("Other shares:\n")
                     sub_res.append(str(my_shares["other_shares"]))
+
                 if sub_res:
                     res = "".join(["\nList of shares\n"] + sub_res)
                 else:

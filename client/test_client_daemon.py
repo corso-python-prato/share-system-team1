@@ -620,8 +620,10 @@ class ServerCommunicatorTest(unittest.TestCase):
     def test_get_shares_list(self):
         msg1 = self.server_comm.get_shares_list()
         self.assertEqual(msg1["result"], 200)
-        self.assertIn(msg1["details"][0], ["Shares not found", "Shares list downloaded"])
-
+        self.assertIn(
+            msg1["details"][0],
+            ["Shares not found", "Shares list downloaded"]
+        )
 
 
 class FileSystemOperatorTest(unittest.TestCase):

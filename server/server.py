@@ -704,11 +704,11 @@ class Shares(Resource_with_auth):
     def get(self):
         me = User.users[auth.username()]
 
-        # {client_path1: [ben1, ben2]}
         my_shares = {}
+        # {client_path1: [ben1, ben2]}
 
-        # {owner : client_path}
         other_shares = {}
+        # {owner : client_path}
 
         for server_path, bens in User.shared_resources.iteritems():
             parts = server_path.split("/")
