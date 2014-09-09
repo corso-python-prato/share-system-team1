@@ -1098,7 +1098,7 @@ class DirSnapshotManagerTest(unittest.TestCase):
         self.snapshotAsserEqual(instant_snapshot, self.true_snapshot)
 
     def test_save_snapshot(self):
-        test_timestamp = '1234'
+        test_timestamp = 1234
         self.snapshot_manager.save_snapshot(test_timestamp)
 
         self.assertEqual(self.snapshot_manager.last_status['timestamp'], test_timestamp)
