@@ -1,16 +1,17 @@
 #! /usr/bin/env python
 # -*- coding:utf-8 -*-
 
-import communication_system
 import unittest
 import struct
 import json
+
+import communication_system
 
 
 class TestCmdMessageClient(unittest.TestCase):
 
     def setUp(self):
-        self.command_type = u'syncronized'
+        self.command_type = u'synchronized'
         self.param = {
             u'request': {},
             u'respose': {u'yes': 201, u'no': u'300', },

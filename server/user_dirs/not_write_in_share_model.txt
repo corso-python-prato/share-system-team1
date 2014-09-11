@@ -1,0 +1,5 @@
+Please, do not write in this folder: this is reserved for the files that other
+users will share with you. In RawBox, only the owner of a file can modify it.
+Every change you will do in this directory will be ignored.
+
+See Remove a share for delete these files.
