@@ -1450,6 +1450,43 @@ class UserActions(unittest.TestCase):
         server.app.testing = True
 
 
+class TestErrorReport(unittest.TestCase):
+
+    report_directory = os.path.join(
+        os.path.dirname(__file__),
+        "error_report"
+    )
+
+
+    def setUp(self):
+        server_setup(TestErrorReport.report_directory)
+        server.EMAIL_REPORT_INI
+
+    def tearDown(self):
+        shutil.rmtree(TestErrorReport.report_directory)
+
+    def test_not_existing_file_for_load_mails(self):
+        bak = server.EMAIL_REPORT_INI
+        server.EMAIL_REPORT_INI = "not_a_file"
+        res = server.load_emails()
+        self.assertEqual(res, None)
+        server.EMAIL_REPORT_INI = bak
+
+    def test_load_mails(self):
+        content = "email@domain.com"
+        f = create_temporary_file(content)
+        bak = server.EMAIL_REPORT_INI
+        server.EMAIL_REPORT_INI = os.path.join(server.SERVER_ROOT, f)
+        res = server.load_emails()
+        self.assertIn(content, res)
+        server.EMAIL_REPORT_INI = bak
+        os.unlink(f)
+
+    def test_traceback_report(self):
+
+        print server.create_traceback_report(server.raise_exc())
+
+
 if __name__ == "__main__":
     # make tests!
     unittest.main()

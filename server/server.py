@@ -30,9 +30,12 @@ app = Flask(__name__)
 
 
 class MyApi(Api):
+    enable_report_mail = False
+
     def handle_error(self, e):
         code = getattr(e, 'code', 500)
-        if code == 500 and not app.testing:
+        # TODO spiega cose
+        if code == 500 and enable_report_mail:
             obj, msg = create_traceback_report(sys.exc_info())
             REPORT_EMAILS = load_emails()
             if REPORT_EMAILS:
@@ -66,9 +69,6 @@ def load_emails():
             return f.read().split("\n")
     except IOError:
         pass
-    else:
-        return None
-
 
 def create_traceback_report(exc_params):
     # get exception info
@@ -823,6 +823,7 @@ def main():
     if not os.path.isdir(USERS_DIRECTORIES):
         os.makedirs(USERS_DIRECTORIES)
     User.user_class_init()
+    MyApi.enable_report_mail = True
     app.run(host="0.0.0.0", debug=False) # TODO: remove debug=True
 
 api.add_resource(UsersApi, "{}Users/<string:username>".format(_API_PREFIX))
