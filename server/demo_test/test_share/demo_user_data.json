@@ -89,6 +89,16 @@
                     "Emilio@me.it/shared_directory/interesting_file.txt",
                     "c887ee892f5c3f7e01d876c3b7778818",
                     1405082012.753577
+                ],
+                "subdir": [
+                    "Emilio@me.it/subdir",
+                    null,
+                    1405082012.752381
+                ],
+                "subdir/ciao.txt": [
+                    "Emilio@me.it/subdir/ciao.txt",
+                    "6186badadb5fbb0416cd29a04e2d92d7",
+                    1405082012.752381
                 ]
             },
             "psw": "$5$rounds=110000$OVjTsVyPuEZKz6A9$4NVQSGn0w143dy4IvV.1Ky52Se5kCD2MGQDEsSMWSN6",
