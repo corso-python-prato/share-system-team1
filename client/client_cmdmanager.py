@@ -74,15 +74,11 @@ class RawBoxExecuter(object):
         self.comm_sock.send_message(command_type, param)
         self.print_response(self.comm_sock.read_message())
 
-    def _delete_user(self, username=None):
+    def _delete_user(self):
         """ delete user if is logged """
         command_type = 'delete_user'
 
-        username = take_valid_username(username)
-        param = {
-            'user': username
-        }
-        self.comm_sock.send_message(command_type, param)
+        self.comm_sock.send_message(command_type, {})
         self.print_response(self.comm_sock.read_message())
 
     def _add_user(self, *args):
