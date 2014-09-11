@@ -330,7 +330,7 @@ class User(object):
     def delete_user(self, username):
         user_root = self.paths[""][0]
         del User.users[username]
-        shutil.rmtree(os.path.join(SERVER_ROOT, user_root))
+        shutil.rmtree(os.path.join(USERS_DIRECTORIES, user_root))
         User.save_users()
 
     def add_share(self, client_path, beneficiary):
