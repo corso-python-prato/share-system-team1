@@ -610,10 +610,10 @@ class ServerCommunicatorTest(unittest.TestCase):
         self.assertEqual(msg3["details"][0], "Bad request")
 
     def test_add_share(self):
-        msg1 = self.server_comm.add_share({"path": "path_to_share","beneficiary": "beneficiary" })
+        msg1 = self.server_comm.add_share({"path": "path_to_share", "beneficiary": "beneficiary"})
         self.assertEqual(msg1["result"], requests.codes.created)
         self.assertEqual(msg1["details"][0], "Added share!")
-        msg2 = self.server_comm.add_share({"path": "path_to_share","beneficiary": "beneficiary" })
+        msg2 = self.server_comm.add_share({"path": "path_to_share", "beneficiary": "beneficiary"})
         self.assertEqual(msg2["result"], requests.codes.bad_request)
         self.assertEqual(msg2["details"][0], "Bad request")
 
@@ -624,12 +624,12 @@ class ServerCommunicatorTest(unittest.TestCase):
         msg2 = self.server_comm.remove_share({"path": "shared_path", "beneficiary": "beneficiary"})
         self.assertEqual(msg2["result"], requests.codes.bad_request)
         self.assertEqual(msg2["details"][0], "Error, shares not removed")
-    
+
     def test_remove_beneficiary(self):
-        msg1 = self.server_comm.remove_beneficiary({"path": "shared_path","beneficiary": "beneficiary" })
+        msg1 = self.server_comm.remove_beneficiary({"path": "shared_path", "beneficiary": "beneficiary"})
         self.assertEqual(msg1["result"], requests.codes.ok)
         self.assertEqual(msg1["details"][0], "User removed from shares")
-        msg2 = self.server_comm.remove_beneficiary({"path": "shared_path","beneficiary": "beneficiary" })
+        msg2 = self.server_comm.remove_beneficiary({"path": "shared_path", "beneficiary": "beneficiary"})
         self.assertEqual(msg2["result"], requests.codes.bad_request)
         self.assertEqual(msg2["details"][0], "Cannot remove user from shares")
 
