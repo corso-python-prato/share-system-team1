@@ -62,7 +62,7 @@ class MockExecuter(object):
     def _activate_user(self, username, code):
         RawBoxCmdTest.called = True
 
-    def _delete_user(self, username):
+    def _delete_user(self):
         RawBoxCmdTest.called = True
 
     def _add_share(self, path, beneficiary):
@@ -102,7 +102,6 @@ class RawBoxCmdTest(unittest.TestCase):
         self.rawbox_cmd = RawBoxCmd(self.executer)
         client_cmdmanager.check_shareable_path = mock_check_shareable_path
         RawBoxCmdTest.called = False
-        mock_input.append('y')
 
     def test_do_create(self):
         self.rawbox_cmd.onecmd('create user pippo@pippa.it')
@@ -113,7 +112,8 @@ class RawBoxCmdTest(unittest.TestCase):
         self.assertTrue(RawBoxCmdTest.called)
 
     def test_do_delete(self):
-        self.rawbox_cmd.onecmd('delete pippo@pippa.it')
+        mock_input.append('yes')
+        self.rawbox_cmd.onecmd('delete')
         self.assertTrue(RawBoxCmdTest.called)
 
     def test_do_add_share(self):
@@ -125,6 +125,7 @@ class RawBoxCmdTest(unittest.TestCase):
         self.assertTrue(RawBoxCmdTest.called)
 
     def test_do_remove_beneficiary(self):
+        mock_input.append('y')
         self.rawbox_cmd.onecmd('remove_beneficiary shared_folder beneficiary')
         self.assertTrue(RawBoxCmdTest.called)
 
