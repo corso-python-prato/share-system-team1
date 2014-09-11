@@ -186,11 +186,8 @@ class RawBoxCmd(cmd.Cmd):
         """
         delete a RawBox user if He is logged
         """
-        if line:
-            user = line.split()[0]
-            self.executer._delete_user(user)
-        else:
-            Message('INFO', self.do_delete.__doc__)
+        if take_input("are you sure? [yes/no] ") == "yes":
+            self.executer._delete_user()
 
     def do_get_shares_list(self, line=None):
         """
