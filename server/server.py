@@ -31,7 +31,7 @@ PROJECT_NAME = "RawBox"
 
 SERVER_ROOT = os.path.dirname(__file__)
 USERS_DIRECTORIES = os.path.join(SERVER_ROOT, "user_dirs/")
-USERS_DATA = os.path.join(SERVER_ROOT, "user_os.path.joindata.json")
+USERS_DATA = os.path.join(SERVER_ROOT, "user_data.json")
 
 PENDING_USERS = os.path.join(SERVER_ROOT, ".pending.tmp")
 CORRUPTED_DATA = os.path.join(SERVER_ROOT, "corrupted_data.json")
