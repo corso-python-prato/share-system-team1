@@ -1,19 +1,14 @@
-from client_daemon import DirSnapshotManager
-from client_daemon import DirectoryEventHandler
-from client_daemon import ServerCommunicator
-from client_daemon import FileSystemOperator
-from client_daemon import CommandExecuter
-from client_daemon import get_abspath
-from client_daemon import get_relpath
+#!/usr/bin/env python
+#-*- coding: utf-8 -*-
 
 #Watchdog event import for event_handler test
-from watchdog.events import FileDeletedEvent
 from watchdog.events import FileModifiedEvent
+from watchdog.events import FileDeletedEvent
 from watchdog.events import FileCreatedEvent
-from watchdog.events import FileMovedEvent
-from watchdog.events import DirDeletedEvent
 from watchdog.events import DirModifiedEvent
+from watchdog.events import DirDeletedEvent
 from watchdog.events import DirCreatedEvent
+from watchdog.events import FileMovedEvent
 from watchdog.events import DirMovedEvent
 import ConfigParser
 import client_daemon
@@ -27,6 +22,16 @@ import shutil
 import copy
 import json
 import os
+
+from client_daemon import DirectoryEventHandler
+from client_daemon import DirSnapshotManager
+from client_daemon import ServerCommunicator
+from client_daemon import FileSystemOperator
+from client_daemon import CommandExecuter
+from client_daemon import get_abspath
+from client_daemon import get_relpath
+
+SERVER_URL = "http://127.0.0.1:5000/API/v1/"
 
 
 class TestEnvironment(object):
@@ -75,8 +80,8 @@ class TestEnvironment(object):
 class ServerCommunicatorTest(unittest.TestCase):
 
     def setUp(self):
-        class DirSnapshotManager(object):
 
+        class DirSnapshotManager(object):
             def __init__(self):
                 self.server_snapshot = False
                 self.server_timestamp = False
@@ -84,7 +89,7 @@ class ServerCommunicatorTest(unittest.TestCase):
                 self.action = False
                 self.body = False
 
-            def syncronize_dispatcher(self, server_timestamp, server_snapshot):
+            def synchronize_dispatcher(self, server_timestamp, server_snapshot):
                 self.server_timestamp = server_timestamp
                 self.server_snapshot = server_snapshot
                 return ['command']
@@ -124,63 +129,136 @@ class ServerCommunicatorTest(unittest.TestCase):
         self.mock_try_request = _try_request
 
         httpretty.enable()
-        httpretty.register_uri(
-            httpretty.POST,
-            'http://127.0.0.1:5000/API/v1/files/f_for_cdaemon_test.txt')
-        httpretty.register_uri(
-            httpretty.PUT,
-            'http://127.0.0.1:5000/API/v1/files/f_for_cdaemon_test.txt')
+
+        for verb, uri in [
+                [httpretty.POST, "files/f_for_cdaemon_test.txt"],
+                [httpretty.PUT, "files/f_for_cdaemon_test.txt"],
+                [httpretty.POST, "actions/delete"],
+                [httpretty.POST, "actions/move"],
+                [httpretty.POST, "actions/copy"],
+                [httpretty.GET, "shares/"]]:
+            httpretty.register_uri(
+                verb,
+                SERVER_URL + uri
+            )
+
         httpretty.register_uri(
             httpretty.GET,
             'http://127.0.0.1:5000/API/v1/files/f_for_cdaemon_test.txt',
             body='[{"title": "Test"}]',
-            content_type="text/txt")
+            content_type="text/txt"
+        )
         httpretty.register_uri(
             httpretty.POST,
-            'http://127.0.0.1:5000/API/v1/actions/delete')
-        httpretty.register_uri(
-            httpretty.POST,
-            'http://127.0.0.1:5000/API/v1/actions/move')
-        httpretty.register_uri(
-            httpretty.POST,
-            'http://127.0.0.1:5000/API/v1/actions/copy')
-        httpretty.register_uri(
-            httpretty.GET,
-            'http://127.0.0.1:5000/API/v1/shares/')
-        httpretty.register_uri(
-            httpretty.POST,
-            'http://127.0.0.1:5000/API/v1/Users/usernameFarlocco',
+            SERVER_URL + "Users/usernameFarlocco",
             responses=[
                 httpretty.Response(body='{}', status=requests.codes.created),
                 httpretty.Response(body='{}', status=requests.codes.conflict),
-                httpretty.Response(body='password too easy', status=requests.codes.not_acceptable),
-                httpretty.Response(body='{"something wrong"}', status=requests.codes.bad_request)
-            ])
-        httpretty.register_uri(httpretty.GET,
-            'http://127.0.0.1:5000/API/v1/files',
-            body=str({
-                '9406539a103956dc36cb7ad35547198c': [{"path": u'/Users/marc0/progetto/prove_deamon\\bla.txt', "timestamp": 123123}],
-                'a8f5f167f44f4964e6c998dee827110c': [{"path": u'vecchio.txt', "timestamp": 123122}],
-                'c21e1af364fa17cc80e0bbec2dd2ce5c': [{"path": u'/Users/marc0/progetto/prove_deamon\\asdas\\asdasd.txt', "timestamp": 123123}],
-                'd41d8cd98f00b204e9800998ecf8427e': [{"path": u'/Users/marc0/progetto/prove_deamon\\dsa.txt', "timestamp": 123122},  # old timestamp
-                                                    {"path": u'/Users/marc0/progetto/prove_deamon\\Nuovo documento di testo (2).txt', "timestamp": 123123},
-                                                    {"path": u'server path in piu copiata', "timestamp": 123123}],
-                'a8f5f167f44f4964e6c998dee827110b': [{"path": u'nuova path server con md5 nuovo', "timestamp": 123123}],
-                'a8f5f167f44f4964e6c998eee827110b': [{"path": u'nuova path server con md5 nuovo e timestamp minore', "timestamp": 123122}]}),
-                content_type="application/json"
+                httpretty.Response(body='password too easy',
+                                   status=requests.codes.not_acceptable),
+                httpretty.Response(body='{"something wrong"}',
+                                   status=requests.codes.bad_request)
+            ]
         )
-        httpretty.register_uri(httpretty.DELETE, 'http://127.0.0.1:5000/API/v1/Users/usernameFarlocco',
+        httpretty.register_uri(
+            httpretty.GET,
+            SERVER_URL + "user",
+            responses=[
+                httpretty.Response(
+                    body='{"user":"usernameFarlocco","psw":"passwordSegretissima"}',
+                    status=requests.codes.ok
+                ),
+                httpretty.Response(body='{}', status=requests.codes.not_found),
+                httpretty.Response(
+                    body='{"something wrong"}',
+                    status=requests.codes.bad_request
+                )
+            ]
+        )
+        httpretty.register_uri(
+            httpretty.DELETE,
+            SERVER_URL + "Users/usernameFarlocco",
             responses=[
                 httpretty.Response(body='{}', status=requests.codes.ok),
                 httpretty.Response(body='{}', status=requests.codes.unauthorized),
                 httpretty.Response(body='{}', status=requests.codes.bad_request)
-            ])
-        httpretty.register_uri(httpretty.PUT, 'http://127.0.0.1:5000/API/v1/Users/usernameFarlocco',
+            ]
+        )
+        httpretty.register_uri(
+            httpretty.PUT,
+            SERVER_URL + "Users/usernameFarlocco",
             responses=[
                 httpretty.Response(body='{}', status=requests.codes.created),
                 httpretty.Response(body='{}', status=requests.codes.not_found),
                 httpretty.Response(body='{}', status=requests.codes.bad_request)
-            ])
+            ]
+        )
+        httpretty.register_uri(
+            httpretty.POST,
+            SERVER_URL + "shares/path_to_share/beneficiary",
+            responses=[
+                httpretty.Response(body='{}', status=requests.codes.created),
+                httpretty.Response(body='{}', status=requests.codes.bad_request)
+            ]
+        )
+        httpretty.register_uri(
+            httpretty.DELETE,
+            SERVER_URL + "shares/shared_path",
+            responses=[
+                httpretty.Response(body='{}', status=requests.codes.ok),
+                httpretty.Response(body='{}', status=requests.codes.bad_request)
+            ]
+        )
+        httpretty.register_uri(
+            httpretty.DELETE,
+            SERVER_URL + "shares/shared_path/beneficiary",
+            responses=[
+                httpretty.Response(body='{}', status=requests.codes.ok),
+                httpretty.Response(body='{}', status=requests.codes.bad_request)
+            ]
+        )
+
+        httpretty.register_uri(
+            httpretty.GET,
+            'http://127.0.0.1:5000/API/v1/files',
+            body=str({
+                '9406539a103956dc36cb7ad35547198c': [{
+                    "path": u'/Users/marc0/progetto/prove_deamon\\bla.txt',
+                    "timestamp": 123123
+                }],
+                'a8f5f167f44f4964e6c998dee827110c': [{
+                    "path": u'vecchio.txt',
+                    "timestamp": 123122
+                }],
+                'c21e1af364fa17cc80e0bbec2dd2ce5c': [{
+                    "path": u'/Users/marc0/progetto/prove_deamon\\asdas\\asdasd.txt',
+                    "timestamp": 123123
+                }],
+                'd41d8cd98f00b204e9800998ecf8427e': [
+                    {
+                        "path": u'/Users/marc0/progetto/prove_deamon\\dsa.txt',
+                        "timestamp": 123122
+                    },  # old timestamp
+                    {
+                        "path": u'/Users/marc0/progetto/prove_deamon\\Nuovo documento di testo (2).txt',
+                        "timestamp": 123123
+                    },
+                    {
+                        "path": u'server path in piu copiata',
+                        "timestamp": 123123
+                    }
+                ],
+                'a8f5f167f44f4964e6c998dee827110b': [{
+                    "path": u'nuova path server con md5 nuovo',
+                    "timestamp": 123123
+                }],
+                'a8f5f167f44f4964e6c998eee827110b': [{
+                    "path": u'nuova path server con md5 nuovo e timestamp minore',
+                    "timestamp": 123122
+                }]
+            }),
+            content_type="application/json"
+        )
 
         self.dir = "/tmp/home/test_rawbox/folder"
         client_daemon.CONFIG_DIR_PATH = self.dir
@@ -231,8 +309,9 @@ class ServerCommunicatorTest(unittest.TestCase):
 
     def test_try_request(self):
         class Callback(object):
-            status_code = requests.codes.ok
+            reason = 'error'
             exc = False
+            ok = True
 
             def __init__(self, auth, *args, **kwargs):
                 self.auth = auth
@@ -245,23 +324,24 @@ class ServerCommunicatorTest(unittest.TestCase):
         self.assertEqual(
             result.auth,
             self.server_comm.auth)
-        self.assertEqual(result.status_code, requests.codes.ok)
+        self.assertEqual(result.ok, True)
 
-        #Case: error 401
-        Callback.status_code = requests.codes.unauthorized
+        #Case: error
+        Callback.ok = False
         result = self.server_comm._try_request(Callback)
         self.assertEqual(
             result.auth,
             self.server_comm.auth)
-        self.assertEqual(result.status_code, requests.codes.unauthorized)
+        self.assertEqual(result.ok, False)
 
         #Case: request exception
         Callback.exc = True
+        Callback.ok = False
         result = self.server_comm._try_request(Callback)
         self.assertEqual(
             result.auth,
             self.server_comm.auth)
-        self.assertEqual(result.status_code, requests.codes.unauthorized)
+        self.assertEqual(result.ok, False)
 
     def test_setexecuter(self):
         executer = "executer"
@@ -529,7 +609,31 @@ class ServerCommunicatorTest(unittest.TestCase):
         self.assertEqual(msg3["result"], requests.codes.bad_request)
         self.assertEqual(msg3["details"][0], "Bad request")
 
-    def test_syncronize(self):
+    def test_add_share(self):
+        msg1 = self.server_comm.add_share({"path": "path_to_share","beneficiary": "beneficiary" })
+        self.assertEqual(msg1["result"], requests.codes.created)
+        self.assertEqual(msg1["details"][0], "Added share!")
+        msg2 = self.server_comm.add_share({"path": "path_to_share","beneficiary": "beneficiary" })
+        self.assertEqual(msg2["result"], requests.codes.bad_request)
+        self.assertEqual(msg2["details"][0], "Bad request")
+
+    def test_remove_share(self):
+        msg1 = self.server_comm.remove_share({"path": "shared_path", "beneficiary": "beneficiary"})
+        self.assertEqual(msg1["result"], requests.codes.ok)
+        self.assertEqual(msg1["details"][0], "Shares removed")
+        msg2 = self.server_comm.remove_share({"path": "shared_path", "beneficiary": "beneficiary"})
+        self.assertEqual(msg2["result"], requests.codes.bad_request)
+        self.assertEqual(msg2["details"][0], "Error, shares not removed")
+    
+    def test_remove_beneficiary(self):
+        msg1 = self.server_comm.remove_beneficiary({"path": "shared_path","beneficiary": "beneficiary" })
+        self.assertEqual(msg1["result"], requests.codes.ok)
+        self.assertEqual(msg1["details"][0], "User removed from shares")
+        msg2 = self.server_comm.remove_beneficiary({"path": "shared_path","beneficiary": "beneficiary" })
+        self.assertEqual(msg2["result"], requests.codes.bad_request)
+        self.assertEqual(msg2["details"][0], "Cannot remove user from shares")
+
+    def test_synchronize(self):
         def my_try_request(*args, **kwargs):
             class obj (object):
                 text = {
@@ -547,7 +651,7 @@ class ServerCommunicatorTest(unittest.TestCase):
             def __init__(self):
                 self.status = False
 
-            def syncronize_executer(self, command_list):
+            def synchronize_executer(self, command_list):
                 self.status = True
 
         executer = Executer()
@@ -559,7 +663,10 @@ class ServerCommunicatorTest(unittest.TestCase):
     def test_get_shares_list(self):
         msg1 = self.server_comm.get_shares_list()
         self.assertEqual(msg1["result"], requests.codes.ok)
-        self.assertIn(msg1["details"][0], ["Shares not found", "Shares list downloaded"])
+        self.assertIn(
+            msg1["details"][0],
+            ["Shares not found", "Shares list downloaded"]
+        )
 
 
 class FileSystemOperatorTest(unittest.TestCase):
@@ -858,7 +965,7 @@ class DirSnapshotManagerTest(unittest.TestCase):
             unsinked_server_snap, 'error/path')
         self.assertEqual(response, None)
 
-    def test_syncronize_dispatcher(self):
+    def test_synchronize_dispatcher(self):
         #server snapshot sinked with local path
         sinked_server_snap = {
             '81bcb26fd4acfaa5d0acc7eef1d3013a': [
@@ -906,7 +1013,7 @@ class DirSnapshotManagerTest(unittest.TestCase):
 
         #Case: no deamon internal conflicts == timestamp
         expected_result = []
-        result = self.snapshot_manager.syncronize_dispatcher(
+        result = self.snapshot_manager.synchronize_dispatcher(
             server_timestamp=self.sinked_timestamp,
             server_snapshot=sinked_server_snap)
         self.assertEqual(result, expected_result)
@@ -920,7 +1027,7 @@ class DirSnapshotManagerTest(unittest.TestCase):
             {'local_download': ['sub_dir_1/test_file_1.txt']},
             {'local_delete': ['sub_dir_2/test_file_3.txt']}
         ]
-        result = self.snapshot_manager.syncronize_dispatcher(
+        result = self.snapshot_manager.synchronize_dispatcher(
             server_timestamp=self.unsinked_timestamp,
             server_snapshot=unsinked_server_snap)
         self.assertEqual(result, expected_result)
@@ -933,7 +1040,7 @@ class DirSnapshotManagerTest(unittest.TestCase):
             {'remote_update': ['sub_dir_1/test_file_1.txt', True]},
             {'remote_upload': ['sub_dir_2/test_file_3.txt']}
         ]
-        result = self.snapshot_manager.syncronize_dispatcher(
+        result = self.snapshot_manager.synchronize_dispatcher(
             server_timestamp=self.sinked_timestamp,
             server_snapshot=unsinked_server_snap)
         self.assertEqual(result, expected_result)
@@ -973,7 +1080,7 @@ class DirSnapshotManagerTest(unittest.TestCase):
             {'remote_upload': ['sub_dir_2/test_file_2.txtcopy']},
             {'remote_delete': ['sub_dir_2/test_file_3.txt']},
         ]
-        result = self.snapshot_manager.syncronize_dispatcher(
+        result = self.snapshot_manager.synchronize_dispatcher(
             server_timestamp=self.unsinked_timestamp,
             server_snapshot=unsinked_server_snap)
         self.cmdListAsserEqual(result, expected_result)
@@ -991,11 +1098,11 @@ class DirSnapshotManagerTest(unittest.TestCase):
         self.assertTrue(self.snapshot_manager.local_check())
 
     def test_is_syncro(self):
-        #Case: syncronized timestamp
+        #Case: synchronized timestamp
         self.assertTrue(
             self.snapshot_manager.is_syncro(self.sinked_timestamp))
 
-        #Case: unsyncronized timestamp
+        #Case: unsynchronized timestamp
         self.assertFalse(
             self.snapshot_manager.is_syncro(self.unsinked_timestamp))
 
@@ -1404,7 +1511,7 @@ class CommandExecuterTest(unittest.TestCase):
             self.file_system_op,
             self.server_comm)
 
-    def test_syncronize_executer(self):
+    def test_synchronize_executer(self):
         #Case: remote and local command error
 
         error_command_list = [
@@ -1412,7 +1519,7 @@ class CommandExecuterTest(unittest.TestCase):
             {'remote_errorcommand': 'sub_dir_1/test_file_1.txt'},
         ]
 
-        self.executer.syncronize_executer(error_command_list)
+        self.executer.synchronize_executer(error_command_list)
 
         self.assertFalse(self.file_system_op.copy)
         self.assertFalse(self.file_system_op.write)
@@ -1432,7 +1539,7 @@ class CommandExecuterTest(unittest.TestCase):
             {'remote_upload': ['upload/test/path']},
         ]
 
-        self.executer.syncronize_executer(command_list)
+        self.executer.synchronize_executer(command_list)
 
         self.assertEqual(
             self.file_system_op.copy,

@@ -99,7 +99,7 @@ class CmdMessageServer(asyncore.dispatcher):
 
 
 class CmdMessageClient(CommunicatorSock):
-    """Blocking client socket for syncronous communication"""
+    """Blocking client socket for synchronous communication"""
 
     def __init__(self, host, port):
         CommunicatorSock.__init__(self)
@@ -110,7 +110,7 @@ class CmdMessageClient(CommunicatorSock):
         self.connect((host, port))
 
     def read_message(self):
-        """Syncronous read message metod"""
+        """Synchronous read message metod"""
         header = self.recv(struct.calcsize(LENGTH_FORMAT))
         data_length = unpacking_message(header)
         data = self.recv(data_length)

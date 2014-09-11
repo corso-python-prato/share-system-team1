@@ -7,11 +7,12 @@
 
 # from watchdog.observers import Observer
 from watchdog.observers.polling import PollingObserver as Observer
-from watchdog.events import FileSystemEventHandler
+from watchdog.events import PatternMatchingEventHandler
 from requests.auth import HTTPBasicAuth
 import ConfigParser
 import requests
 import argparse
+import asyncore
 import hashlib
 import logging
 import shutil
@@ -20,12 +21,11 @@ import json
 import os
 
 from communication_system import CmdMessageServer
-import asyncore
 
 SERVER_URL = "localhost"
 SERVER_PORT = "5000"
 API_PREFIX = "API/v1"
-CONFIG_DIR_PATH = ""
+CONFIG_DIR_PATH = None        # RawBox root
 FILE_CONFIG = "config.ini"
 
 logger = logging.getLogger('RawBox')
@@ -44,6 +44,14 @@ def get_abspath(rel_path):
     if not rel_path.startswith(CONFIG_DIR_PATH):
         return "/".join([CONFIG_DIR_PATH, rel_path])
     return rel_path
+
+
+def initialize_directory():
+    shares_dir = os.path.join(CONFIG_DIR_PATH, "shares")
+    try:
+        os.makedirs(shares_dir)
+    except OSError:
+        pass
 
 
 class ServerCommunicator(object):
@@ -91,12 +99,14 @@ class ServerCommunicator(object):
             try:
                 request_result = callback(
                     auth=self.auth,
-                    *args, **kwargs)
-                if request_result.status_code == requests.codes.unauthorized:
-                    logger.error("user not logged")
-                else:
+                    *args, **kwargs
+                )
+                if request_result.ok:
                     logger.info(success)
+                else:
+                    logger.error(request_result.reason)
                 return request_result
+
             except requests.exceptions.RequestException:
                 time.sleep(retry_delay)
                 logger.warning(error)
@@ -114,8 +124,8 @@ class ServerCommunicator(object):
 
             server_timestamp = float(sync.json()['timestamp'])
             logger.debug("".format("SERVER SAY: ", server_snapshot, server_timestamp, "\n"))
-            command_list = self.snapshot_manager.syncronize_dispatcher(server_timestamp, server_snapshot)
-            self.executer.syncronize_executer(command_list)
+            command_list = self.snapshot_manager.synchronize_dispatcher(server_timestamp, server_snapshot)
+            self.executer.synchronize_executer(command_list)
             self.snapshot_manager.save_timestamp(server_timestamp)
 
     def get_url_relpath(self, abs_path):
@@ -241,7 +251,6 @@ class ServerCommunicator(object):
             self.snapshot_manager.save_snapshot(r.text)
 
     def create_user(self, param):
-
         self.msg["details"] = []
         error_log = "User creation error"
         success_log = "user created!"
@@ -258,7 +267,8 @@ class ServerCommunicator(object):
         }
 
         response = self._try_request(
-            requests.post, success_log, error_log, **request)
+            requests.post, success_log, error_log, **request
+        )
 
         self.msg["result"] = response.status_code
 
@@ -277,6 +287,36 @@ class ServerCommunicator(object):
             error = "on create user:\t email: {}\n\nsend message:\t{}\nresponse is:\t{}".format(username, request, response.text)
             logger.critical("\nbad request on user creation, report this crash to RawBox_team@gmail.com\n {}\n\n".format(error))
             self.msg["details"].append("Bad request")
+        return self.msg
+
+    def get_user(self, param):
+        self.msg["details"] = []
+        error_log = "cannot get user data"
+        success_log = "user data retrived"
+
+        server_url = "{}/user".format(self.server_url)
+
+        request = {
+            "url": server_url,
+            "data": {
+                "user": param["user"],
+                "psw": param["psw"]
+            }
+        }
+
+        response = self._try_request(
+            requests.get, success_log, error_log, **request)
+
+        self.msg["result"] = response.status_code
+        self.msg["details"].append(eval(response.text))
+
+        if response.status_code == 200:
+            self.msg["details"].append("User data retrived")
+        elif response.status_code == 404:
+            self.msg["details"].append("User not found")
+        else:
+            self.msg["details"].append("Bad request")
+
         return self.msg
 
     def delete_user(self, param):
@@ -329,6 +369,7 @@ class ServerCommunicator(object):
 
         if response.status_code == requests.codes.created:
             self.write_user_data(activate=True)
+            initialize_directory()
             self.msg["details"].append("You have now entered RawBox")
         elif response.status_code == requests.codes.not_found:
             self.msg["details"].append("User not found")
@@ -337,26 +378,97 @@ class ServerCommunicator(object):
 
         return self.msg
 
+    def add_share(self, param):
+        """ Called by cmdmanager.
+        Share a resource with a beneficiary """
+        self.msg["details"] = []
+        request = {
+            "url": "{}/shares/{}/{}".format(
+                self.server_url, param["path"], param["beneficiary"]
+            )
+        }
+
+        success_log = "share added with {}!".format(param["beneficiary"])
+        error_log = "ERROR in adding a share with {}".format(param["beneficiary"])
+
+        r = self._try_request(requests.post, success_log, error_log, **request)
+        self.msg["result"] = r.status_code
+
+        if r.status_code == 400:
+            self.msg["details"].append("Bad request")
+        elif r.status_code == 201:
+            self.msg["details"].append("Added share!")
+        return self.msg
+
+    def remove_share(self, param):
+        """Remove all the share"""
+        self.msg["details"] = []
+        request = {
+            "url": "{}/shares/{}".format(self.server_url, param["path"]),
+            "data": {}
+        }
+
+        success_log = "The resource is no more shared"
+        error_log = "ERROR on removing all the shares"
+
+        response = self._try_request(
+            requests.delete, success_log, error_log, **request
+        )
+        self.msg["result"] = response.status_code
+
+        if response.status_code == 200:
+            self.msg["details"].append("Shares removed")
+        elif response.status_code == 400:
+            self.msg["details"].append("Error, shares not removed")
+        return self.msg
+
+    def remove_beneficiary(self, param):
+        """Remove user from share"""
+        self.msg["details"] = []
+        request = {
+            "url": "{}/shares/{}/{}".format(
+                self.server_url,
+                param["path"], param["beneficiary"]
+            ),
+            "data": {}
+        }
+
+        success_log = "Removed user {} from shares".format(param["beneficiary"])
+        error_log = "ERROR on removing user {} from shares".format(param["beneficiary"])
+
+        response = self._try_request(
+            requests.delete, success_log, error_log, **request
+        )
+        self.msg["result"] = response.status_code
+
+        if response.status_code == 200:
+            self.msg["details"].append("User removed from shares")
+        elif response.status_code == 400:
+            self.msg["details"].append("Cannot remove user from shares")
+        return self.msg
+
     def get_shares_list(self, param=None):
         self.msg["details"] = []
         error_log = "List shares error"
         success_log = "List shares downloaded!"
-        server_url = "{}/shares/".format(self.server_url)
-        request = {"url": server_url}
-        response = self._try_request(requests.get, success_log, error_log, **request)
+        request = {"url": "{}/shares/".format(self.server_url)}
+        response = self._try_request(
+            requests.get, success_log, error_log, **request
+        )
 
         self.msg["result"] = response.status_code
         if response.status_code != 401:
             try:
-                my_shares = response.json()
+                shares = response.json()
                 self.msg["details"].append("Shares list downloaded")
                 sub_res = []
-                if my_shares["my_shares"]:
+                if shares["my_shares"]:
                     sub_res.append("My shares:\n")
-                    sub_res.append(str(my_shares["my_shares"]))
-                if my_shares["other_shares"]:
+                    sub_res.append(str(shares["my_shares"]))
+                if shares["other_shares"]:
                     sub_res.append("Other shares:\n")
-                    sub_res.append(str(my_shares["other_shares"]))
+                    sub_res.append(str(shares["other_shares"]))
+
                 if sub_res:
                     res = "".join(["\nList of shares\n"] + sub_res)
                 else:
@@ -520,9 +632,12 @@ def load_config():
     return config, user_exists
 
 
-class DirectoryEventHandler(FileSystemEventHandler):
+class DirectoryEventHandler(PatternMatchingEventHandler):
 
     def __init__(self, cmd, snap):
+        super(DirectoryEventHandler, self).__init__(
+            ignore_patterns=[os.path.join(CONFIG_DIR_PATH, "shares/*")]
+        )
         self.cmd = cmd
         self.snap = snap
         self.paths_ignored = []
@@ -659,7 +774,6 @@ class DirSnapshotManager(object):
 
     def instant_snapshot(self):
         """ create a snapshot of directory """
-
         dir_snapshot = {}
         for root, dirs, files in os.walk(CONFIG_DIR_PATH):
             for f in files:
@@ -760,7 +874,7 @@ class DirSnapshotManager(object):
             if path_timestamp['path'] == new_path:
                 return path_timestamp['timestamp'] < self.last_status['timestamp']
 
-    def syncronize_dispatcher(self, server_timestamp, server_snapshot):
+    def synchronize_dispatcher(self, server_timestamp, server_snapshot):
         """ return the list of command to do """
         new_client_paths, new_server_paths, equal_paths = self.diff_snapshot_paths(
             self.local_full_snapshot, server_snapshot)
@@ -855,7 +969,7 @@ class CommandExecuter(object):
         self.local = file_system_op
         self.remote = server_com
 
-    def syncronize_executer(self, command_list):
+    def synchronize_executer(self, command_list):
         logger.debug("EXECUTER\n")
 
         def error(*args, **kwargs):
@@ -956,6 +1070,9 @@ def main():
         "create_user": server_com.create_user,
         "activate_user": server_com.activate_user,
         "delete_user": server_com.delete_user,
+        "add_share": server_com.add_share,
+        "remove_share": server_com.remove_share,
+        "remove_beneficiary": server_com.remove_beneficiary,
         "get_shares_list": server_com.get_shares_list
     }
     sock_server = CmdMessageServer(
