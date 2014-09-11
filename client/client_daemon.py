@@ -285,7 +285,7 @@ class ServerCommunicator(object):
         error_log = "Cannot delete user"
         success_log = "User deleted"
 
-        server_url = "{}/Users/{}".format(self.server_url, param["user"])
+        server_url = "{}/Users/".format(self.server_url)
 
         request = {
             "url": server_url,
