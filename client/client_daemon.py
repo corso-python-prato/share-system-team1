@@ -87,6 +87,9 @@ class ServerCommunicator(object):
         config_ini.set("daemon_user_data", "username", None)
         config_ini.set("daemon_user_data", "password", None)
         config_ini.set("daemon_user_data", "active", False)
+        username = None
+        password = None
+        self.auth = HTTPBasicAuth(username, password)
         with open(FILE_CONFIG, "wb") as config_file:
             config_ini.write(config_file)
 
@@ -370,6 +373,10 @@ class ServerCommunicator(object):
         if response.status_code == requests.codes.created:
             self.write_user_data(activate=True)
             initialize_directory()
+            config, _ = load_config()
+            username = config['username']
+            password = config['password']
+            self.auth = HTTPBasicAuth(username, password)
             self.msg["details"].append("You have now entered RawBox")
         elif response.status_code == requests.codes.not_found:
             self.msg["details"].append("User not found")
@@ -1040,6 +1047,7 @@ def args_parse_init(stdout_level, file_level):
 def main():
 
     global CONFIG_DIR_PATH
+    global server_com
 
     config, user_exists = load_config()
     CONFIG_DIR_PATH = config['dir_path']
