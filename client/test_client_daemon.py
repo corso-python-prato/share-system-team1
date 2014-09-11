@@ -177,7 +177,7 @@ class ServerCommunicatorTest(unittest.TestCase):
         )
         httpretty.register_uri(
             httpretty.DELETE,
-            SERVER_URL + "Users/usernameFarlocco",
+            SERVER_URL + "Users/",
             responses=[
                 httpretty.Response(body='{}', status=requests.codes.ok),
                 httpretty.Response(body='{}', status=requests.codes.unauthorized),
