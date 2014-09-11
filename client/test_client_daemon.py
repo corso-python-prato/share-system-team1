@@ -587,13 +587,13 @@ class ServerCommunicatorTest(unittest.TestCase):
         self.assertEqual(msg3["details"][0], "Bad request")
 
     def test_delete_user(self):
-        msg1 = self.server_comm.delete_user({"user": self.username, "psw": self.password})
+        msg1 = self.server_comm.delete_user({})
         self.assertEqual(msg1["result"], requests.codes.ok)
         self.assertEqual(msg1["details"][0], "User deleted")
-        msg2 = self.server_comm.delete_user({"user": self.username, "psw": self.password})
+        msg2 = self.server_comm.delete_user({})
         self.assertEqual(msg2["result"], requests.codes.unauthorized)
         self.assertEqual(msg2["details"][0], "Access denied")
-        msg3 = self.server_comm.delete_user({"user": self.username, "psw": self.password})
+        msg3 = self.server_comm.delete_user({})
         self.assertEqual(msg3["result"], requests.codes.bad_request)
         self.assertEqual(msg3["details"][0], "Bad request")
 
