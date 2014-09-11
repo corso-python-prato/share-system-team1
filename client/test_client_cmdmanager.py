@@ -249,28 +249,6 @@ class TestRawBoxExecuter(unittest.TestCase):
         self.assertNotEquals(TestRawBoxExecuter.code, self.tooshort_code)
         self.assertEquals(TestRawBoxExecuter.code, self.correct_code)
 
-    def test_delete_user(self):
-        mock_input.append(self.correct_user)
-
-        self.raw_box_exec._delete_user()
-
-        self.assertEquals(TestRawBoxExecuter.username, self.correct_user)
-
-    def test_delete_user_invalid_user(self):
-        mock_input.append(self.correct_user)
-        mock_input.append(self.wrong_user3)
-        mock_input.append(self.wrong_user2)
-        mock_input.append(self.wrong_user1)
-        mock_input.append(self.wrong_user0)
-
-        self.raw_box_exec._delete_user()
-
-        self.assertNotEquals(TestRawBoxExecuter.username, self.wrong_user0)
-        self.assertNotEquals(TestRawBoxExecuter.username, self.wrong_user1)
-        self.assertNotEquals(TestRawBoxExecuter.username, self.wrong_user2)
-        self.assertNotEquals(TestRawBoxExecuter.username, self.wrong_user3)
-        self.assertEquals(TestRawBoxExecuter.username, self.correct_user)
-
     def test_add_share(self):
         self.raw_box_exec._add_share(self.pathtoshare, self.beneficiary)
         self.assertEquals(TestRawBoxExecuter.pathtoshare, self.pathtoshare)
