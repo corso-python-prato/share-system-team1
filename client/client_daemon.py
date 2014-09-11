@@ -506,7 +506,7 @@ def load_config():
     try:
         config["username"] = config_ini.get('daemon_user_data', 'username')
         config["password"] = config_ini.get('daemon_user_data', 'password')
-        config["active"] = config_ini.get('daemon_user_data', 'active')
+        user_exists = config_ini.get('daemon_user_data', 'active')
     except ConfigParser.NoSectionError:
         user_exists = False
         config_ini.add_section('daemon_user_data')
