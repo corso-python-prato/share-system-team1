@@ -72,6 +72,16 @@ class ServerCommunicator(object):
         with open(FILE_CONFIG, "wb") as config_file:
             config_ini.write(config_file)
 
+    def delete_user_data(self):
+        config_ini = ConfigParser.ConfigParser()
+        config_ini.read(FILE_CONFIG)
+
+        config_ini.set("daemon_user_data", "username", None)
+        config_ini.set("daemon_user_data", "password", None)
+        config_ini.set("daemon_user_data", "active", False)
+        with open(FILE_CONFIG, "wb") as config_file:
+            config_ini.write(config_file)
+
     def setExecuter(self, executer):
         self.executer = executer
 
@@ -288,6 +298,7 @@ class ServerCommunicator(object):
         self.msg["result"] = response.status_code
 
         if response.status_code == requests.codes.ok:
+            self.delete_user_data()
             self.msg["details"].append("User deleted")
         elif response.status_code == requests.codes.unauthorized:
             self.msg["details"].append("Access denied")
