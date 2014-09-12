@@ -15,6 +15,7 @@ from colorMessage import Message
 FILE_CONFIG = "config.ini"
 CONFIG = ConfigParser.ConfigParser()
 CONFIG.read(FILE_CONFIG)
+EMAIL_REGEX = re.compile('[^@]+@[^@]+\.[^@]+')
 
 
 def take_input(message, password=False):
@@ -27,8 +28,7 @@ def take_input(message, password=False):
 def take_valid_username(username=None):
     if not username:
         username = take_input('insert your email: ')
-    email_regex = re.compile('[^@]+@[^@]+\.[^@]+')
-    while not email_regex.match(username):
+    while not EMAIL_REGEX.match(username):
         Message('WARNING', 'invalid email')
         username = take_input('insert your email: ')
     return username
