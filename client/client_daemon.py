@@ -615,7 +615,7 @@ def load_config():
 
         for section in config_ini.sections():
             for option, value in config_ini.items(section):
-                    config.update({option: value})
+                    config[option] = value
 
         if not os.path.isdir(dir_path):
             os.makedirs(dir_path)

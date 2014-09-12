@@ -847,7 +847,7 @@ class LoadConfigTest(unittest.TestCase):
 
         for section in config_with_daemon_CP.sections():
             for option, value in config_with_daemon_CP.items(section):
-                self.config_with_daemon_conf.update({option: value})
+                self.config_with_daemon_conf[option] = value
         with open(self.TEMP_INI, 'w') as temp:
             config_with_daemon_CP.write(temp)
 
