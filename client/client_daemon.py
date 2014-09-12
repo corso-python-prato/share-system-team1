@@ -610,7 +610,7 @@ def load_config():
         }
     except ConfigParser.NoSectionError:
         config_ini.add_section("daemon_communication")
-        for option, value in default_daemon_config.items():
+        for option, value in default_daemon_config.iteritems():
             config_ini.set("daemon_communication", option, value)
 
         for section in config_ini.sections():
