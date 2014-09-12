@@ -15,6 +15,7 @@ from colorMessage import Message
 FILE_CONFIG = "config.ini"
 CONFIG = ConfigParser.ConfigParser()
 CONFIG.read(FILE_CONFIG)
+EMAIL_REGEX = re.compile('[^@]+@[^@]+\.[^@]+')
 
 
 def take_input(message, password=False):
@@ -22,6 +23,15 @@ def take_input(message, password=False):
         return raw_input(message)
     else:
         return getpass.getpass(message)
+
+
+def take_valid_username(username=None):
+    if not username:
+        username = take_input('insert your email: ')
+    while not EMAIL_REGEX.match(username):
+        Message('WARNING', 'invalid email')
+        username = take_input('insert your email: ')
+    return username
 
 
 def check_shareable_path(path):
@@ -54,13 +64,7 @@ class RawBoxExecuter(object):
         """ create user if not exists """
         command_type = 'create_user'
 
-        if not username:
-            username = take_input('insert your email: ')
-        email_regex = re.compile('[^@]+@[^@]+\.[^@]+')
-        while not email_regex.match(username):
-            Message('WARNING', 'invalid email')
-            username = take_input('insert your email: ')
-
+        username = take_valid_username(username)
         password = take_input('insert your password: ', password=True)
         rpt_password = take_input('Repeat your password: ', password=True)
         while password != rpt_password:
@@ -80,13 +84,7 @@ class RawBoxExecuter(object):
         """ activate user previously created """
         command_type = 'activate_user'
 
-        if not username:
-            username = take_input('insert your email: ')
-        email_regex = re.compile('[^@]+@[^@]+\.[^@]+')
-        while not email_regex.match(username):
-            Message('WARNING', 'invalid email')
-            username = take_input('insert your email: ')
-
+        username = take_valid_username(username)
         if not code:
             code = take_input('insert your code: ')
         while len(code) != 32:
@@ -101,20 +99,11 @@ class RawBoxExecuter(object):
         self.comm_sock.send_message(command_type, param)
         self.print_response(self.comm_sock.read_message())
 
-    def _delete_user(self, username=None):
+    def _delete_user(self):
         """ delete user if is logged """
         command_type = 'delete_user'
 
-        if not username:
-            username = take_input('insert your email: ')
-        email_regex = re.compile('[^@]+@[^@]+\.[^@]+')
-        while not email_regex.match(username):
-            Message('WARNING', 'invalid email')
-            username = take_input('insert your email: ')
-        param = {
-            'user': username
-        }
-        self.comm_sock.send_message(command_type, param)
+        self.comm_sock.send_message(command_type, {})
         self.print_response(self.comm_sock.read_message())
 
     def _add_user(self, *args):
@@ -245,11 +234,8 @@ class RawBoxCmd(cmd.Cmd):
         """
         delete a RawBox user if He is logged
         """
-        if line:
-            user = line.split()[0]
-            self.executer._delete_user(user)
-        else:
-            Message('INFO', self.do_delete.__doc__)
+        if take_input("are you sure? [yes/no] ") == "yes":
+            self.executer._delete_user()
 
     def do_add_share(self, line):
         """

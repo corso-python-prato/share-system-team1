@@ -51,6 +51,7 @@ class ServerApi(Api):
 api = ServerApi(app)
 auth = HTTPBasicAuth()
 _API_PREFIX = "/API/v1/"
+PROJECT_NAME = "RawBox"
 
 SERVER_ROOT = os.path.dirname(__file__)
 USERS_DIRECTORIES = os.path.join(SERVER_ROOT, "user_dirs/")
@@ -179,6 +180,10 @@ def PasswordChecker(clear_password):
             "be a combination of numbers, uppercase and lowercase" + \
             "characters and special characters", HTTP_NOT_ACCEPTABLE
     return clear_password
+
+
+class MissingConfigIni(Exception):
+    pass
 
 
 class User(object):
@@ -409,7 +414,7 @@ class User(object):
     def delete_user(self, username):
         user_root = self.paths[""][0]
         del User.users[username]
-        shutil.rmtree(user_root)
+        shutil.rmtree(os.path.join(USERS_DIRECTORIES, user_root))
         User.save_users()
 
     def add_share(self, client_path, beneficiary):
@@ -457,12 +462,14 @@ class Resource_with_auth(Resource):
 class UsersApi(Resource):
 
     def load_pending_users(self):
-        try:
-            with open(PENDING_USERS, "r") as p_u:
-                pending = json.load(p_u)
-        except IOError:
-            # there aren't PENDING_USERS
-            pending = {}
+        pending = {}
+        if os.path.isfile(PENDING_USERS):
+            try:
+                with open(PENDING_USERS, "r") as p_u:
+                    pending = json.load(p_u)
+            except ValueError:  # PENDING_USERS exists but is corrupted
+                if os.path.getsize(PENDING_USERS) > 0:
+                    shutil.move(PENDING_USERS, CORRUPTED_DATA)
         return pending
 
     def post(self, username):
@@ -530,16 +537,12 @@ class UsersApi(Resource):
             return "User need to be created", HTTP_NOT_FOUND
 
     @auth.login_required
-    def delete(self, username):
+    def delete(self):
         """Delete the user who is making the request
         """
         current_username = auth.username()
-        current_user = User.users[current_username]
-        if current_username == username:
-            current_user.delete_user(username)
-            return "user deleted", HTTP_OK
-        else:
-            return "access denied", HTTP_BAD_REQUEST
+        User.users[current_username].delete_user(current_username)
+        return "user deleted", HTTP_OK
 
 
 class Files(Resource_with_auth):
@@ -814,15 +817,15 @@ class Shares(Resource_with_auth):
 
 def mail_config_init():
     config = ConfigParser.ConfigParser()
-    config.read(EMAIL_SETTINGS_INI)
-    app.config.update(
-        MAIL_SERVER = config.get('email', 'smtp_address'),
-        MAIL_PORT = config.getint('email', 'smtp_port'),
-        MAIL_USERNAME = config.get('email', 'smtp_username'),
-        MAIL_PASSWORD = config.get('email', 'smtp_password')
-    )
-    mail = Mail(app)
-    return mail
+    if config.read(EMAIL_SETTINGS_INI):
+        app.config.update(
+            MAIL_SERVER=config.get('email', 'smtp_address'),
+            MAIL_PORT=config.getint('email', 'smtp_port'),
+            MAIL_USERNAME=config.get('email', 'smtp_username'),
+            MAIL_PASSWORD=config.get('email', 'smtp_password')
+        )
+        return Mail(app)
+    raise MissingConfigIni
 
 
 def send_mail(receiver, obj, content):
@@ -831,7 +834,7 @@ def send_mail(receiver, obj, content):
     mail = mail_config_init()
     msg = Message(
         obj,
-        sender="RawBoxTeam",
+        sender="{}Team".format(PROJECT_NAME),
         recipients=[receiver])
     msg.body = content
     with app.app_context():
@@ -853,7 +856,8 @@ def main():
     ServerApi.enable_report_mail = True
     app.run(host="0.0.0.0", debug=False)
 
-api.add_resource(UsersApi, "{}Users/<string:username>".format(_API_PREFIX))
+api.add_resource(UsersApi, "{}Users/<string:username>".format(_API_PREFIX),
+    "{}Users/".format(_API_PREFIX))
 api.add_resource(Actions, "{}actions/<string:cmd>".format(_API_PREFIX))
 api.add_resource(
     Files,

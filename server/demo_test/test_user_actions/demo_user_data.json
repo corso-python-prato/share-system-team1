@@ -1,0 +1,9 @@
+{
+    "users": {
+        "user_mail@demo.it": {
+            "paths": {"": ["user_mail@demo.it", "False", 1405197042.793583]},
+            "psw": "$5$rounds=110000$7a1FtXsfwrFISw92$wJKPhrQA1MpO3FvAGEY9SrVE2ltDjt96zP/1CARXwS7",
+            "timestamp": 1405197042.793476
+        }
+    }
+}
