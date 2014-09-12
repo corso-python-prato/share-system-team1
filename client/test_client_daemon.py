@@ -818,7 +818,7 @@ class LoadConfigTest(unittest.TestCase):
 
     def tearDown(self):
         with open(self.TEMP_INI, 'w') as f:
-            f.write('')
+            f.truncate(0)
 
     def test_load_config_whit_only_cmd_section(self):
         config_only_cmd = ConfigParser.ConfigParser()
