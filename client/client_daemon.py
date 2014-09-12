@@ -7,11 +7,12 @@
 
 # from watchdog.observers import Observer
 from watchdog.observers.polling import PollingObserver as Observer
-from watchdog.events import FileSystemEventHandler
+from watchdog.events import PatternMatchingEventHandler
 from requests.auth import HTTPBasicAuth
 import ConfigParser
 import requests
 import argparse
+import asyncore
 import hashlib
 import logging
 import shutil
@@ -20,12 +21,11 @@ import json
 import os
 
 from communication_system import CmdMessageServer
-import asyncore
 
 SERVER_URL = "localhost"
 SERVER_PORT = "5000"
 API_PREFIX = "API/v1"
-CONFIG_DIR_PATH = ""
+CONFIG_DIR_PATH = None        # RawBox root
 FILE_CONFIG = "config.ini"
 
 logger = logging.getLogger('RawBox')
@@ -44,6 +44,14 @@ def get_abspath(rel_path):
     if not rel_path.startswith(CONFIG_DIR_PATH):
         return "/".join([CONFIG_DIR_PATH, rel_path])
     return rel_path
+
+
+def initialize_directory():
+    shares_dir = os.path.join(CONFIG_DIR_PATH, "shares")
+    try:
+        os.makedirs(shares_dir)
+    except OSError:
+        pass
 
 
 class ServerCommunicator(object):
@@ -81,12 +89,14 @@ class ServerCommunicator(object):
             try:
                 request_result = callback(
                     auth=self.auth,
-                    *args, **kwargs)
-                if request_result.status_code == 401:
-                    logger.error("user not logged")
-                else:
+                    *args, **kwargs
+                )
+                if request_result.ok:
                     logger.info(success)
+                else:
+                    logger.error(request_result.reason)
                 return request_result
+
             except requests.exceptions.RequestException:
                 time.sleep(retry_delay)
                 logger.warning(error)
@@ -104,8 +114,8 @@ class ServerCommunicator(object):
 
             server_timestamp = float(sync.json()['timestamp'])
             logger.debug("".format("SERVER SAY: ", server_snapshot, server_timestamp, "\n"))
-            command_list = self.snapshot_manager.syncronize_dispatcher(server_timestamp, server_snapshot)
-            self.executer.syncronize_executer(command_list)
+            command_list = self.snapshot_manager.synchronize_dispatcher(server_timestamp, server_snapshot)
+            self.executer.synchronize_executer(command_list)
             self.snapshot_manager.save_timestamp(server_timestamp)
 
     def get_url_relpath(self, abs_path):
@@ -231,7 +241,6 @@ class ServerCommunicator(object):
             self.snapshot_manager.save_snapshot(r.text)
 
     def create_user(self, param):
-
         self.msg["details"] = []
         error_log = "User creation error"
         success_log = "user created!"
@@ -248,7 +257,8 @@ class ServerCommunicator(object):
         }
 
         response = self._try_request(
-            requests.post, success_log, error_log, **request)
+            requests.post, success_log, error_log, **request
+        )
 
         self.msg["result"] = response.status_code
 
@@ -257,6 +267,9 @@ class ServerCommunicator(object):
                 "Check your email for the activation code")
             logger.info("user: {} psw: {} created!".format(username, password))
             self.write_user_data(param["user"], param["psw"], activate=False)
+        elif response.status_code == 406:
+            logger.warning("{}".format(response.text))
+            self.msg["details"].append("{}".format(response.text))
         elif response.status_code == 409:
             logger.warning("user: {} psw: {} already exists!".format(username, password))
             self.msg["details"].append("User already exists")
@@ -267,7 +280,6 @@ class ServerCommunicator(object):
         return self.msg
 
     def get_user(self, param):
-
         self.msg["details"] = []
         error_log = "cannot get user data"
         success_log = "user data retrived"
@@ -346,6 +358,7 @@ class ServerCommunicator(object):
 
         if response.status_code == 201:
             self.write_user_data(activate=True)
+            initialize_directory()
             self.msg["details"].append("You have now entered RawBox")
         elif response.status_code == 404:
             self.msg["details"].append("User not found")
@@ -383,7 +396,6 @@ class ServerCommunicator(object):
         self.msg["details"] = []
         error_log = "Cannot reset password"
         success_log = "Password resetted"
-
         server_url = "{}/Users/{}/reset".format(self.server_url, param["user"])
 
         request = {
@@ -396,7 +408,6 @@ class ServerCommunicator(object):
         }
 
         response = self._try_request(requests.put, success_log, error_log, **request)
-
         self.msg["result"] = response.status_code
 
         if response.status_code == 202:
@@ -404,6 +415,105 @@ class ServerCommunicator(object):
             self.msg["details"].append("Your password has been resetted. Login needed!")
         elif response.status_code == 404:
             self.msg["details"].append("Wrong code or reset request not found")
+        return self.msg
+
+    def add_share(self, param):
+        """ Called by cmdmanager.
+        Share a resource with a beneficiary """
+        self.msg["details"] = []
+        request = {
+            "url": "{}/shares/{}/{}".format(
+                self.server_url, param["path"], param["beneficiary"]
+            )
+        }
+        
+        success_log = "share added with {}!".format(param["beneficiary"])
+        error_log = "ERROR in adding a share with {}".format(param["beneficiary"])
+
+        r = self._try_request(requests.post, success_log, error_log, **request)
+        self.msg["result"] = r.status_code
+        
+        if r.status_code == 400:
+            self.msg["details"].append("Bad request")
+        elif r.status_code == 201:
+            self.msg["details"].append("Added share!")
+        return self.msg
+
+    def remove_share(self, param):
+        """Remove all the share"""
+        self.msg["details"] = []
+        request = {
+            "url" : "{}/shares/{}".format(self.server_url, param["path"]),
+            "data" : {}
+        }
+
+        success_log = "The resource is no more shared"
+        error_log = "ERROR on removing all the shares"
+
+        response = self._try_request(
+            requests.delete, success_log, error_log, **request
+        )
+        self.msg["result"] = response.status_code
+
+        if response.status_code == 200:
+            self.msg["details"].append("Shares removed")
+        elif response.status_code == 400:
+            self.msg["details"].append("Error, shares not removed")
+        return self.msg
+
+    def remove_beneficiary(self, param):
+        """Remove user from share"""
+        self.msg["details"] = []
+        request = {
+            "url" : "{}/shares/{}/{}".format(
+                self.server_url,
+                param["path"], param["beneficiary"]
+            ),
+            "data" : {}
+        }
+        success_log = "Removed user {} from shares".format(param["beneficiary"])
+        error_log = "ERROR on removing user {} from shares".format(param["beneficiary"])
+        response = self._try_request(
+            requests.delete, success_log, error_log, **request
+        )
+        self.msg["result"] = response.status_code
+        if response.status_code == 200:
+            self.msg["details"].append("User removed from shares")
+        elif response.status_code == 400:
+            self.msg["details"].append("Cannot remove user from shares")
+        return self.msg
+
+    def get_shares_list(self, param=None):
+        self.msg["details"] = []
+        error_log = "List shares error"
+        success_log = "List shares downloaded!"
+        request = {"url": "{}/shares/".format(self.server_url)}
+        response = self._try_request(
+            requests.get, success_log, error_log, **request
+        )
+
+        self.msg["result"] = response.status_code
+        if response.status_code != 401:
+            try:
+                shares = response.json()
+                self.msg["details"].append("Shares list downloaded")
+                sub_res = []
+                if shares["my_shares"]:
+                    sub_res.append("My shares:\n")
+                    sub_res.append(str(my_shares["my_shares"]))
+                if shares["other_shares"]:
+                    sub_res.append("Other shares:\n")
+                    sub_res.append(str(my_shares["other_shares"]))
+
+                if sub_res:
+                    res = "".join(["\nList of shares\n"] + sub_res)
+                else:
+                    res = "No shares found"
+                self.msg["details"].append(res)
+            except ValueError:
+                self.msg["details"].append("Shares not found")
+        else:
+            self.msg["details"].append("Unauthorized access")
 
         return self.msg
 
@@ -550,10 +660,7 @@ def load_config():
             "dir_path": config_ini.get('daemon_communication', 'dir_path'),
             "snapshot_file_path": snapshot_file
         }
-        try:
-            os.makedirs(dir_path)
-        except OSError:
-            pass
+
         with open(snapshot_file, 'w') as snapshot:
             json.dump({"timestamp": 0, "snapshot": ""}, snapshot)
 
@@ -574,9 +681,12 @@ def load_config():
     return config, user_exists
 
 
-class DirectoryEventHandler(FileSystemEventHandler):
+class DirectoryEventHandler(PatternMatchingEventHandler):
 
     def __init__(self, cmd, snap):
+        super(DirectoryEventHandler, self).__init__(
+            ignore_patterns=[os.path.join(CONFIG_DIR_PATH, "shares/*")]
+        )
         self.cmd = cmd
         self.snap = snap
         self.paths_ignored = []
@@ -713,7 +823,6 @@ class DirSnapshotManager(object):
 
     def instant_snapshot(self):
         """ create a snapshot of directory """
-
         dir_snapshot = {}
         for root, dirs, files in os.walk(CONFIG_DIR_PATH):
             for f in files:
@@ -764,7 +873,7 @@ class DirSnapshotManager(object):
     def update_snapshot_delete(self, body):
         """ update of local full snapshot by delete request"""
         md5_file = self.find_file_md5(self.local_full_snapshot, get_relpath(body['src_path']), False)
-        logger.debug("find md5: " + md5_file)
+        logger.debug("find md5: {}".format(md5_file))
         if len(self.local_full_snapshot[md5_file]) == 1:
             del self.local_full_snapshot[md5_file]
         else:
@@ -814,7 +923,7 @@ class DirSnapshotManager(object):
             if path_timestamp['path'] == new_path:
                 return path_timestamp['timestamp'] < self.last_status['timestamp']
 
-    def syncronize_dispatcher(self, server_timestamp, server_snapshot):
+    def synchronize_dispatcher(self, server_timestamp, server_snapshot):
         """ return the list of command to do """
         new_client_paths, new_server_paths, equal_paths = self.diff_snapshot_paths(
             self.local_full_snapshot, server_snapshot)
@@ -825,10 +934,10 @@ class DirSnapshotManager(object):
                 for new_server_path in new_server_paths:  # 1) b 1
                     server_md5 = self.find_file_md5(server_snapshot, new_server_path)
                     if not server_md5 in self.local_full_snapshot:  # 1) b 1 I
-                        logger.debug("download:\t" + new_server_path)
+                        logger.debug("download:\t{}".format(new_server_path))
                         command_list.append({'local_download': [new_server_path]})
                     else:  # 1) b 1 II
-                        logger.debug("copy or rename:\t" + new_server_path)
+                        logger.debug("copy or rename:\t{}".format(new_server_path))
                         src_local_path = self.local_full_snapshot[server_md5][0]
                         command_list.append({'local_copy': [src_local_path, new_server_path]})
 
@@ -836,13 +945,13 @@ class DirSnapshotManager(object):
                     client_md5 = self.find_file_md5(self.local_full_snapshot, equal_path, False)
                     if client_md5 != self.find_file_md5(server_snapshot, equal_path):
                         #in this case i have a simple download because the update is a overwritten
-                        logger.debug("update download:\t" + equal_path)
+                        logger.debug("update download:\t{}".format(equal_path))
                         command_list.append({'local_download': [equal_path]})
                     else:
-                        logger.debug("no action:\t" + equal_path)
+                        logger.debug("no action:\t{}".format(equal_path))
 
                 for new_client_path in new_client_paths:  # 1) b 3
-                    logger.debug("remove local:\t" + new_client_path)
+                    logger.debug("remove local:\t{}".format(new_client_path))
                     command_list.append({'local_delete': [new_client_path]})
             else:
                 logger.debug("synchronized")
@@ -852,40 +961,40 @@ class DirSnapshotManager(object):
             if self.is_syncro(server_timestamp):  # 2) a
                 logger.debug("****\tpush all\t****")
                 for new_server_path in new_server_paths:  # 2) a 1
-                    logger.debug("remove:\t" + new_server_path)
+                    logger.debug("remove:\t{}".format(new_server_path))
                     command_list.append({'remote_delete': [new_server_path]})
                 for equal_path in equal_paths:  # 2) a 2
                     if self.find_file_md5(self.local_full_snapshot, equal_path, False) != self.find_file_md5(server_snapshot, equal_path):
-                        logger.debug("update:\t" + equal_path)
+                        logger.debug("update:\t{}".format(equal_path))
                         command_list.append({'remote_update': [equal_path, True]})
                     else:
-                        logger.debug("no action:\t" + equal_path)
+                        logger.debug("no action:\t{}".format(equal_path))
                 for new_client_path in new_client_paths:  # 2) a 3
-                    logger.debug("upload:\t" + new_client_path)
+                    logger.debug("upload:\t{}".format(new_client_path))
                     command_list.append({'remote_upload': [new_client_path]})
 
             elif not self.is_syncro(server_timestamp):  # 2) b
                 for new_server_path in new_server_paths:  # 2) b 1
                     server_md5 = self.find_file_md5(server_snapshot, new_server_path)
                     if self.check_files_timestamp(server_snapshot, new_server_path):
-                        logger.debug("delete remote:\t" + new_server_path)
+                        logger.debug("delete remote:\t{}".format(new_server_path))
                         command_list.append({'remote_delete': [new_server_path]})
                     else:
                         if not server_md5 in self.local_full_snapshot:  # 2) b 1 I
-                                logger.debug("download local:\t" + new_server_path)
+                                logger.debug("download local:\t{}".format(new_server_path))
                                 command_list.append({'local_download': [new_server_path]})
                         else:  # 2) b 1 II
-                            logger.debug("copy or rename:\t" + new_server_path)
+                            logger.debug("copy or rename:\t{}".format(new_server_path))
                             src_local_path = self.local_full_snapshot[server_md5][0]
                             command_list.append({'local_copy': [src_local_path, new_server_path]})
 
                 for equal_path in equal_paths:  # 2) b 2
                     if self.find_file_md5(self.local_full_snapshot, equal_path, False) != self.find_file_md5(server_snapshot, equal_path):
                         if self.check_files_timestamp(server_snapshot, equal_path):  # 2) b 2 I
-                            logger.debug("server push:\t" + equal_path)
+                            logger.debug("server push:\t{}".format(equal_path))
                             command_list.append({'remote_upload': [equal_path]})
                         else:  # 2) b 2 II
-                            logger.debug("create.conflicted:\t" + equal_path)
+                            logger.debug("create.conflicted:\t{}".format(equal_path))
                             conflicted_path = "{}/{}.conflicted".format(
                                 "/".join(equal_path.split('/')[:-1]),
                                 "".join(equal_path.split('/')[-1])
@@ -893,9 +1002,9 @@ class DirSnapshotManager(object):
                             command_list.append({'local_copy': [equal_path, conflicted_path]})
                             command_list.append({'remote_upload': [conflicted_path]})
                     else:
-                        logger.debug("no action:\t" + equal_path)
+                        logger.debug("no action:\t{}".format(equal_path))
                 for new_client_path in new_client_paths:  # 2) b 3
-                    logger.debug("remove remote\t" + new_client_path)
+                    logger.debug("remove remote\t{}".format(new_client_path))
                     command_list.append({'remote_delete': [new_client_path]})
 
         return command_list
@@ -909,7 +1018,7 @@ class CommandExecuter(object):
         self.local = file_system_op
         self.remote = server_com
 
-    def syncronize_executer(self, command_list):
+    def synchronize_executer(self, command_list):
         logger.debug("EXECUTER\n")
 
         def error(*args, **kwargs):
@@ -999,7 +1108,7 @@ def main():
     snapshot_manager = DirSnapshotManager(
         snapshot_file_path=config['snapshot_file_path'],
     )
-
+    
     server_com = ServerCommunicator(
         server_url=config['server_url'],
         username=None,
@@ -1011,7 +1120,11 @@ def main():
         "activate_user": server_com.activate_user,
         "delete_user": server_com.delete_user,
         "reset_password": server_com.reset_password,
-        "set_password": server_com.set_password
+        "set_password": server_com.set_password,
+        "add_share": server_com.add_share,
+        "remove_share": server_com.remove_share,
+        "remove_beneficiary": server_com.remove_beneficiary,
+        "get_shares_list": server_com.get_shares_list
     }
     sock_server = CmdMessageServer(
         config['host'],
@@ -1021,12 +1134,10 @@ def main():
     while not user_exists:
         asyncore.poll(timeout=1.0)
         config, user_exists = load_config()
-    print config
-    server_com = ServerCommunicator(
-        server_url=config['server_url'],
-        username=config['username'],
-        password=config['password'],
-        snapshot_manager=snapshot_manager)
+
+    server_com.username = config['username']
+    server_com.password = config['password']
+    server_com.auth = HTTPBasicAuth(server_com.username, server_com.password)
 
     event_handler = DirectoryEventHandler(server_com, snapshot_manager)
     file_system_op = FileSystemOperator(event_handler, server_com, snapshot_manager)
