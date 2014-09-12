@@ -80,6 +80,19 @@ class ServerCommunicator(object):
         with open(FILE_CONFIG, "wb") as config_file:
             config_ini.write(config_file)
 
+    def delete_user_data(self):
+        config_ini = ConfigParser.ConfigParser()
+        config_ini.read(FILE_CONFIG)
+
+        config_ini.set("daemon_user_data", "username", None)
+        config_ini.set("daemon_user_data", "password", None)
+        config_ini.set("daemon_user_data", "active", False)
+        username = None
+        password = None
+        self.auth = HTTPBasicAuth(username, password)
+        with open(FILE_CONFIG, "wb") as config_file:
+            config_ini.write(config_file)
+
     def setExecuter(self, executer):
         self.executer = executer
 
@@ -109,7 +122,7 @@ class ServerCommunicator(object):
         sync = self._try_request(
             requests.get, "getFile success", "getFile fail", **request)
 
-        if sync.status_code != 401:
+        if sync.status_code != requests.codes.unauthorized:
             server_snapshot = sync.json()['snapshot']
 
             server_timestamp = float(sync.json()['timestamp'])
@@ -136,7 +149,7 @@ class ServerCommunicator(object):
         r = self._try_request(requests.get, success_log, error_log, **request)
         local_path = get_abspath(dst_path)
 
-        if r.status_code == 200:
+        if r.status_code == requests.codes.ok:
             return local_path, r.text
         else:
             return False, False
@@ -169,9 +182,9 @@ class ServerCommunicator(object):
         else:
             r = self._try_request(
                 requests.post, success_log, error_log, **request)
-        if r.status_code == 409:
+        if r.status_code == requests.codes.conflict:
             logger.error("file {} already exists on server".format(dst_path))
-        elif r.status_code == 201:
+        elif r.status_code == requests.codes.created:
             if put_file:
                 self.snapshot_manager.update_snapshot_update({"src_path": dst_path})
             else:
@@ -190,9 +203,9 @@ class ServerCommunicator(object):
             "data": {"path": self.get_url_relpath(dst_path)}
         }
         r = self._try_request(requests.post, success_log, error_log, **request)
-        if r.status_code == 404:
+        if r.status_code == requests.codes.not_found:
             logger.error("DELETE REQUEST file {} not found on server".format(dst_path))
-        elif r.status_code == 200:
+        elif r.status_code == requests.codes.ok:
             self.snapshot_manager.update_snapshot_delete({"src_path": dst_path})
             self.snapshot_manager.save_snapshot(r.text)
 
@@ -212,9 +225,9 @@ class ServerCommunicator(object):
         }
 
         r = self._try_request(requests.post, success_log, error_log, **request)
-        if r.status_code == 404:
+        if r.status_code == requests.codes.not_found:
             logger.error("MOVE REQUEST file {} not found on server".format(src_path))
-        elif r.status_code == 201:
+        elif r.status_code == requests.codes.created:
             self.snapshot_manager.update_snapshot_move({"src_path": src_path, "dst_path": dst_path})
             self.snapshot_manager.save_snapshot(r.text)
 
@@ -234,9 +247,9 @@ class ServerCommunicator(object):
             }
         }
         r = self._try_request(requests.post, success_log, error_log, **request)
-        if r.status_code == 404:
+        if r.status_code == requests.codes.not_found:
             logger.error("COPY REQUEST file {} not found on server".format(src_path))
-        elif r.status_code == 201:
+        elif r.status_code == requests.codes.created:
             self.snapshot_manager.update_snapshot_copy({"src_path": src_path, "dst_path": dst_path})
             self.snapshot_manager.save_snapshot(r.text)
 
@@ -262,15 +275,15 @@ class ServerCommunicator(object):
 
         self.msg["result"] = response.status_code
 
-        if response.status_code == 201:
+        if response.status_code == requests.codes.created:
             self.msg["details"].append(
                 "Check your email for the activation code")
             logger.info("user: {} psw: {} created!".format(username, password))
             self.write_user_data(param["user"], param["psw"], activate=False)
-        elif response.status_code == 406:
+        elif response.status_code == requests.codes.not_acceptable:
             logger.warning("{}".format(response.text))
             self.msg["details"].append("{}".format(response.text))
-        elif response.status_code == 409:
+        elif response.status_code == requests.codes.conflict:
             logger.warning("user: {} psw: {} already exists!".format(username, password))
             self.msg["details"].append("User already exists")
         else:
@@ -313,9 +326,9 @@ class ServerCommunicator(object):
 
         self.msg["details"] = []
         error_log = "Cannot delete user"
-        success_log = "Usere deleted"
+        success_log = "User deleted"
 
-        server_url = "{}/Users/{}".format(self.server_url, param["user"])
+        server_url = "{}/Users/".format(self.server_url)
 
         request = {
             "url": server_url,
@@ -327,9 +340,10 @@ class ServerCommunicator(object):
 
         self.msg["result"] = response.status_code
 
-        if response.status_code == 200:
+        if response.status_code == requests.codes.ok:
+            self.delete_user_data()
             self.msg["details"].append("User deleted")
-        elif response.status_code == 401:
+        elif response.status_code == requests.codes.unauthorized:
             self.msg["details"].append("Access denied")
         else:
             self.msg["details"].append("Bad request")
@@ -356,11 +370,15 @@ class ServerCommunicator(object):
 
         self.msg["result"] = response.status_code
 
-        if response.status_code == 201:
+        if response.status_code == requests.codes.created:
             self.write_user_data(activate=True)
             initialize_directory()
+            config, _ = load_config()
+            username = config['username']
+            password = config['password']
+            self.auth = HTTPBasicAuth(username, password)
             self.msg["details"].append("You have now entered RawBox")
-        elif response.status_code == 404:
+        elif response.status_code == requests.codes.not_found:
             self.msg["details"].append("User not found")
         else:
             self.msg["details"].append("Bad request")
@@ -376,13 +394,13 @@ class ServerCommunicator(object):
                 self.server_url, param["path"], param["beneficiary"]
             )
         }
-        
+
         success_log = "share added with {}!".format(param["beneficiary"])
         error_log = "ERROR in adding a share with {}".format(param["beneficiary"])
 
         r = self._try_request(requests.post, success_log, error_log, **request)
         self.msg["result"] = r.status_code
-        
+
         if r.status_code == 400:
             self.msg["details"].append("Bad request")
         elif r.status_code == 201:
@@ -393,8 +411,8 @@ class ServerCommunicator(object):
         """Remove all the share"""
         self.msg["details"] = []
         request = {
-            "url" : "{}/shares/{}".format(self.server_url, param["path"]),
-            "data" : {}
+            "url": "{}/shares/{}".format(self.server_url, param["path"]),
+            "data": {}
         }
 
         success_log = "The resource is no more shared"
@@ -415,11 +433,11 @@ class ServerCommunicator(object):
         """Remove user from share"""
         self.msg["details"] = []
         request = {
-            "url" : "{}/shares/{}/{}".format(
+            "url": "{}/shares/{}/{}".format(
                 self.server_url,
                 param["path"], param["beneficiary"]
             ),
-            "data" : {}
+            "data": {}
         }
 
         success_log = "Removed user {} from shares".format(param["beneficiary"])
@@ -453,10 +471,10 @@ class ServerCommunicator(object):
                 sub_res = []
                 if shares["my_shares"]:
                     sub_res.append("My shares:\n")
-                    sub_res.append(str(my_shares["my_shares"]))
+                    sub_res.append(str(shares["my_shares"]))
                 if shares["other_shares"]:
                     sub_res.append("Other shares:\n")
-                    sub_res.append(str(my_shares["other_shares"]))
+                    sub_res.append(str(shares["other_shares"]))
 
                 if sub_res:
                     res = "".join(["\nList of shares\n"] + sub_res)
@@ -564,22 +582,26 @@ class FileSystemOperator(object):
 def load_config():
 
     abs_path = os.path.dirname(os.path.abspath(__file__))
-    crash_log_path = os.path.join(abs_path, 'RawBox_crash_report.log')
+    crash_log_path = os.path.join(abs_path, "RawBox_crash_report.log")
     config_ini = ConfigParser.ConfigParser()
     config_ini.read(FILE_CONFIG)
+    dir_path = os.path.join(os.path.expanduser("~"), "RawBox")
     user_exists = True
-    config = None
+    config = {}
+    default_daemon_config = {
+        "server_url": "http://{}:{}/{}".format(SERVER_URL, SERVER_PORT, API_PREFIX),
+        "crash_repo_path": crash_log_path,
+        "stdout_log_level": "DEBUG",
+        "file_log_level": "ERROR",
+        "dir_path": dir_path,
+        "snapshot_file_path": "snapshot_file.json"
+    }
 
     try:
         config = {
             "host": config_ini.get('cmd', 'host'),
             "port": config_ini.get('cmd', 'port'),
-            "server_url": "http://{}:{}/{}".format(
-                config_ini.get('daemon_communication', 'server_url'),
-                config_ini.get('daemon_communication', 'server_port'),
-                config_ini.get('daemon_communication', 'api_prefix'),
-            ),
-
+            "server_url": config_ini.get('daemon_communication', 'server_url'),
             "crash_repo_path": config_ini.get('daemon_communication', 'crash_repo_path'),
             "stdout_log_level": config_ini.get('daemon_communication', 'stdout_log_level'),
             "file_log_level": config_ini.get('daemon_communication', 'file_log_level'),
@@ -587,40 +609,24 @@ def load_config():
             "snapshot_file_path": config_ini.get('daemon_communication', 'snapshot_file_path')
         }
     except ConfigParser.NoSectionError:
-        dir_path = os.path.join(os.path.expanduser("~"), "RawBox")
-        config_ini.add_section('daemon_communication')
-        config_ini.set('daemon_communication', 'snapshot_file_path', 'snapshot_file.json')
-        config_ini.set('daemon_communication', 'dir_path', dir_path)
-        config_ini.set('daemon_communication', 'server_url', SERVER_URL)
-        config_ini.set('daemon_communication', 'server_port', SERVER_PORT)
-        config_ini.set('daemon_communication', 'api_prefix', API_PREFIX)
-        config_ini.set('daemon_communication', 'crash_repo_path', crash_log_path)
-        config_ini.set('daemon_communication', 'stdout_log_level', "DEBUG")
-        config_ini.set('daemon_communication', 'file_log_level', "ERROR")
+        config_ini.add_section("daemon_communication")
+        for option, value in default_daemon_config.iteritems():
+            config_ini.set("daemon_communication", option, value)
 
-        snapshot_file = config_ini.get('daemon_communication', 'snapshot_file_path')
-        config = {
-            "host": config_ini.get('cmd', 'host'),
-            "port": config_ini.get('cmd', 'port'),
-            "server_url": "http://{}:{}/{}".format(
-                config_ini.get('daemon_communication', 'server_url'),
-                config_ini.get('daemon_communication', 'server_port'),
-                config_ini.get('daemon_communication', 'api_prefix')
-            ),
-            "crash_repo_path": config_ini.get('daemon_communication', 'crash_repo_path'),
-            "stdout_log_level": config_ini.get('daemon_communication', 'stdout_log_level'),
-            "file_log_level": config_ini.get('daemon_communication', 'file_log_level'),
-            "dir_path": config_ini.get('daemon_communication', 'dir_path'),
-            "snapshot_file_path": snapshot_file
-        }
+        for section in config_ini.sections():
+            for option, value in config_ini.items(section):
+                    config[option] = value
 
-        with open(snapshot_file, 'w') as snapshot:
+        if not os.path.isdir(dir_path):
+            os.makedirs(dir_path)
+        with open(config["snapshot_file_path"], 'w') as snapshot:
             json.dump({"timestamp": 0, "snapshot": ""}, snapshot)
 
     try:
         config["username"] = config_ini.get('daemon_user_data', 'username')
         config["password"] = config_ini.get('daemon_user_data', 'password')
-        config_ini.get('daemon_user_data', 'active')
+        config["active"] = config_ini.get('daemon_user_data', 'active')
+        user_exists = config["active"]
     except ConfigParser.NoSectionError:
         user_exists = False
         config_ini.add_section('daemon_user_data')
@@ -1041,6 +1047,7 @@ def args_parse_init(stdout_level, file_level):
 def main():
 
     global CONFIG_DIR_PATH
+    global server_com
 
     config, user_exists = load_config()
     CONFIG_DIR_PATH = config['dir_path']
@@ -1061,7 +1068,7 @@ def main():
     snapshot_manager = DirSnapshotManager(
         snapshot_file_path=config['snapshot_file_path'],
     )
-    
+
     server_com = ServerCommunicator(
         server_url=config['server_url'],
         username=None,

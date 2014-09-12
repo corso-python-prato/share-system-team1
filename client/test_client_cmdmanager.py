@@ -62,7 +62,7 @@ class MockExecuter(object):
     def _activate_user(self, username, code):
         RawBoxCmdTest.called = True
 
-    def _delete_user(self, username):
+    def _delete_user(self):
         RawBoxCmdTest.called = True
 
     def _add_share(self, path, beneficiary):
@@ -102,7 +102,6 @@ class RawBoxCmdTest(unittest.TestCase):
         self.rawbox_cmd = RawBoxCmd(self.executer)
         client_cmdmanager.check_shareable_path = mock_check_shareable_path
         RawBoxCmdTest.called = False
-        mock_input.append('y')
 
     def test_do_create(self):
         self.rawbox_cmd.onecmd('create user pippo@pippa.it')
@@ -113,7 +112,8 @@ class RawBoxCmdTest(unittest.TestCase):
         self.assertTrue(RawBoxCmdTest.called)
 
     def test_do_delete(self):
-        self.rawbox_cmd.onecmd('delete pippo@pippa.it')
+        mock_input.append('yes')
+        self.rawbox_cmd.onecmd('delete')
         self.assertTrue(RawBoxCmdTest.called)
 
     def test_do_add_share(self):
@@ -125,6 +125,7 @@ class RawBoxCmdTest(unittest.TestCase):
         self.assertTrue(RawBoxCmdTest.called)
 
     def test_do_remove_beneficiary(self):
+        mock_input.append('y')
         self.rawbox_cmd.onecmd('remove_beneficiary shared_folder beneficiary')
         self.assertTrue(RawBoxCmdTest.called)
 
@@ -247,28 +248,6 @@ class TestRawBoxExecuter(unittest.TestCase):
         self.assertNotEquals(TestRawBoxExecuter.code, self.toolong_code)
         self.assertNotEquals(TestRawBoxExecuter.code, self.tooshort_code)
         self.assertEquals(TestRawBoxExecuter.code, self.correct_code)
-
-    def test_delete_user(self):
-        mock_input.append(self.correct_user)
-
-        self.raw_box_exec._delete_user()
-
-        self.assertEquals(TestRawBoxExecuter.username, self.correct_user)
-
-    def test_delete_user_invalid_user(self):
-        mock_input.append(self.correct_user)
-        mock_input.append(self.wrong_user3)
-        mock_input.append(self.wrong_user2)
-        mock_input.append(self.wrong_user1)
-        mock_input.append(self.wrong_user0)
-
-        self.raw_box_exec._delete_user()
-
-        self.assertNotEquals(TestRawBoxExecuter.username, self.wrong_user0)
-        self.assertNotEquals(TestRawBoxExecuter.username, self.wrong_user1)
-        self.assertNotEquals(TestRawBoxExecuter.username, self.wrong_user2)
-        self.assertNotEquals(TestRawBoxExecuter.username, self.wrong_user3)
-        self.assertEquals(TestRawBoxExecuter.username, self.correct_user)
 
     def test_add_share(self):
         self.raw_box_exec._add_share(self.pathtoshare, self.beneficiary)
