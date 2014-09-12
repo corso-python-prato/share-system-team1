@@ -1,11 +1,5 @@
-PyYAML==3.11
-argh==0.25.0
-argparse==1.2.1
-certifi==14.05.14
-colorama==0.3.2
-distribute==0.6.24
-httpretty==0.8.3
-pathtools==0.1.2
-requests>=2.3.0
 watchdog==0.7.1
-wsgiref==0.1.2
+requests>=2.3.0
+argparse==1.2.1
+colorama==0.3.1
+httpretty==0.8.0
