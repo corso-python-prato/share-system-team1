@@ -21,6 +21,48 @@ TEST_USER_DATA = "test_user_data.json"
 TEST_PENDING_USERS = "test_user_pending.tmp"
 TEST_RESET_REQUESTS = "test_reset_requests.tmp"
 
+TEST_ROOT = os.path.dirname(__file__)
+TEST_DIRECTORY = os.path.join(TEST_ROOT, TEST_DIRECTORY)
+TEST_USER_DATA = os.path.join(TEST_ROOT, TEST_USER_DATA)
+TEST_PENDING_USERS = os.path.join(TEST_ROOT, TEST_PENDING_USERS)
+
+
+def add_pending_user(user, psw=None, code=None):
+    underskin_user = {}
+
+    if os.path.exists(TEST_PENDING_USERS):
+        with open(TEST_PENDING_USERS, "r") as tmp_file:
+            underskin_user = json.load(tmp_file)
+
+    underskin_user[user] = {
+        "password": psw,
+        "code": code,
+        "timestamp": time.time()}
+    with open(TEST_PENDING_USERS, "w") as tmp_file:
+        json.dump(underskin_user, tmp_file)
+
+
+def add_active_user(user, psw=None):
+    underskin_user = {}
+
+    if not os.path.exists(TEST_USER_DATA):
+        open(TEST_USER_DATA, "w").close()
+
+    underskin_user[user] = {
+        "paths": {"": ["user_dirs/fake_root", False, 1405197042.793583]},
+        "psw": psw,
+        "timestamp": 1405197042.793476
+    }
+    server.User.users = underskin_user
+    with open(TEST_USER_DATA, "w") as tmp_file:
+        json.dump(underskin_user, tmp_file)
+
+def add_reset_request(user, code=None):
+    underskin_user = {}
+
+    underskin_user[user] = code
+    with open(TEST_RESET_REQUESTS, "w") as tmp_file:
+        json.dump(underskin_user, tmp_file)
 
 def server_setup(root):
     server.SERVER_ROOT = root
@@ -345,12 +387,6 @@ class TestFilesAPI(unittest.TestCase):
             )
         except OSError:
             pass
-
-        # rv = self.tc.post(
-        # _API_PREFIX + "create_user",
-        # data=data
-        # )
-        # self.assertEqual(rv.status_code, 201)
 
         # first check: user created just now
         snapshot1 = get_diff()
@@ -1084,7 +1120,6 @@ class TestShare(unittest.TestCase):
         )
         self.assertDictEqual(dicts["other_shares"], {})
 
-
 class TestServerInternalErrors(unittest.TestCase):
     root = os.path.join(
         os.path.dirname(__file__),
@@ -1203,7 +1238,7 @@ class TestServerInternalErrors(unittest.TestCase):
         server.EMAIL_SETTINGS_INI = "not_a_file"
 
         # test
-        with self.assertRaises(ConfigParser.NoSectionError):
+        with self.assertRaises(server.MissingConfigIni):
             server.mail_config_init()
 
         # tear down
@@ -1250,10 +1285,17 @@ class EmailTest(unittest.TestCase):
         EmailTest.pending_users_bak = server.PENDING_USERS
         server.PENDING_USERS = TEST_PENDING_USERS
 
+        self.email = "test@rawbox.com"
+        self.obj = "test"
+        self.content = "test content"
+
+        self.user = "user_mail@demo.it"
+        self.psw = "password_demo33.PA"
+        self.code = "5f8e441f01abc7b3e312917efb52cc12"  # os.urandom(16).encode('hex')
+        self.url = "".join((server._API_PREFIX, "Users/", self.user))
+
         self.mail = server.Mail(server.Flask(__name__))
         self.tc = server.app.test_client()
-
-        self.url = "".join((server._API_PREFIX, "Users/", EmailTest.user))
 
     def tearDown(self):
         server.User.users = {}
@@ -1263,25 +1305,15 @@ class EmailTest(unittest.TestCase):
         server.mail_config_init = self.mail_init_bak
         server.PENDING_USERS = EmailTest.pending_users_bak
 
-    def test_mail_correct_data(self):
-        with self.mail.record_messages() as outbox:
-            server.send_mail(
-                EmailTest.email,
-                EmailTest.obj,
-                EmailTest.content
-            )
-            self.assertEqual(len(outbox), 1)
-            self.assertEqual(outbox[0].subject, EmailTest.obj)
-            self.assertEqual(outbox[0].body, EmailTest.content)
-
     def test_create_user_email(self):
         data = {
-            "psw": EmailTest.psw
+            "psw": self.psw
         }
         with self.mail.record_messages() as outbox:
-            self.tc.post(self.url, data=data)
+            self.tc.post(self.url, data=data, headers=None)
+            self.assertEqual(len(outbox), 1)
             with open(server.PENDING_USERS, "r") as pending_file:
-                code = json.load(pending_file)[EmailTest.user]["code"]
+                code = json.load(pending_file)[self.user]["code"]
                 self.assertEqual(outbox[0].body, code)
 
 
@@ -1296,39 +1328,6 @@ class UserActions(unittest.TestCase):
     user = "user_mail@demo.it"
     psw = "$5$rounds=110000$9adcJL7bfKtZF/ii$p2vfrEbvs529hRMyQuW9LUIxiZvVKj8t62fB/7SZQSC"
     code = "5f8e441f01abc7b3e312917efb52cc12"  # os.urandom(16).encode('hex')
-
-    def inject_user(self, inject_dest, user, psw=None, code=None):
-        underskin_user = {}
-
-        if not os.path.exists(inject_dest):
-            open(inject_dest, "w").close()
-
-        if os.path.getsize(inject_dest) > 0:
-            with open(inject_dest, "r") as tmp_file:
-                underskin_user = json.load(tmp_file)
-
-        if inject_dest == TEST_PENDING_USERS:
-            underskin_user[user] = {
-                "password": psw,
-                "code": code,
-                "timestamp": time.time()}
-            with open(inject_dest, "w") as tmp_file:
-                json.dump(underskin_user, tmp_file)
-
-        if inject_dest == TEST_RESET_REQUESTS:
-            underskin_user[user] = code
-            with open(inject_dest, "w") as tmp_file:
-                json.dump(underskin_user, tmp_file)
-
-        if inject_dest == TEST_USER_DATA:
-            underskin_user[user] = {
-                "paths": {"": ["user_dirs/fake_root", False, 1405197042.793583]},
-                "psw": psw,
-                "timestamp": 1405197042.793476
-            }
-            server.User.users = underskin_user
-            with open(inject_dest, "w") as tmp_file:
-                json.dump(underskin_user, tmp_file)
 
     def setUp(self):
         self.mail_init_bak = server.mail_config_init
@@ -1364,7 +1363,10 @@ class UserActions(unittest.TestCase):
         open(TEST_USER_DATA, "w").close()
         server.USERS_DATA = TEST_USER_DATA
 
-        self.url = "".join((server._API_PREFIX, "Users/", UserActions.user))    #user creation
+        self.user = "user_mail@demo.it"
+        self.psw = "$5$rounds=110000$9adcJL7bfKtZF/ii$p2vfrEbvs529hRMyQuW9LUIxiZvVKj8t62fB/7SZQSC"
+        self.code = "5f8e441f01abc7b3e312917efb52cc12"  # os.urandom(16).encode('hex')
+        self.url = "".join((server._API_PREFIX, "Users/", self.user))
         self.url2 = "".join((server._API_PREFIX, "Users/", UserActions.user, "/reset"))    #reset psw request
 
     def tearDown(self):
@@ -1381,7 +1383,7 @@ class UserActions(unittest.TestCase):
         except OSError:
             pass
 
-    def test_create_user(self):
+    def test_create_user_pw_too_short(self):
         data = {
             "psw": "pro"
         }
@@ -1389,13 +1391,14 @@ class UserActions(unittest.TestCase):
         response = self.tc.post(self.url, data=data, headers=None)
         self.assertEqual(response.status_code, server.HTTP_NOT_ACCEPTABLE)
 
+    def test_create_user_pw_too_common(self):
         data = {
             "psw": "123456"
         }
-
         response = self.tc.post(self.url, data=data, headers=None)
         self.assertEqual(response.status_code, server.HTTP_NOT_ACCEPTABLE)
 
+    def test_create_user_too_easy(self):
         data = {
             "psw": "provasemplice"
         }
@@ -1403,88 +1406,87 @@ class UserActions(unittest.TestCase):
         response = self.tc.post(self.url, data=data, headers=None)
         self.assertEqual(response.status_code, server.HTTP_NOT_ACCEPTABLE)
 
+    def test_create_user(self):
         data = {
-            "psw": UserActions.psw
+            "psw": self.psw
         }
 
+        before_request_time = time.time()
         response = self.tc.post(self.url, data=data)
         self.assertEqual(response.status_code, server.HTTP_CREATED)
+        after_request_time = time.time()
 
         with open(server.PENDING_USERS, "r") as pending_file:
             data = json.load(pending_file)
             user = data.keys()[0]
-            self.assertEqual(user, UserActions.user)
-            psw = data[UserActions.user]["password"]
-            self.assertTrue(sha256_crypt.verify(UserActions.psw, psw))
-            code = data[UserActions.user]["code"]
+            self.assertEqual(user, self.user)
+            psw = data[self.user]["password"]
+            self.assertTrue(sha256_crypt.verify(self.psw, psw))
+            code = data[self.user]["code"]
             self.assertIsNotNone(code)
             self.assertEqual(len(code), 32)
-            timestamp = data[UserActions.user]["timestamp"]
-            self.assertIsNotNone(timestamp)
+            request_time = data[self.user]["timestamp"]
+            self.assertTrue(before_request_time < request_time < after_request_time)
 
     def test_create_user_missing_password(self):
         data = {}
 
-        self.inject_user(TEST_USER_DATA, UserActions.user, UserActions.psw)
-        response = self.tc.post(self.url, data=data)
+        response = self.tc.post(self.url, data=data, headers=None)
         self.assertEqual(response.status_code, server.HTTP_BAD_REQUEST)
 
     def test_create_user_that_is_already_pending(self):
         data = {
-            "psw": UserActions.psw
+            "psw": self.psw
         }
 
-        self.inject_user(TEST_PENDING_USERS, UserActions.user, UserActions.psw)
-        response = self.tc.post(self.url, data=data)
+        add_active_user(self.user, self.psw)
+        response = self.tc.post(self.url, data=data, headers=None)
         self.assertEqual(response.status_code, server.HTTP_CONFLICT)
 
     def test_create_user_that_is_already_active(self):
         data = {
-            "psw": UserActions.psw
+            "psw": self.psw
         }
 
-        self.inject_user(TEST_USER_DATA, UserActions.user, UserActions.psw)
-        response = self.tc.post(self.url, data=data)
+        add_active_user(self.user, self.psw)
+        response = self.tc.post(self.url, data=data, headers=None)
         self.assertEqual(response.status_code, server.HTTP_CONFLICT)
 
     def test_activate_user(self):
-
         data = {
-            "code": UserActions.code
+            "code": self.code
         }
 
-        self.inject_user(TEST_PENDING_USERS, UserActions.user, UserActions.psw, UserActions.code)
-        response = self.tc.put(self.url, data=data)
+        add_pending_user(self.user, self.psw, self.code)
+        response = self.tc.put(self.url, data=data, headers=None)
         self.assertEqual(response.status_code, server.HTTP_CREATED)
 
     def test_activate_user_missing_code(self):
-
         data = {}
 
-        self.inject_user(TEST_PENDING_USERS, UserActions.user, UserActions.psw)
-        response = self.tc.put(self.url, data=data)
+        add_pending_user(self.user, self.psw)
+        response = self.tc.put(self.url, data=data, headers=None)
         self.assertEqual(response.status_code, server.HTTP_BAD_REQUEST)
 
     def test_activate_user_that_is_already_active(self):
         data = {
-            "code": UserActions.code
+            "code": self.code
         }
 
-        self.inject_user(TEST_USER_DATA, UserActions.user, UserActions.psw, UserActions.code)
-        response = self.tc.put(self.url, data=data)
+        add_active_user(self.user, self.psw)
+        response = self.tc.put(self.url, data=data, headers=None)
         self.assertEqual(response.status_code, server.HTTP_CONFLICT)
 
     def test_activate_user_that_is_not_the_last_pending_user(self):
         data = {
-            "code": UserActions.code
+            "code": self.code
         }
 
-        self.inject_user(TEST_PENDING_USERS,
-                         "fake_user@demo.it",
+        add_pending_user("fake_user@demo.it",
                          sha256_crypt.encrypt("fake_password"),
                          "this0is0a0fake0code0long32char00")
-        self.inject_user(TEST_PENDING_USERS, UserActions.user, UserActions.psw, UserActions.code)
-        response = self.tc.put(self.url, data=data)
+        add_pending_user(self.user, self.psw, self.code)
+        response = self.tc.put(self.url, data=data, headers=None)
         self.assertEqual(response.status_code, server.HTTP_CREATED)
         self.assertTrue(os.path.exists(TEST_PENDING_USERS))
 
@@ -1499,20 +1501,20 @@ class UserActions(unittest.TestCase):
         with open(server.RESET_REQUESTS, "r") as reset_requests:
             data = json.load(reset_requests)
             user = data.keys()[0]
-            self.assertEqual(user, UserActions.user)
-            code = data[UserActions.user]
+            self.assertEqual(user, self.user)
+            code = data[self.user]
             self.assertIsNotNone(code)
             self.assertEqual(len(code), 32)
 
     def test_set_password(self):
         data = {
             "reset": True,
-            "code": UserActions.code,
-            "psw": UserActions.psw
+            "code": self.code,
+            "psw": self.psw
         }
 
-        server.User(UserActions.user, "old_password")   #user activated
-        self.inject_user(TEST_RESET_REQUESTS, UserActions.user, code=UserActions.code)
+        server.User(self.user, "old_password")   #user activated
+        add_reset_request(self.user, self.code)
         response = self.tc.put(self.url2, data=data, headers=None)
         self.assertEqual(response.status_code, server.HTTP_ACCEPTED)
 
@@ -1520,41 +1522,41 @@ class UserActions(unittest.TestCase):
         data = {
             "reset": True,
             "code": "asd12312dasd1231asd",
-            "psw": UserActions.psw
+            "psw": self.psw
         }
 
-        self.inject_user(TEST_RESET_REQUESTS, UserActions.user, code=UserActions.code)
+        add_reset_request(self.user, self.code)
         response = self.tc.put(self.url2, data=data, headers=None)
         self.assertEqual(response.status_code, server.HTTP_NOT_FOUND)
 
     def test_set_password_pending_user(self):
         data = {
             "reset": True,
-            "code": UserActions.code,
-            "psw": UserActions.psw
+            "code": self.code,
+            "psw": self.psw
         }
 
-        self.inject_user(TEST_PENDING_USERS, UserActions.user)
-        self.inject_user(TEST_RESET_REQUESTS, UserActions.user, code=UserActions.code)
+        add_pending_user(self.user, self.psw, self.code)
+        add_reset_request(self.user, self.code)
         response = self.tc.put(self.url2, data=data, headers=None)
         self.assertEqual(response.status_code, server.HTTP_ACCEPTED)
 
     def test_set_password_not_existent_user(self):
         data = {
             "reset": True,
-            "code": UserActions.code,
-            "psw": UserActions.psw
+            "code": self.code,
+            "psw": self.psw
         }
 
-        self.inject_user(TEST_RESET_REQUESTS, UserActions.user, code=UserActions.code)
+        add_reset_request(self.user, self.code)
         response = self.tc.put(self.url2, data=data, headers=None)
         self.assertEqual(response.status_code, server.HTTP_ACCEPTED)
 
     def test_set_password_request_not_found(self):
         data = {
             "reset": True,
-            "code": UserActions.code,
-            "psw": UserActions.psw
+            "code": self.code,
+            "psw": self.psw
         }
 
         response = self.tc.put(self.url2, data=data, headers=None)
@@ -1569,10 +1571,11 @@ class UserActions(unittest.TestCase):
         """
         cls = UserActions
         os.makedirs(os.path.join(server.USERS_DIRECTORIES, cls.user))
-        self.inject_user(TEST_PENDING_USERS, cls.user, cls.psw, cls.code)
+        #self.inject_user(TEST_PENDING_USERS, cls.user, cls.psw, cls.code)
+        add_pending_user(cls.user, cls.psw, cls.code)
 
         def try_to_create_user():
-            received =  self.tc.put(
+            received = self.tc.put(
                 self.url,
                 data={"code": cls.code}
             )
@@ -1588,6 +1591,17 @@ class UserActions(unittest.TestCase):
         received = try_to_create_user()
         self.assertEqual(received.status_code, 500)
         server.app.testing = True
+
+    def test_delete_user(self):
+        headers = make_headers(self.user, "password")
+        root = os.path.join(TEST_ROOT, "demo_test/test_user_actions")
+        shutil.copy(root + "/demo_user_data.json", root + "/user_data.json")
+        os.makedirs(os.path.join(root, "user_dirs", self.user))
+        server_setup(root)
+        url = "".join((server._API_PREFIX, "Users/"))
+        response = self.tc.delete(url, headers=headers)
+        self.assertEqual(response.status_code, server.HTTP_OK)
+        os.remove(root + "/user_data.json")
 
 
 if __name__ == "__main__":
