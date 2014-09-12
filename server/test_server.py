@@ -1579,6 +1579,9 @@ class TestErrorReport(unittest.TestCase):
             self.assertTrue(exc_params[1])
             self.assertTrue(exc_params[2])
             obj, msg = server.create_traceback_report(exc_params, True)
+            # TODO: regex to check keys and values in correct frame???
+            self.assertIn("x=0", msg)
+            self.assertIn("y=something", msg)
             self.assertTrue(obj)
             self.assertTrue(msg)
 
