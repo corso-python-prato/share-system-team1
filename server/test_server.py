@@ -14,6 +14,7 @@ import os
 
 from server import _API_PREFIX
 import server
+import sys
 
 
 TEST_DIRECTORY = "test_users_dirs/"
@@ -1523,6 +1524,8 @@ class TestErrorReport(unittest.TestCase):
         shutil.rmtree(TestErrorReport.report_directory)
 
     def test_not_existing_file_for_load_mails(self):
+        # this test try open a non existent file 
+        # containing admins's e-mails
         bak = server.EMAIL_REPORT_INI
         server.EMAIL_REPORT_INI = "not_a_file"
         res = server.load_emails()
@@ -1530,18 +1533,52 @@ class TestErrorReport(unittest.TestCase):
         server.EMAIL_REPORT_INI = bak
 
     def test_load_mails(self):
+        # this test open the correct file,
+        # check if the content isn't null
+        # and if it is correct
         content = "email@domain.com"
         f = create_temporary_file(content)
         bak = server.EMAIL_REPORT_INI
         server.EMAIL_REPORT_INI = os.path.join(server.SERVER_ROOT, f)
         res = server.load_emails()
+        self.assertTrue(res)
         self.assertIn(content, res)
         server.EMAIL_REPORT_INI = bak
         os.unlink(f)
 
     def test_traceback_report(self):
 
-        print server.create_traceback_report(server.raise_exc())
+        class TracebackException(Exception):
+            pass
+
+        def raising_exception():
+            x = 0
+            y = "something"
+            raise TracebackException
+
+        try:
+            raising_exception()
+        except:
+            exc_params = sys.exc_info()
+            self.assertTrue(exc_params)
+            # test all values of sys.exc_info() are not null
+            self.assertTrue(exc_params[0])
+            self.assertTrue(exc_params[1])
+            self.assertTrue(exc_params[2])
+            obj, msg = server.create_traceback_report(exc_params, True)
+            self.assertTrue(obj)
+            self.assertTrue(msg)
+
+    def test_not_raised_exception_traceback_report(self):
+        exc_params = sys.exc_info()
+        self.assertTrue(exc_params)
+        # test all values of sys.exc_info() are null
+        self.assertFalse(exc_params[0])
+        self.assertFalse(exc_params[1])
+        self.assertFalse(exc_params[2])
+        obj, msg = server.create_traceback_report(exc_params, True)
+        self.assertFalse(obj)
+        self.assertFalse(msg)
 
 
 if __name__ == "__main__":
