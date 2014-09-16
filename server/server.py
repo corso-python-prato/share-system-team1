@@ -33,12 +33,12 @@ class ServerApi(Api):
     enable_report_mail = False
 
     def handle_error(self, e):
-        code = getattr(e, 'code', 500)
+        code = getattr(e, "code", 500)
         # not expected exception
         if code == 500 and ServerApi.enable_report_mail:
-            #create the object and the body of the email report
+            # create the object and the body of the email report
             obj, msg = create_traceback_report(sys.exc_info())
-            #... and send it to a (eventual) mail list
+            # ... and send it to a (eventual) mail list
             REPORT_EMAILS = load_emails()
             if REPORT_EMAILS:
                 for mail in REPORT_EMAILS:
@@ -160,11 +160,11 @@ def can_write(username, server_path):
 
 
 def PasswordChecker(clear_password):
-    #if the password is too short
+    # if the password is too short
     if len(clear_password) <= 5:
         return "This password is too short, the password " + \
             "must be at least 6 characters", HTTP_NOT_ACCEPTABLE
-    #if the password is too common
+    # if the password is too common
     f = open(PASSWORD_NOT_ACCEPTED_DATA)
     lines = f.readlines()
     f.close()
@@ -173,7 +173,7 @@ def PasswordChecker(clear_password):
             if clear_password == word:
                 return "This password is too common, the password " + \
                     "must be something unusual", HTTP_NOT_ACCEPTABLE
-    #if the password is too easy
+    # if the password is too easy
     strength, _ = passwordmeter.test(clear_password)
     if strength < 0.5:
         return "This password is too easy, the password should " + \
