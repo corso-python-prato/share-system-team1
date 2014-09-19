@@ -127,7 +127,7 @@ class RawBoxCmdTest(unittest.TestCase):
         self.assertTrue(RawBoxCmdTest.called)
 
     def test_do_set(self):
-        self.rawbox_cmd.onecmd('set pippo@pippa.it code=codice')
+        self.rawbox_cmd.onecmd('set_password pippo@pippa.it code=codice')
         self.assertTrue(RawBoxCmdTest.called)
 
     def test_do_add_share(self):
