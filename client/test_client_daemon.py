@@ -584,16 +584,16 @@ class ServerCommunicatorTest(unittest.TestCase):
             'timestamp')
 
     def test_create_user(self):
-        msg1 = self.server_comm.create_user({"user": self.username, "psw": self.password})
+        msg1 = self.server_comm.create_user({"user": self.username, "psw": self.password, "reset":"False"})
         self.assertEqual(msg1["result"], requests.codes.created)
         self.assertEqual(msg1["details"][0], "Check your email for the activation code")
-        msg2 = self.server_comm.create_user({"user": self.username, "psw": self.password})
+        msg2 = self.server_comm.create_user({"user": self.username, "psw": self.password, "reset":"False"})
         self.assertEqual(msg2["result"], requests.codes.conflict)
         self.assertEqual(msg2["details"][0], "User already exists")
-        msg4 = self.server_comm.create_user({"user": self.username, "psw": self.password})
+        msg4 = self.server_comm.create_user({"user": self.username, "psw": self.password, "reset":"False"})
         self.assertEqual(msg4["result"], requests.codes.not_acceptable)
         self.assertEqual(msg4["details"][0], "password too easy")
-        msg3 = self.server_comm.create_user({"user": self.username, "psw": self.password})
+        msg3 = self.server_comm.create_user({"user": self.username, "psw": self.password, "reset":"False"})
         self.assertEqual(msg3["result"], requests.codes.bad_request)
         self.assertEqual(msg3["details"][0], "Bad request")
 
