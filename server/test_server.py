@@ -1403,7 +1403,8 @@ class UserActions(unittest.TestCase):
 
     def test_create_user_too_easy(self):
         data = {
-            "psw": "provasemplice"
+            "psw": "provasemplice",
+            "reset": "False"
         }
 
         response = self.tc.post(self.url, data=data, headers=None)
