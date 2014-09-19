@@ -104,28 +104,29 @@ def create_traceback_report(exc_params, testing=False):
         # set object text and form in a better way
         # the body of message
         obj = "RawBox Server Error Dump"
-        msg = "--Traceback--\n\n"
+        msg = []
+        msg.append("--Traceback--\n\n")
         # traceback
-        msg += str(traceback.format_exc())
-        msg += "\n\n-------------\n\n"
+        msg.append(str(traceback.format_exc()))
+        msg.append("\n\n-------------\n\n")
         # dump of variables and their values
         # in every frame
-        msg += "--Local variables dump--\n\n"
+        msg.append("--Local variables dump--\n\n")
         for level in call_stack:
             module = level.f_code.co_filename
             # filter the module name
             if module == "server.py" or testing:
-                msg += "Frame:" + level.f_code.co_name + " "
-                msg += "\tModule:" + module + " "
-                msg += "\tLine:" + str(level.f_lineno) + " "
-                msg += "\nVars: " + str(level.f_code.co_varnames) + " "
-                msg += "\n\n"
+                msg.append("Frame: {} ".format(level.f_code.co_name))
+                msg.append("\tModule: {}".format(module))
+                msg.append("\tLine: {}".format(str(level.f_lineno)))
+                msg.append("\nVars: {}".format(str(level.f_code.co_varnames)))
+                msg.append("\n\n")
                 for k, v in level.f_locals.iteritems():
-                    msg += "\t" + k + "=" + str(v)
-                    msg += "\n"
-                msg += "\n\n"
-        msg += "\n\n"
-        return obj, msg
+                    msg.append("\t{}={}".format(k, str(v)))
+                    msg.append("\n")
+                msg.append("\n\n")
+        msg.append("\n\n")
+        return obj, "".join(msg)
     return None, None
 
 
