@@ -1453,7 +1453,8 @@ class UserActions(unittest.TestCase):
 
     def test_create_user_that_is_already_active(self):
         data = {
-            "psw": self.psw
+            "psw": self.psw,
+            "reset": "False"
         }
 
         add_active_user(self.user, self.psw)
