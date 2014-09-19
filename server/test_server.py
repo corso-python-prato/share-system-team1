@@ -1114,6 +1114,7 @@ class TestShare(unittest.TestCase):
         )
         self.assertDictEqual(dicts["other_shares"], {})
 
+
 class TestServerInternalErrors(unittest.TestCase):
     root = os.path.join(
         os.path.dirname(__file__),
@@ -1285,7 +1286,8 @@ class EmailTest(unittest.TestCase):
 
         self.user = "user_mail@demo.it"
         self.psw = "password_demo33.PA"
-        self.code = "5f8e441f01abc7b3e312917efb52cc12"  # os.urandom(16).encode('hex')
+        # os.urandom(16).encode('hex')
+        self.code = "5f8e441f01abc7b3e312917efb52cc12"
         self.url = "".join((server._API_PREFIX, "Users/", self.user))
 
         self.mail = server.Mail(server.Flask(__name__))
@@ -1528,16 +1530,14 @@ class TestErrorReport(unittest.TestCase):
         "error_report"
     )
 
-
     def setUp(self):
         server_setup(TestErrorReport.report_directory)
-        server.EMAIL_REPORT_INI
 
     def tearDown(self):
         shutil.rmtree(TestErrorReport.report_directory)
 
     def test_not_existing_file_for_load_mails(self):
-        # this test try open a non existent file 
+        # this test try open a non existent file
         # containing admins's e-mails
         bak = server.EMAIL_REPORT_INI
         server.EMAIL_REPORT_INI = "not_a_file"
@@ -1580,6 +1580,7 @@ class TestErrorReport(unittest.TestCase):
             self.assertTrue(exc_params[2])
             obj, msg = server.create_traceback_report(exc_params, True)
             # TODO: regex to check keys and values in correct frame???
+            self.assertIn("TracebackException", msg)
             self.assertIn("x=0", msg)
             self.assertIn("y=something", msg)
             self.assertTrue(obj)
