@@ -621,7 +621,7 @@ class ServerCommunicatorTest(unittest.TestCase):
         self.assertEqual(msg3["details"][0], "Bad request")
 
     def test_reset_password(self):
-        msg = self.server_comm.reset_password({"user": self.username, "reset": True})
+        msg = self.server_comm.reset_password({"user": self.username, "reset": "True"})
         self.assertEqual(msg["details"][0], "Check your email for the resetting code")
         self.assertEqual(msg["result"], requests.codes.accepted)
 
