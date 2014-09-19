@@ -152,7 +152,6 @@ class RawBoxExecuter(object):
 
     def _set_password(self, username=None, code=None):
         """ set RawBox user's password after resetting request """
-        command_type = "set_password"
 
         if not username:
             username = take_input('insert your email: ')
@@ -176,12 +175,13 @@ class RawBoxExecuter(object):
 
         param = {
             'user': username,
-            'reset': True,
+            'reset': 'True',
             'code': code,
             'psw': password
         }
 
-        self.comm_sock.send_message(command_type, param)
+        self.comm_sock.send_message("set_password", param)
+        self.print_response(self.comm_sock.read_message())
 
     def _add_share(self, path, beneficiary):
         param = {
