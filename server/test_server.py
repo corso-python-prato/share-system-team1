@@ -1368,7 +1368,7 @@ class UserActions(unittest.TestCase):
         self.psw = "$5$rounds=110000$9adcJL7bfKtZF/ii$p2vfrEbvs529hRMyQuW9LUIxiZvVKj8t62fB/7SZQSC"
         self.code = "5f8e441f01abc7b3e312917efb52cc12"  # os.urandom(16).encode('hex')
         self.url = "".join((server._API_PREFIX, "Users/", self.user))
-        self.url2 = "".join((server._API_PREFIX, "Users/", UserActions.user, "/reset"))    #reset psw request
+        self.url_reset_password = "".join((server._API_PREFIX, "Users/", UserActions.user, "/reset"))    #reset psw request
 
     def tearDown(self):
         server.mail_config_init = self.mail_init_bak
