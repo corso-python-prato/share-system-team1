@@ -1463,7 +1463,8 @@ class UserActions(unittest.TestCase):
 
     def test_activate_user(self):
         data = {
-            "code": self.code
+            "code": self.code,
+            "reset": "False"
         }
 
         add_pending_user(self.user, self.psw, self.code)
