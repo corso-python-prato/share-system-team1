@@ -1307,7 +1307,8 @@ class EmailTest(unittest.TestCase):
 
     def test_create_user_email(self):
         data = {
-            "psw": self.psw
+            "psw": self.psw,
+            "reset": "False"
         }
         with self.mail.record_messages() as outbox:
             self.tc.post(self.url, data=data, headers=None)
