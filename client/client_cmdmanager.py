@@ -354,10 +354,10 @@ class RawBoxCmd(cmd.Cmd):
         if take_input('[Exit] are you sure? y/n ') == 'y':
             return True
 
-    def do_reset(self, line):
+    def do_reset_password(self, line):
         """
         Reset of RawBox user's password
-        If <reset> <email_user>, requests a code to reset password
+        If <reset_password> <email_user>, requests a code to reset password
         """
         user = None
         try:
@@ -365,7 +365,7 @@ class RawBoxCmd(cmd.Cmd):
             self.executer._reset_password(user)
         except IndexError:
             if not user:
-                Message('INFO', self.do_reset.__doc__)
+                Message('INFO', self.do_reset_password.__doc__)
 
     def do_set(self, line):
         """
