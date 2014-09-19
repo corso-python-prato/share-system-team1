@@ -467,44 +467,32 @@ class UsersApi(Resource):
         """
         pending = self.load_pending_users()
 
-        try:
-            if request.form["reset"]:
-                reset_requests = self.load_reset_requests()
-                code = request.form["code"]
-                psw = request.form["psw"]
+        if request.form["reset"] == "True":
+            reset_requests = self.load_reset_requests()
+            code = request.form["code"]
+            psw = request.form["psw"]
 
-                if username in reset_requests:
-                    psw_hash = sha256_crypt.encrypt(psw)
-                    if reset_requests[username] == code:
+            if username in reset_requests and reset_requests[username] == code:
+                psw_hash = sha256_crypt.encrypt(psw)
 
-                        if username in pending:
-                            pending[username]["password"] = psw_hash
-                            del reset_requests[username]
-                            with open(RESET_REQUESTS, "w") as reset_rq:
-                                json.dump(reset_requests, reset_rq)
-                            with open(PENDING_USERS, "w") as p_u:
-                                json.dump(pending, p_u)
-                            return "User's password resetted", HTTP_ACCEPTED
-
-                        elif username in User.users:
-                            User.users[username].psw = psw_hash
-                            del reset_requests[username]
-                            with open(RESET_REQUESTS, "w") as reset_rq:
-                                json.dump(reset_requests, reset_rq)
-                            User.save_users()
-                            return "User's password resetted", HTTP_ACCEPTED
-                        else:
-                            del reset_requests[username]
-                            with open(RESET_REQUESTS, "w") as reset_rq:
-                                json.dump(reset_requests, reset_rq)
-                            return "User's password resetted", HTTP_ACCEPTED
-
-                    else:
-                        return "Wrong code", HTTP_NOT_FOUND
+                if username in pending:
+                    pending[username]["password"] = psw_hash
+                    del reset_requests[username]
+                    with open(RESET_REQUESTS, "w") as reset_rq:
+                        json.dump(reset_requests, reset_rq)
+                    with open(PENDING_USERS, "w") as p_u:
+                        json.dump(pending, p_u)
+                    return "User's password resetted", HTTP_ACCEPTED
                 else:
-                    return "Reset request not found", HTTP_NOT_FOUND
-        except KeyError:
-            pass
+                    User.users[username].psw = psw_hash
+                    del reset_requests[username]
+                    with open(RESET_REQUESTS, "w") as reset_rq:
+                        json.dump(reset_requests, reset_rq)
+                    User.save_users()
+                    return "User's password resetted", HTTP_ACCEPTED
+
+            else:
+                return "Reset request not found or wrong code", HTTP_NOT_FOUND
 
         try:
             code = request.form["code"]
