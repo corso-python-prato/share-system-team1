@@ -632,7 +632,7 @@ class ServerCommunicatorTest(unittest.TestCase):
         self.assertEqual(msg1["result"], requests.codes.accepted)
         self.assertEqual(msg1["details"][0], "Your password has been resetted. Login needed!")
 
-        msg2 = self.server_comm.set_password({"user": self.username, "reset": True,
+        msg2 = self.server_comm.set_password({"user": self.username, "reset": "True",
                                               "code": code, "psw": "new_password"})
         self.assertEqual(msg2["result"], requests.codes.not_found)
         self.assertEqual(msg2["details"][0], "Wrong code or reset request not found")
