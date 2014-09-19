@@ -1482,7 +1482,8 @@ class UserActions(unittest.TestCase):
 
     def test_activate_user_that_is_already_active(self):
         data = {
-            "code": self.code
+            "code": self.code,
+            "reset": "False"
         }
 
         add_active_user(self.user, self.psw)
