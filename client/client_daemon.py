@@ -363,6 +363,7 @@ class ServerCommunicator(object):
         request = {
             "url": server_url,
             "data": {
+                "reset": param["reset"],
                 "code": param["code"]
             }
         }
