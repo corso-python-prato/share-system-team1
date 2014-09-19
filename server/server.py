@@ -420,8 +420,9 @@ class UsersApi(Resource):
         In this case it saves request in a file, reset_requests, as
         {<username>: <resetting code>}
         """
-        try:
-            if request.form["reset"]:
+        pending = self.load_pending_users()
+        if request.form["reset"] == "True":
+            if username in pending or username in User.users:
                 reset_requests = self.load_reset_requests()
                 code = os.urandom(16).encode('hex')
                 send_mail(username, "RawBox' s resetting code", code)
@@ -429,10 +430,9 @@ class UsersApi(Resource):
                 with open(RESET_REQUESTS, "w") as reset_rq:
                     json.dump(reset_requests, reset_rq)
                 return "User added to resetting requests", HTTP_ACCEPTED
-        except KeyError:
-            pass
+            else:
+                return "User added to resetting requests", HTTP_ACCEPTED
 
-        pending = self.load_pending_users()
         try:
             psw = request.form["psw"]
         except KeyError:
