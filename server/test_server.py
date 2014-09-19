@@ -1504,12 +1504,23 @@ class UserActions(unittest.TestCase):
         self.assertEqual(response.status_code, server.HTTP_CREATED)
         self.assertTrue(os.path.exists(TEST_PENDING_USERS))
 
-    def test_reset_password(self):
+    def test_reset_password_pending_user(self):
         data = {
-            "reset": True
+            "reset": "True"
         }
 
-        response = self.tc.post(self.url2, data=data, headers=None)
+        add_pending_user(self.user, self.psw, self.code)
+        response = self.tc.post(self.url_reset_password, data=data, headers=None)
+        self.assertEqual(response.status_code, server.HTTP_ACCEPTED)
+
+        with open(server.RESET_REQUESTS, "r") as reset_requests:
+            data = json.load(reset_requests)
+            user = data.keys()[0]
+            self.assertEqual(user, self.user)
+            code = data[self.user]
+            self.assertIsNotNone(code)
+            self.assertEqual(len(code), 32)
+
         self.assertEqual(response.status_code, server.HTTP_ACCEPTED)
 
         with open(server.RESET_REQUESTS, "r") as reset_requests:
