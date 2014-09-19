@@ -391,11 +391,9 @@ class ServerCommunicator(object):
     def reset_password(self, param):
 
         self.msg["details"] = []
-        error_log = "Cannot reset password"
         success_log = "Password resetted"
 
         server_url = "{}/Users/{}/reset".format(self.server_url, param["user"])
-
         request = {
             "url": server_url,
             "data": {
@@ -403,7 +401,7 @@ class ServerCommunicator(object):
             }
         }
 
-        response = self._try_request(requests.post, success_log, error_log, **request)
+        response = self._try_request(requests.post, success_log, **request)
 
         self.msg["result"] = response.status_code
 
