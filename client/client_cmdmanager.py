@@ -134,7 +134,6 @@ class RawBoxExecuter(object):
 
     def _reset_password(self, username=None):
         """ reset RawBox user's password """
-        command_type = 'reset_password'
 
         if not username:
             username = take_input('insert your email: ')
@@ -145,10 +144,10 @@ class RawBoxExecuter(object):
 
         param = {
             'user': username,
-            'reset': True
+            'reset': 'True'
         }
 
-        self.comm_sock.send_message(command_type, param)
+        self.comm_sock.send_message('reset_password', param)
         self.print_response(self.comm_sock.read_message())
 
     def _set_password(self, username=None, code=None):
