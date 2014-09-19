@@ -94,7 +94,8 @@ class RawBoxExecuter(object):
 
         param = {
             'user': username,
-            'code': code
+            'code': code,
+            'reset': 'False'
         }
 
         self.comm_sock.send_message(command_type, param)
