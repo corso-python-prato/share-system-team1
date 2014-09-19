@@ -123,7 +123,7 @@ class RawBoxCmdTest(unittest.TestCase):
         self.assertTrue(RawBoxCmdTest.called)
 
     def test_do_reset(self):
-        self.rawbox_cmd.onecmd('reset pippo@pippa.it')
+        self.rawbox_cmd.onecmd('reset_password pippo@pippa.it')
         self.assertTrue(RawBoxCmdTest.called)
 
     def test_do_set(self):
