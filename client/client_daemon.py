@@ -304,7 +304,8 @@ class ServerCommunicator(object):
             "url": server_url,
             "data": {
                 "user": param["user"],
-                "psw": param["psw"]
+                "psw": param["psw"],
+                "reset": param["reset"]
             }
         }
 
