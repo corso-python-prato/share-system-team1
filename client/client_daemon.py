@@ -165,7 +165,7 @@ class ServerCommunicator(object):
                 self.snapshot_manager.update_snapshot_update({"src_path": dst_path})
             else:
                 self.snapshot_manager.update_snapshot_upload({"src_path": dst_path})
-            self.snapshot_manager.save_snapshot(r.text)
+            self.snapshot_manager.save_snapshot(float(r.text))
 
     def delete_file(self, dst_path):
         """ send to server a message of file delete """
@@ -183,7 +183,7 @@ class ServerCommunicator(object):
             logger.error("DELETE REQUEST file {} not found on server".format(dst_path))
         elif r.status_code == 200:
             self.snapshot_manager.update_snapshot_delete({"src_path": dst_path})
-            self.snapshot_manager.save_snapshot(r.text)
+            self.snapshot_manager.save_snapshot(float(r.text))
 
     def move_file(self, src_path, dst_path):
         """ send to server a message of file moved """
@@ -205,7 +205,7 @@ class ServerCommunicator(object):
             logger.error("MOVE REQUEST file {} not found on server".format(src_path))
         elif r.status_code == 201:
             self.snapshot_manager.update_snapshot_move({"src_path": src_path, "dst_path": dst_path})
-            self.snapshot_manager.save_snapshot(r.text)
+            self.snapshot_manager.save_snapshot(float(r.text))
 
     def copy_file(self, src_path, dst_path):
         """ send to server a message of copy file"""
@@ -227,7 +227,7 @@ class ServerCommunicator(object):
             logger.error("COPY REQUEST file {} not found on server".format(src_path))
         elif r.status_code == 201:
             self.snapshot_manager.update_snapshot_copy({"src_path": src_path, "dst_path": dst_path})
-            self.snapshot_manager.save_snapshot(r.text)
+            self.snapshot_manager.save_snapshot(float(r.text))
 
     def create_user(self, param):
 

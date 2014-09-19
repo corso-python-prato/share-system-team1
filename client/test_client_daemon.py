@@ -116,7 +116,7 @@ class ServerCommunicatorTest(unittest.TestCase):
 
         class _try_request(object):
             status_code = 200
-            text = 'timestamp'
+            text = '1234'
 
             def __init__(self, *args, **kwargs):
                 pass
@@ -137,7 +137,8 @@ class ServerCommunicatorTest(unittest.TestCase):
             content_type="text/txt")
         httpretty.register_uri(
             httpretty.POST,
-            'http://127.0.0.1:5000/API/v1/actions/delete')
+            'http://127.0.0.1:5000/API/v1/actions/delete',
+            body='1234')
         httpretty.register_uri(
             httpretty.POST,
             'http://127.0.0.1:5000/API/v1/actions/move')
@@ -349,19 +350,19 @@ class ServerCommunicatorTest(unittest.TestCase):
 
         #Case: 201 status put_file == False
         self.server_comm._try_request.status_code = 201
-        self.server_comm._try_request.text = 'upload'
+        self.server_comm._try_request.text = '1111.0'
         self.server_comm.upload_file(self.file_path, put_file)
         self.assertEqual(
             self.server_comm.snapshot_manager.upload,
             {"src_path": self.file_path})
         self.assertEqual(
             self.server_comm.snapshot_manager.timestamp,
-            'upload')
+            1111.0)
 
         #Case: 201 status put_file == True
         put_file = True
         self.server_comm._try_request.status_code = 201
-        self.server_comm._try_request.text = 'update'
+        self.server_comm._try_request.text = '1111.0'
         self.server_comm.upload_file(self.file_path, put_file)
         self.assertEqual(
             self.server_comm.snapshot_manager.update,
@@ -369,7 +370,7 @@ class ServerCommunicatorTest(unittest.TestCase):
 
         self.assertEqual(
             self.server_comm.snapshot_manager.timestamp,
-            'update')
+            1111.0)
 
     def test_download(self):
         mock_auth_user = ":".join([self.username, self.password])
@@ -463,7 +464,7 @@ class ServerCommunicatorTest(unittest.TestCase):
             {"src_path": self.file_path, "dst_path": self.another_path})
         self.assertEqual(
             self.server_comm.snapshot_manager.timestamp,
-            'timestamp')
+            1234.0)
 
     def test_copy_file(self):
         mock_auth_user = ":".join([self.username, self.password])
@@ -496,7 +497,7 @@ class ServerCommunicatorTest(unittest.TestCase):
             {"src_path": self.file_path, "dst_path": self.another_path})
         self.assertEqual(
             self.server_comm.snapshot_manager.timestamp,
-            'timestamp')
+            1234.0)
 
     def test_create_user(self):
         msg1 = self.server_comm.create_user({"user": self.username, "psw": self.password})
