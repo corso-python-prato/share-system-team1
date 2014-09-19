@@ -1412,7 +1412,8 @@ class UserActions(unittest.TestCase):
 
     def test_create_user(self):
         data = {
-            "psw": self.psw
+            "psw": self.psw,
+            "reset": "False"
         }
 
         before_request_time = time.time()
