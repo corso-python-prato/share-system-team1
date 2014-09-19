@@ -610,13 +610,13 @@ class ServerCommunicatorTest(unittest.TestCase):
 
     def test_activate_user(self):
         code = "qwerty12345"
-        msg1 = self.server_comm.activate_user({"user": self.username, "code": code})
+        msg1 = self.server_comm.activate_user({"user": self.username, "code": code, "reset":"False"})
         self.assertEqual(msg1["result"], requests.codes.created)
         self.assertEqual(msg1["details"][0], "You have now entered RawBox")
-        msg2 = self.server_comm.activate_user({"user": self.username, "code": code})
+        msg2 = self.server_comm.activate_user({"user": self.username, "code": code, "reset":"False"})
         self.assertEqual(msg2["result"], requests.codes.not_found)
         self.assertEqual(msg2["details"][0], "User not found")
-        msg3 = self.server_comm.activate_user({"user": self.username, "code": code})
+        msg3 = self.server_comm.activate_user({"user": self.username, "code": code, "reset":"False"})
         self.assertEqual(msg3["result"], requests.codes.bad_request)
         self.assertEqual(msg3["details"][0], "Bad request")
 
