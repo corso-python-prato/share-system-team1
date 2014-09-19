@@ -1395,7 +1395,8 @@ class UserActions(unittest.TestCase):
 
     def test_create_user_pw_too_common(self):
         data = {
-            "psw": "123456"
+            "psw": "123456",
+            "reset": "False"
         }
         response = self.tc.post(self.url, data=data, headers=None)
         self.assertEqual(response.status_code, server.HTTP_NOT_ACCEPTABLE)
