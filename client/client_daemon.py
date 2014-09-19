@@ -430,9 +430,10 @@ class ServerCommunicator(object):
 
         if response.status_code == 202:
             self.write_user_data(param["user"], param["psw"])
-            self.msg["details"].append("Your password has been resetted. Login needed!")
+            self.msg["details"].append("If email exists, your password will be resetted. Login needed!")
         elif response.status_code == 404:
             self.msg["details"].append("Wrong code or reset request not found")
+
         return self.msg
 
     def add_share(self, param):
