@@ -1585,12 +1585,12 @@ class UserActions(unittest.TestCase):
 
     def test_set_password_request_not_found(self):
         data = {
-            "reset": True,
+            "reset": "True",
             "code": self.code,
             "psw": self.psw
         }
 
-        response = self.tc.put(self.url2, data=data, headers=None)
+        response = self.tc.put(self.url_reset_password, data=data, headers=None)
         self.assertEqual(response.status_code, server.HTTP_NOT_FOUND)
 
     def test_activate_user_whose_directory_already_present(self):
