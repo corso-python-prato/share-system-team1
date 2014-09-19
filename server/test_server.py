@@ -1386,7 +1386,8 @@ class UserActions(unittest.TestCase):
 
     def test_create_user_pw_too_short(self):
         data = {
-            "psw": "pro"
+            "psw": "pro",
+            "reset": "False"
         }
 
         response = self.tc.post(self.url, data=data, headers=None)
