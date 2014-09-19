@@ -1521,6 +1521,13 @@ class UserActions(unittest.TestCase):
             self.assertIsNotNone(code)
             self.assertEqual(len(code), 32)
 
+    def test_reset_password_activated_user(self):
+        data = {
+            "reset": "True"
+        }
+
+        server.User(self.user, "old_password")   #user activated
+        response = self.tc.post(self.url_reset_password, data=data, headers=None)
         self.assertEqual(response.status_code, server.HTTP_ACCEPTED)
 
         with open(server.RESET_REQUESTS, "r") as reset_requests:
