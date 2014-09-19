@@ -1540,14 +1540,14 @@ class UserActions(unittest.TestCase):
 
     def test_set_password(self):
         data = {
-            "reset": True,
+            "reset": "True",
             "code": self.code,
             "psw": self.psw
         }
 
         server.User(self.user, "old_password")   #user activated
         add_reset_request(self.user, self.code)
-        response = self.tc.put(self.url2, data=data, headers=None)
+        response = self.tc.put(self.url_reset_password, data=data, headers=None)
         self.assertEqual(response.status_code, server.HTTP_ACCEPTED)
 
     def test_set_password_wrong_code(self):
