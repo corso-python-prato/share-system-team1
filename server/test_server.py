@@ -1573,15 +1573,14 @@ class UserActions(unittest.TestCase):
         response = self.tc.put(self.url_reset_password, data=data, headers=None)
         self.assertEqual(response.status_code, server.HTTP_ACCEPTED)
 
-    def test_set_password_not_existent_user(self):
+    def test_reset_password_not_existent_user(self):
         data = {
-            "reset": True,
+            "reset": "True",
             "code": self.code,
             "psw": self.psw
         }
 
-        add_reset_request(self.user, self.code)
-        response = self.tc.put(self.url2, data=data, headers=None)
+        response = self.tc.post(self.url_reset_password, data=data, headers=None)
         self.assertEqual(response.status_code, server.HTTP_ACCEPTED)
 
     def test_set_password_request_not_found(self):
