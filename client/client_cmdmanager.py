@@ -367,10 +367,10 @@ class RawBoxCmd(cmd.Cmd):
             if not user:
                 Message('INFO', self.do_reset_password.__doc__)
 
-    def do_set(self, line):
+    def do_set_password(self, line):
         """
         Set RawBox user's password after resetting request
-        <set> <email_user> <code>
+        <set_password> <email_user> <code>
         """
         user = None
         code = None
@@ -380,7 +380,7 @@ class RawBoxCmd(cmd.Cmd):
             self.executer._set_password(user, code)
         except IndexError:
             if not user or not code:
-                Message('INFO', self.do_set.__doc__)
+                Message('INFO', self.do_set_password.__doc__)
 
 
 def main():
