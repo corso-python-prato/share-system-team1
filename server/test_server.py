@@ -1434,7 +1434,9 @@ class UserActions(unittest.TestCase):
             self.assertTrue(before_request_time < request_time < after_request_time)
 
     def test_create_user_missing_password(self):
-        data = {}
+        data = {
+            "reset": "False"
+        }
 
         response = self.tc.post(self.url, data=data, headers=None)
         self.assertEqual(response.status_code, server.HTTP_BAD_REQUEST)
