@@ -1492,7 +1492,8 @@ class UserActions(unittest.TestCase):
 
     def test_activate_user_that_is_not_the_last_pending_user(self):
         data = {
-            "code": self.code
+            "code": self.code,
+            "reset": "False"
         }
 
         add_pending_user("fake_user@demo.it",
