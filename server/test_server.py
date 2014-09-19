@@ -1472,7 +1472,9 @@ class UserActions(unittest.TestCase):
         self.assertEqual(response.status_code, server.HTTP_CREATED)
 
     def test_activate_user_missing_code(self):
-        data = {}
+        data = {
+            "reset": "False"
+        }
 
         add_pending_user(self.user, self.psw)
         response = self.tc.put(self.url, data=data, headers=None)
