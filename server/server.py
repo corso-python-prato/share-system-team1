@@ -39,12 +39,13 @@ class ServerApi(Api):
             # create the object and the body of the email report
             obj, msg = create_traceback_report(sys.exc_info())
             # ... and send it to a (eventual) mail list
-            REPORT_EMAILS = load_emails()
-            if REPORT_EMAILS:
-                for mail in REPORT_EMAILS:
+            report_emails = load_emails()
+            if report_emails:
+                for mail in report_emails:
                     send_mail(mail, obj, msg)
             print msg
-            return self.make_response({"message": "Internal Error Server!", "error_code": "Unexpected"}, 500)
+            return self.make_response({"message": "Internal Error Server!",
+                                       "error_code": "Unexpected"}, code)
         return super(ServerApi, self).handle_error(e)
 
 
@@ -68,26 +69,25 @@ PASSWORD_NOT_ACCEPTED_DATA = os.path.join(
 parser = reqparse.RequestParser()
 parser.add_argument("task", type=str)
 
+
 def load_emails():
-    # read in email_report.ini all e-mail and 
+    # read in email_report.ini all e-mail and
     # return them as a list
     try:
         with open(EMAIL_REPORT_INI, "r") as f:
             return f.read().split("\n")
     except IOError:
-        pass
+        return None
+
 
 def create_traceback_report(exc_params, testing=False):
-    """ this function takes as argument a tuple 
+    """ this function takes as argument a tuple
     (type, value, traceback) relative to a raised exception.
     It returns two strings, the first one the object of email(s)
     and the second one the body of the message"""
 
-    # get exception info
-    exc_type = exc_params[0]
-    exc_msg = exc_params[1]
-    # get the traceback object (stack of calls) 
-    tb = exc_params[2]
+    # get exception info and the traceback object (stack of calls)
+    exc_type, exc_msg, tb = exc_params
     if exc_type and exc_msg and tb:
         # looping all frames and save them in call_stack
         # reversing their order
@@ -113,7 +113,7 @@ def create_traceback_report(exc_params, testing=False):
         msg += "--Local variables dump--\n\n"
         for level in call_stack:
             module = level.f_code.co_filename
-            # filter the module name 
+            # filter the module name
             if module == "server.py" or testing:
                 msg += "Frame:" + level.f_code.co_name + " "
                 msg += "\tModule:" + module + " "
@@ -123,10 +123,11 @@ def create_traceback_report(exc_params, testing=False):
                 for k, v in level.f_locals.iteritems():
                     msg += "\t" + k + "=" + str(v)
                     msg += "\n"
-                msg += "\n\n"   
+                msg += "\n\n"
         msg += "\n\n"
         return obj, msg
     return None, None
+
 
 def to_md5(full_path=None, block_size=2 ** 20, file_object=False):
     """ if path is a file, return a md5;
@@ -856,7 +857,9 @@ def main():
     ServerApi.enable_report_mail = True
     app.run(host="0.0.0.0", debug=False)
 
-api.add_resource(UsersApi, "{}Users/<string:username>".format(_API_PREFIX),
+api.add_resource(
+    UsersApi,
+    "{}Users/<string:username>".format(_API_PREFIX),
     "{}Users/".format(_API_PREFIX))
 api.add_resource(Actions, "{}actions/<string:cmd>".format(_API_PREFIX))
 api.add_resource(
