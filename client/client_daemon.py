@@ -265,7 +265,8 @@ class ServerCommunicator(object):
         request = {
             "url": server_url,
             "data": {
-                "psw": param["psw"]
+                "psw": param["psw"],
+                "reset": param["reset"]
             }
         }
 
