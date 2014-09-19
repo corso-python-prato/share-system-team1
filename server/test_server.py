@@ -1608,7 +1608,7 @@ class UserActions(unittest.TestCase):
         def try_to_create_user():
             received = self.tc.put(
                 self.url,
-                data={"code": cls.code}
+                data={"code": cls.code, "reset": "False"}
             )
             return received
 
