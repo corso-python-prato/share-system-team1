@@ -14,6 +14,7 @@ import os
 
 from server import _API_PREFIX
 import server
+import sys
 
 
 TEST_DIRECTORY = "test_users_dirs/"
@@ -1113,6 +1114,7 @@ class TestShare(unittest.TestCase):
         )
         self.assertDictEqual(dicts["other_shares"], {})
 
+
 class TestServerInternalErrors(unittest.TestCase):
     root = os.path.join(
         os.path.dirname(__file__),
@@ -1284,7 +1286,8 @@ class EmailTest(unittest.TestCase):
 
         self.user = "user_mail@demo.it"
         self.psw = "password_demo33.PA"
-        self.code = "5f8e441f01abc7b3e312917efb52cc12"  # os.urandom(16).encode('hex')
+        # os.urandom(16).encode('hex')
+        self.code = "5f8e441f01abc7b3e312917efb52cc12"
         self.url = "".join((server._API_PREFIX, "Users/", self.user))
 
         self.mail = server.Mail(server.Flask(__name__))
@@ -1518,6 +1521,81 @@ class UserActions(unittest.TestCase):
         response = self.tc.delete(url, headers=headers)
         self.assertEqual(response.status_code, server.HTTP_OK)
         os.remove(root + "/user_data.json")
+
+
+class TestErrorReport(unittest.TestCase):
+
+    report_directory = os.path.join(
+        os.path.dirname(__file__),
+        "error_report"
+    )
+
+    def setUp(self):
+        server_setup(TestErrorReport.report_directory)
+
+    def tearDown(self):
+        shutil.rmtree(TestErrorReport.report_directory)
+
+    def test_not_existing_file_for_load_mails(self):
+        # this test try open a non existent file
+        # containing admins's e-mails
+        bak = server.EMAIL_REPORT_INI
+        server.EMAIL_REPORT_INI = "not_a_file"
+        res = server.load_emails()
+        self.assertEqual(res, None)
+        server.EMAIL_REPORT_INI = bak
+
+    def test_load_mails(self):
+        # this test open the correct file,
+        # check if the content isn't null
+        # and if it is correct
+        content = "email@domain.com"
+        f = create_temporary_file(content)
+        bak = server.EMAIL_REPORT_INI
+        server.EMAIL_REPORT_INI = os.path.join(server.SERVER_ROOT, f)
+        res = server.load_emails()
+        self.assertTrue(res)
+        self.assertIn(content, res)
+        server.EMAIL_REPORT_INI = bak
+        os.unlink(f)
+
+    def test_traceback_report(self):
+
+        class TracebackException(Exception):
+            pass
+
+        def raising_exception():
+            x = 0
+            y = "something"
+            raise TracebackException
+
+        try:
+            raising_exception()
+        except:
+            exc_params = sys.exc_info()
+            self.assertTrue(exc_params)
+            # test all values of sys.exc_info() are not null
+            self.assertTrue(exc_params[0])
+            self.assertTrue(exc_params[1])
+            self.assertTrue(exc_params[2])
+            obj, msg = server.create_traceback_report(exc_params, True)
+            # TODO: regex to check keys and values in correct frame???
+            self.assertIn("TracebackException", msg)
+            self.assertIn("x=0", msg)
+            self.assertIn("y=something", msg)
+            self.assertTrue(obj)
+            self.assertTrue(msg)
+
+    def test_not_raised_exception_traceback_report(self):
+        exc_params = sys.exc_info()
+        self.assertTrue(exc_params)
+        # test all values of sys.exc_info() are null
+        self.assertFalse(exc_params[0])
+        self.assertFalse(exc_params[1])
+        self.assertFalse(exc_params[2])
+        obj, msg = server.create_traceback_report(exc_params, True)
+        self.assertFalse(obj)
+        self.assertFalse(msg)
 
 
 if __name__ == "__main__":

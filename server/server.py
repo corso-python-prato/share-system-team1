@@ -13,6 +13,8 @@ import shutil
 import time
 import json
 import os
+import traceback
+import sys
 
 
 HTTP_OK = 200
@@ -23,8 +25,31 @@ HTTP_NOT_FOUND = 404
 HTTP_NOT_ACCEPTABLE = 406
 HTTP_CONFLICT = 409
 
+
 app = Flask(__name__)
-api = Api(app)
+
+
+class ServerApi(Api):
+    enable_report_mail = False
+
+    def handle_error(self, e):
+        code = getattr(e, "code", 500)
+        # not expected exception
+        if code == 500 and ServerApi.enable_report_mail:
+            # create the object and the body of the email report
+            obj, msg = create_traceback_report(sys.exc_info())
+            # ... and send it to a (eventual) mail list
+            report_emails = load_emails()
+            if report_emails:
+                for mail in report_emails:
+                    send_mail(mail, obj, msg)
+            print msg
+            return self.make_response({"message": "Internal Error Server!",
+                                       "error_code": "Unexpected"}, code)
+        return super(ServerApi, self).handle_error(e)
+
+
+api = ServerApi(app)
 auth = HTTPBasicAuth()
 _API_PREFIX = "/API/v1/"
 PROJECT_NAME = "RawBox"
@@ -36,12 +61,73 @@ USERS_DATA = os.path.join(SERVER_ROOT, "user_data.json")
 PENDING_USERS = os.path.join(SERVER_ROOT, ".pending.tmp")
 CORRUPTED_DATA = os.path.join(SERVER_ROOT, "corrupted_data.json")
 EMAIL_SETTINGS_INI = os.path.join(SERVER_ROOT, "email_settings.ini")
+EMAIL_REPORT_INI = os.path.join(SERVER_ROOT, "email_report.ini")
 PASSWORD_NOT_ACCEPTED_DATA = os.path.join(
     SERVER_ROOT, "password_not_accepted.txt"
 )
 
 parser = reqparse.RequestParser()
 parser.add_argument("task", type=str)
+
+
+def load_emails():
+    # read in email_report.ini all e-mail and
+    # return them as a list
+    try:
+        with open(EMAIL_REPORT_INI, "r") as f:
+            return f.read().split("\n")
+    except IOError:
+        return None
+
+
+def create_traceback_report(exc_params, testing=False):
+    """ this function takes as argument a tuple
+    (type, value, traceback) relative to a raised exception.
+    It returns two strings, the first one the object of email(s)
+    and the second one the body of the message"""
+
+    # get exception info and the traceback object (stack of calls)
+    exc_type, exc_msg, tb = exc_params
+    if exc_type and exc_msg and tb:
+        # looping all frames and save them in call_stack
+        # reversing their order
+        while True:
+            if not tb.tb_next:
+                break
+            tb = tb.tb_next
+        call_stack = []
+        last_frame = tb.tb_frame
+        while last_frame:
+            call_stack.append(last_frame)
+            last_frame = last_frame.f_back
+        call_stack.reverse()
+        # set object text and form in a better way
+        # the body of message
+        obj = "RawBox Server Error Dump"
+        msg = []
+        msg.append("--Traceback--\n\n")
+        # traceback
+        msg.append(str(traceback.format_exc()))
+        msg.append("\n\n-------------\n\n")
+        # dump of variables and their values
+        # in every frame
+        msg.append("--Local variables dump--\n\n")
+        for level in call_stack:
+            module = level.f_code.co_filename
+            # filter the module name
+            if module == "server.py" or testing:
+                msg.append("Frame: {} ".format(level.f_code.co_name))
+                msg.append("\tModule: {}".format(module))
+                msg.append("\tLine: {}".format(str(level.f_lineno)))
+                msg.append("\nVars: {}".format(str(level.f_code.co_varnames)))
+                msg.append("\n\n")
+                for k, v in level.f_locals.iteritems():
+                    msg.append("\t{}={}".format(k, str(v)))
+                    msg.append("\n")
+                msg.append("\n\n")
+        msg.append("\n\n")
+        return obj, "".join(msg)
+    return None, None
 
 
 def to_md5(full_path=None, block_size=2 ** 20, file_object=False):
@@ -76,11 +162,11 @@ def can_write(username, server_path):
 
 
 def PasswordChecker(clear_password):
-    #if the password is too short
+    # if the password is too short
     if len(clear_password) <= 5:
         return "This password is too short, the password " + \
             "must be at least 6 characters", HTTP_NOT_ACCEPTABLE
-    #if the password is too common
+    # if the password is too common
     f = open(PASSWORD_NOT_ACCEPTED_DATA)
     lines = f.readlines()
     f.close()
@@ -89,7 +175,7 @@ def PasswordChecker(clear_password):
             if clear_password == word:
                 return "This password is too common, the password " + \
                     "must be something unusual", HTTP_NOT_ACCEPTABLE
-    #if the password is too easy
+    # if the password is too easy
     strength, _ = passwordmeter.test(clear_password)
     if strength < 0.5:
         return "This password is too easy, the password should " + \
@@ -122,9 +208,9 @@ class User(object):
             saved = json.load(ud)
             ud.close()
         except IOError:
+            pass
             # The json file is not present. It will be created a new structure
             # from scratch.
-            pass
         # If the json file is corrupted, it will be raised a ValueError here.
         # In that case, please remove the corrupted file.
         else:
@@ -769,9 +855,12 @@ def main():
     if not os.path.isdir(USERS_DIRECTORIES):
         os.makedirs(USERS_DIRECTORIES)
     User.user_class_init()
-    app.run(host="0.0.0.0", debug=True)         # TODO: remove debug=True
+    ServerApi.enable_report_mail = True
+    app.run(host="0.0.0.0", debug=False)
 
-api.add_resource(UsersApi, "{}Users/<string:username>".format(_API_PREFIX),
+api.add_resource(
+    UsersApi,
+    "{}Users/<string:username>".format(_API_PREFIX),
     "{}Users/".format(_API_PREFIX))
 api.add_resource(Actions, "{}actions/<string:cmd>".format(_API_PREFIX))
 api.add_resource(
