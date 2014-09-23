@@ -262,6 +262,17 @@ class TestFilesAPI(unittest.TestCase):
         with open(server_path, 'rb') as f:
             self.assertEqual(received.data, f.read())
         
+        # download png image
+        img_url = "{}{}".format(TestFilesAPI.url_radix, "pippo.png")
+        img_path = TestFilesAPI.test_img_name
+        
+        received = self.tc.get(
+            _API_PREFIX + img_url,
+            headers=self.headers)
+        self.assertEqual(received.status_code, 200)
+        with open(img_path, "rb") as i:
+            self.assertEqual(received.data, i.read())
+
 
         # try to download file not present
         url = "{}{}".format(TestFilesAPI.url_radix, "NO_SERVER_PATH")
