@@ -590,9 +590,7 @@ class Files(Resource_with_auth):
         except KeyError:
             return "File unreachable", HTTP_NOT_FOUND
 
-        with open(full_path, "rb") as f:
-            content = f.read()
-        return content
+        return send_file(full_path)
 
     def get(self, client_path=None):
         if not client_path:
