@@ -250,17 +250,18 @@ class TestFilesAPI(unittest.TestCase):
         self.assertEqual(received.status_code, 401)
 
     def test_get(self):
+        # downloading file
         url = "{}{}".format(TestFilesAPI.url_radix, "random_file.txt")
         server_path = TestFilesAPI.test_file_name
-
-        # downloading file
+       
         received = self.tc.get(
             _API_PREFIX + url,
             headers=self.headers
         )
         self.assertEqual(received.status_code, 200)
-        with open(server_path, "r") as f:
-            self.assertEqual(json.loads(received.data), f.read())
+        with open(server_path, 'rb') as f:
+            self.assertEqual(received.data, f.read())
+        
 
         # try to download file not present
         url = "{}{}".format(TestFilesAPI.url_radix, "NO_SERVER_PATH")
