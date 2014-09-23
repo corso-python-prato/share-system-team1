@@ -5,7 +5,7 @@ from flask.ext.restful import reqparse, abort, Api, Resource
 from flask.ext.mail import Mail, Message
 from passlib.hash import sha256_crypt
 from flask.ext.httpauth import HTTPBasicAuth
-from flask import Flask, request
+from flask import Flask, request, send_file
 import passwordmeter
 import ConfigParser
 import hashlib
