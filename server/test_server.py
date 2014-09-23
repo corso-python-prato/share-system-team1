@@ -273,6 +273,16 @@ class TestFilesAPI(unittest.TestCase):
         with open(img_path, "rb") as i:
             self.assertEqual(received.data, i.read())
 
+        # download mp3
+        mp3_url = "{}{}".format(TestFilesAPI.url_radix, "thin lizzy - whiskey in the jar.mp3")
+        mp3_path = TestFilesAPI.test_mp3_name
+        
+        received = self.tc.get(
+            _API_PREFIX + mp3_url,
+            headers=self.headers)
+        self.assertEqual(received.status_code, 200)
+        with open(mp3_path, "rb") as mp3:
+            self.assertEqual(mp3.read(), received.data)
 
         # try to download file not present
         url = "{}{}".format(TestFilesAPI.url_radix, "NO_SERVER_PATH")
