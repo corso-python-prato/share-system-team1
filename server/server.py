@@ -5,7 +5,7 @@ from flask.ext.restful import reqparse, abort, Api, Resource
 from flask.ext.mail import Mail, Message
 from passlib.hash import sha256_crypt
 from flask.ext.httpauth import HTTPBasicAuth
-from flask import Flask, request
+from flask import Flask, request, send_file
 import passwordmeter
 import ConfigParser
 import hashlib
@@ -590,9 +590,7 @@ class Files(Resource_with_auth):
         except KeyError:
             return "File unreachable", HTTP_NOT_FOUND
 
-        with open(full_path, "rb") as f:
-            content = f.read()
-        return content
+        return send_file(full_path)
 
     def get(self, client_path=None):
         if not client_path:

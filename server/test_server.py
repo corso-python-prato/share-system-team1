@@ -145,6 +145,12 @@ class TestFilesAPI(unittest.TestCase):
     test_file_name = os.path.join(
         root, "user_dirs", user_test, "random_file.txt"
     )
+    test_img_name = os.path.join(
+        root, "user_dirs", user_test, "image.png"
+    )
+    test_mp3_name = os.path.join(
+        root, "user_dirs", user_test, "audio.mp3"
+    )
 
     @classmethod
     def setUpClass(cls):
@@ -250,17 +256,39 @@ class TestFilesAPI(unittest.TestCase):
         self.assertEqual(received.status_code, 401)
 
     def test_get(self):
+        # downloading file
         url = "{}{}".format(TestFilesAPI.url_radix, "random_file.txt")
         server_path = TestFilesAPI.test_file_name
-
-        # downloading file
+       
         received = self.tc.get(
             _API_PREFIX + url,
             headers=self.headers
         )
         self.assertEqual(received.status_code, 200)
-        with open(server_path, "r") as f:
-            self.assertEqual(json.loads(received.data), f.read())
+        with open(server_path, 'rb') as f:
+            self.assertEqual(received.data, f.read())
+        
+        # download png image
+        img_url = "{}{}".format(TestFilesAPI.url_radix, "image.png")
+        img_path = TestFilesAPI.test_img_name
+        
+        received = self.tc.get(
+            _API_PREFIX + img_url,
+            headers=self.headers)
+        self.assertEqual(received.status_code, 200)
+        with open(img_path, "rb") as i:
+            self.assertEqual(received.data, i.read())
+
+        # download mp3
+        mp3_url = "{}{}".format(TestFilesAPI.url_radix, "audio.mp3")
+        mp3_path = TestFilesAPI.test_mp3_name
+        
+        received = self.tc.get(
+            _API_PREFIX + mp3_url,
+            headers=self.headers)
+        self.assertEqual(received.status_code, 200)
+        with open(mp3_path, "rb") as mp3:
+            self.assertEqual(mp3.read(), received.data)
 
         # try to download file not present
         url = "{}{}".format(TestFilesAPI.url_radix, "NO_SERVER_PATH")
