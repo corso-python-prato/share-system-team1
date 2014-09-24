@@ -269,7 +269,7 @@ class TestFilesAPI(unittest.TestCase):
             self.assertEqual(received.data, f.read())
         
         # download png image
-        img_url = "{}{}".format(TestFilesAPI.url_radix, "pippo.png")
+        img_url = "{}{}".format(TestFilesAPI.url_radix, "image.png")
         img_path = TestFilesAPI.test_img_name
         
         received = self.tc.get(
@@ -280,7 +280,7 @@ class TestFilesAPI(unittest.TestCase):
             self.assertEqual(received.data, i.read())
 
         # download mp3
-        mp3_url = "{}{}".format(TestFilesAPI.url_radix, "thin lizzy - whiskey in the jar.mp3")
+        mp3_url = "{}{}".format(TestFilesAPI.url_radix, "audio.mp3")
         mp3_path = TestFilesAPI.test_mp3_name
         
         received = self.tc.get(
