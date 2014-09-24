@@ -74,7 +74,8 @@ class RawBoxExecuter(object):
 
         param = {
             'user': username,
-            'psw': password
+            'psw': password,
+            'reset': 'False'
         }
 
         self.comm_sock.send_message(command_type, param)
@@ -93,7 +94,8 @@ class RawBoxExecuter(object):
 
         param = {
             'user': username,
-            'code': code
+            'code': code,
+            'reset': 'False'
         }
 
         self.comm_sock.send_message(command_type, param)
@@ -129,6 +131,57 @@ class RawBoxExecuter(object):
             }
             self.comm_sock.send_message(command_type, param)
             self.print_response(self.comm_sock.read_message())
+
+    def _reset_password(self, username=None):
+        """ reset RawBox user's password """
+
+        if not username:
+            username = take_input('insert your email: ')
+        email_regex = re.compile('[^@]+@[^@]+\.[^@]+')
+        while not email_regex.match(username):
+            Message('WARNING', 'invalid email')
+            username = take_input('insert your email: ')
+
+        param = {
+            'user': username,
+            'reset': 'True'
+        }
+
+        self.comm_sock.send_message('reset_password', param)
+        self.print_response(self.comm_sock.read_message())
+
+    def _set_password(self, username=None, code=None):
+        """ set RawBox user's password after resetting request """
+
+        if not username:
+            username = take_input('insert your email: ')
+        email_regex = re.compile('[^@]+@[^@]+\.[^@]+')
+        while not email_regex.match(username):
+            Message('WARNING', 'invalid email')
+            username = take_input('insert your email: ')
+
+        if not code:
+            code = take_input('insert your code: ')
+        while len(code) != 32:
+            Message('WARNING', 'invalid code must be 32 character')
+            code = take_input('insert your code: ')
+
+        password = take_input('insert your password: ', password=True)
+        rpt_password = take_input('Repeat your password: ', password=True)
+        while password != rpt_password:
+            Message('WARNING', 'password not matched')
+            password = take_input('insert your password: ', password=True)
+            rpt_password = take_input('Repeat your password: ', password=True)
+
+        param = {
+            'user': username,
+            'reset': 'True',
+            'code': code,
+            'psw': password
+        }
+
+        self.comm_sock.send_message("set_password", param)
+        self.print_response(self.comm_sock.read_message())
 
     def _add_share(self, path, beneficiary):
         param = {
@@ -300,6 +353,34 @@ class RawBoxCmd(cmd.Cmd):
         """ exit from RawBox"""
         if take_input('[Exit] are you sure? y/n ') == 'y':
             return True
+
+    def do_reset_password(self, line):
+        """
+        Reset of RawBox user's password
+        If <reset_password> <email_user>, requests a code to reset password
+        """
+        user = None
+        try:
+            user = line.split()[0]
+            self.executer._reset_password(user)
+        except IndexError:
+            if not user:
+                Message('INFO', self.do_reset_password.__doc__)
+
+    def do_set_password(self, line):
+        """
+        Set RawBox user's password after resetting request
+        <set_password> <email_user> <code>
+        """
+        user = None
+        code = None
+        try:
+            user = line.split()[0]
+            code = line.split()[1]
+            self.executer._set_password(user, code)
+        except IndexError:
+            if not user or not code:
+                Message('INFO', self.do_set_password.__doc__)
 
 
 def main():

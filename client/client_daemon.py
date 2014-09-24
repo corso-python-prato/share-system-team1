@@ -272,7 +272,8 @@ class ServerCommunicator(object):
         request = {
             "url": server_url,
             "data": {
-                "psw": param["psw"]
+                "psw": param["psw"],
+                "reset": param["reset"]
             }
         }
 
@@ -312,7 +313,8 @@ class ServerCommunicator(object):
             "url": server_url,
             "data": {
                 "user": param["user"],
-                "psw": param["psw"]
+                "psw": param["psw"],
+                "reset": param["reset"]
             }
         }
 
@@ -370,6 +372,7 @@ class ServerCommunicator(object):
         request = {
             "url": server_url,
             "data": {
+                "reset": param["reset"],
                 "code": param["code"]
             }
         }
@@ -391,6 +394,54 @@ class ServerCommunicator(object):
             self.msg["details"].append("User not found")
         else:
             self.msg["details"].append("Bad request")
+
+        return self.msg
+
+    def reset_password(self, param):
+
+        self.msg["details"] = []
+        success_log = "Password resetted"
+
+        server_url = "{}/Users/{}/reset".format(self.server_url, param["user"])
+        request = {
+            "url": server_url,
+            "data": {
+                "reset": param["reset"]
+            }
+        }
+
+        response = self._try_request(requests.post, success_log, **request)
+
+        self.msg["result"] = response.status_code
+
+        if response.status_code == 202:
+            self.msg["details"].append("Check your email for the resetting code")
+
+        return self.msg
+
+    def set_password(self, param):
+
+        self.msg["details"] = []
+        success_log = "Password resetted"
+        server_url = "{}/Users/{}/reset".format(self.server_url, param["user"])
+
+        request = {
+            "url": server_url,
+            "data": {
+                "reset": param["reset"],
+                "code": param["code"],
+                "psw": param["psw"]
+            }
+        }
+
+        response = self._try_request(requests.put, success_log, **request)
+        self.msg["result"] = response.status_code
+
+        if response.status_code == 202:
+            self.write_user_data(param["user"], param["psw"])
+            self.msg["details"].append("If email exists, your password will be resetted. Login needed!")
+        elif response.status_code == 404:
+            self.msg["details"].append("Wrong code or reset request not found")
 
         return self.msg
 
@@ -448,15 +499,12 @@ class ServerCommunicator(object):
             ),
             "data": {}
         }
-
         success_log = "Removed user {} from shares".format(param["beneficiary"])
         error_log = "ERROR on removing user {} from shares".format(param["beneficiary"])
-
         response = self._try_request(
             requests.delete, success_log, error_log, **request
         )
         self.msg["result"] = response.status_code
-
         if response.status_code == 200:
             self.msg["details"].append("User removed from shares")
         elif response.status_code == 400:
@@ -1107,6 +1155,8 @@ def main():
         "create_user": server_com.create_user,
         "activate_user": server_com.activate_user,
         "delete_user": server_com.delete_user,
+        "reset_password": server_com.reset_password,
+        "set_password": server_com.set_password,
         "add_share": server_com.add_share,
         "remove_share": server_com.remove_share,
         "remove_beneficiary": server_com.remove_beneficiary,

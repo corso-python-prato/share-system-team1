@@ -217,11 +217,22 @@ class ServerCommunicatorTest(unittest.TestCase):
             httpretty.DELETE,
             SERVER_URL + "shares/shared_path/beneficiary",
             responses=[
-                httpretty.Response(body='{}', status=requests.codes.ok),
-                httpretty.Response(body='{}', status=requests.codes.bad_request)
+
+                httpretty.Response(body='{}',status=requests.codes.ok),
+                httpretty.Response(body='{}',status=requests.codes.bad_request)
             ]
         )
-
+        httpretty.register_uri(httpretty.POST, 'http://127.0.0.1:5000/API/v1/Users/usernameFarlocco/reset',
+            responses=[
+                httpretty.Response(body='{}',status=requests.codes.accepted)
+            ]
+        )
+        httpretty.register_uri(httpretty.PUT, 'http://127.0.0.1:5000/API/v1/Users/usernameFarlocco/reset',
+            responses=[
+                httpretty.Response(body='{}',status=requests.codes.accepted),
+                httpretty.Response(body='{}',status=requests.codes.not_found)
+            ]
+        )
         httpretty.register_uri(
             httpretty.GET,
             'http://127.0.0.1:5000/API/v1/files',
@@ -577,16 +588,16 @@ class ServerCommunicatorTest(unittest.TestCase):
             1234.0)
 
     def test_create_user(self):
-        msg1 = self.server_comm.create_user({"user": self.username, "psw": self.password})
+        msg1 = self.server_comm.create_user({"user": self.username, "psw": self.password, "reset":"False"})
         self.assertEqual(msg1["result"], requests.codes.created)
         self.assertEqual(msg1["details"][0], "Check your email for the activation code")
-        msg2 = self.server_comm.create_user({"user": self.username, "psw": self.password})
+        msg2 = self.server_comm.create_user({"user": self.username, "psw": self.password, "reset":"False"})
         self.assertEqual(msg2["result"], requests.codes.conflict)
         self.assertEqual(msg2["details"][0], "User already exists")
-        msg4 = self.server_comm.create_user({"user": self.username, "psw": self.password})
+        msg4 = self.server_comm.create_user({"user": self.username, "psw": self.password, "reset":"False"})
         self.assertEqual(msg4["result"], requests.codes.not_acceptable)
         self.assertEqual(msg4["details"][0], "password too easy")
-        msg3 = self.server_comm.create_user({"user": self.username, "psw": self.password})
+        msg3 = self.server_comm.create_user({"user": self.username, "psw": self.password, "reset":"False"})
         self.assertEqual(msg3["result"], requests.codes.bad_request)
         self.assertEqual(msg3["details"][0], "Bad request")
 
@@ -603,15 +614,32 @@ class ServerCommunicatorTest(unittest.TestCase):
 
     def test_activate_user(self):
         code = "qwerty12345"
-        msg1 = self.server_comm.activate_user({"user": self.username, "code": code})
+        msg1 = self.server_comm.activate_user({"user": self.username, "code": code, "reset":"False"})
         self.assertEqual(msg1["result"], requests.codes.created)
         self.assertEqual(msg1["details"][0], "You have now entered RawBox")
-        msg2 = self.server_comm.activate_user({"user": self.username, "code": code})
+        msg2 = self.server_comm.activate_user({"user": self.username, "code": code, "reset":"False"})
         self.assertEqual(msg2["result"], requests.codes.not_found)
         self.assertEqual(msg2["details"][0], "User not found")
-        msg3 = self.server_comm.activate_user({"user": self.username, "code": code})
+        msg3 = self.server_comm.activate_user({"user": self.username, "code": code, "reset":"False"})
         self.assertEqual(msg3["result"], requests.codes.bad_request)
         self.assertEqual(msg3["details"][0], "Bad request")
+
+    def test_reset_password(self):
+        msg = self.server_comm.reset_password({"user": self.username, "reset": "True"})
+        self.assertEqual(msg["details"][0], "Check your email for the resetting code")
+        self.assertEqual(msg["result"], requests.codes.accepted)
+
+    def test_set_password(self):
+        code = "qwerty12345"
+        msg1 = self.server_comm.set_password({"user": self.username, "reset": "True",
+                                              "code": code, "psw": "new_password"})
+        self.assertEqual(msg1["result"], requests.codes.accepted)
+        self.assertEqual(msg1["details"][0], "If email exists, your password will be resetted. Login needed!")
+
+        msg2 = self.server_comm.set_password({"user": self.username, "reset": "True",
+                                              "code": code, "psw": "new_password"})
+        self.assertEqual(msg2["result"], requests.codes.not_found)
+        self.assertEqual(msg2["details"][0], "Wrong code or reset request not found")
 
     def test_add_share(self):
         msg1 = self.server_comm.add_share({"path": "path_to_share", "beneficiary": "beneficiary"})

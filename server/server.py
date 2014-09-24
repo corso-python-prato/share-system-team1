@@ -19,6 +19,7 @@ import sys
 
 HTTP_OK = 200
 HTTP_CREATED = 201
+HTTP_ACCEPTED = 202
 HTTP_BAD_REQUEST = 400
 HTTP_FORBIDDEN = 403
 HTTP_NOT_FOUND = 404
@@ -54,10 +55,11 @@ auth = HTTPBasicAuth()
 _API_PREFIX = "/API/v1/"
 PROJECT_NAME = "RawBox"
 
+
+
 SERVER_ROOT = os.path.dirname(__file__)
 USERS_DIRECTORIES = os.path.join(SERVER_ROOT, "user_dirs/")
 USERS_DATA = os.path.join(SERVER_ROOT, "user_data.json")
-
 PENDING_USERS = os.path.join(SERVER_ROOT, ".pending.tmp")
 CORRUPTED_DATA = os.path.join(SERVER_ROOT, "corrupted_data.json")
 EMAIL_SETTINGS_INI = os.path.join(SERVER_ROOT, "email_settings.ini")
@@ -65,6 +67,7 @@ EMAIL_REPORT_INI = os.path.join(SERVER_ROOT, "email_report.ini")
 PASSWORD_NOT_ACCEPTED_DATA = os.path.join(
     SERVER_ROOT, "password_not_accepted.txt"
 )
+RESET_REQUESTS = os.path.join(SERVER_ROOT, ".reset_requests.tmp")
 
 parser = reqparse.RequestParser()
 parser.add_argument("task", type=str)
@@ -474,8 +477,22 @@ class UsersApi(Resource):
                     shutil.move(PENDING_USERS, CORRUPTED_DATA)
         return pending
 
+    def load_reset_requests(self):
+        reset_requests = {}
+        if os.path.isfile(RESET_REQUESTS):
+            try:
+                with open(RESET_REQUESTS, "r") as reset_rq:
+                    reset_requests = json.load(reset_rq)
+            except ValueError:  # RESET_REQUESTS exists but is corrupted
+                if os.path.getsize(RESET_REQUESTS) > 0:
+                    shutil.move(RESET_REQUESTS, CORRUPTED_DATA)
+                else:
+                    return reset_requests
+        return reset_requests
+
     def post(self, username):
-        """Create a user registration request
+        """
+        Create a user registration request
         Expected {"psw": <password>}
         save pending as
         {<username>:
@@ -484,8 +501,24 @@ class UsersApi(Resource):
             "code": <activation_code>
             "timestamp": <timestamp>
             }
-        }"""
+        }
+        if request.form["reset"] is True, it is a reset password request.
+        In this case it saves request in a file, reset_requests, as
+        {<username>: <resetting code>}
+        """
         pending = self.load_pending_users()
+        if request.form["reset"] == "True":
+            if username in pending or username in User.users:
+                reset_requests = self.load_reset_requests()
+                code = os.urandom(16).encode('hex')
+                send_mail(username, "RawBox' s resetting code", code)
+                reset_requests[username] = code
+                with open(RESET_REQUESTS, "w") as reset_rq:
+                    json.dump(reset_requests, reset_rq)
+                return "User added to resetting requests", HTTP_ACCEPTED
+            else:
+                return "User added to resetting requests", HTTP_ACCEPTED
+
         try:
             psw = request.form["psw"]
         except KeyError:
@@ -510,9 +543,43 @@ class UsersApi(Resource):
             return "User added to pending users", HTTP_CREATED
 
     def put(self, username):
-        """Activate a pending user
+        """
+        Activate a pending user
         Expected
-        {"code": <activation code>}"""
+        {"code": <activation code>}
+        if request.form["reset"] is True, it is a set password request after reset one.
+        In this case it set a new password for the user (a pending or active one),
+        if the reset code provided is correct.
+        """
+        pending = self.load_pending_users()
+
+        if request.form["reset"] == "True":
+            reset_requests = self.load_reset_requests()
+            code = request.form["code"]
+            psw = request.form["psw"]
+
+            if username in reset_requests and reset_requests[username] == code:
+                psw_hash = sha256_crypt.encrypt(psw)
+
+                if username in pending:
+                    pending[username]["password"] = psw_hash
+                    del reset_requests[username]
+                    with open(RESET_REQUESTS, "w") as reset_rq:
+                        json.dump(reset_requests, reset_rq)
+                    with open(PENDING_USERS, "w") as p_u:
+                        json.dump(pending, p_u)
+                    return "User's password resetted", HTTP_ACCEPTED
+                else:
+                    User.users[username].psw = psw_hash
+                    del reset_requests[username]
+                    with open(RESET_REQUESTS, "w") as reset_rq:
+                        json.dump(reset_requests, reset_rq)
+                    User.save_users()
+                    return "User's password resetted", HTTP_ACCEPTED
+
+            else:
+                return "Reset request not found or wrong code", HTTP_NOT_FOUND
+
         try:
             code = request.form["code"]
         except KeyError:
@@ -520,8 +587,6 @@ class UsersApi(Resource):
 
         if username in User.users:
             return "This user is already active", HTTP_CONFLICT
-
-        pending = self.load_pending_users()
 
         if username in pending:
             if code == pending[username]["code"]:
@@ -780,7 +845,6 @@ class Shares(Resource_with_auth):
         except KeyError:
             return "The specified file or directory is not present", \
                 HTTP_BAD_REQUEST
-
         if beneficiary:
             return self._remove_beneficiary(
                 owner, server_path, client_path, beneficiary
@@ -859,7 +923,9 @@ def main():
 api.add_resource(
     UsersApi,
     "{}Users/<string:username>".format(_API_PREFIX),
+    "{}Users/<string:username>/reset".format(_API_PREFIX),
     "{}Users/".format(_API_PREFIX))
+
 api.add_resource(Actions, "{}actions/<string:cmd>".format(_API_PREFIX))
 api.add_resource(
     Files,

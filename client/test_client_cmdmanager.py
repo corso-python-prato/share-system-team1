@@ -65,6 +65,12 @@ class MockExecuter(object):
     def _delete_user(self):
         RawBoxCmdTest.called = True
 
+    def _reset_password(self, username):
+        RawBoxCmdTest.called = True
+
+    def _set_password(self, username, code):
+        RawBoxCmdTest.called = True
+
     def _add_share(self, path, beneficiary):
         RawBoxCmdTest.called = True
 
@@ -114,6 +120,14 @@ class RawBoxCmdTest(unittest.TestCase):
     def test_do_delete(self):
         mock_input.append('yes')
         self.rawbox_cmd.onecmd('delete')
+        self.assertTrue(RawBoxCmdTest.called)
+
+    def test_do_reset(self):
+        self.rawbox_cmd.onecmd('reset_password pippo@pippa.it')
+        self.assertTrue(RawBoxCmdTest.called)
+
+    def test_do_set(self):
+        self.rawbox_cmd.onecmd('set_password pippo@pippa.it code=codice')
         self.assertTrue(RawBoxCmdTest.called)
 
     def test_do_add_share(self):
@@ -245,6 +259,68 @@ class TestRawBoxExecuter(unittest.TestCase):
 
         self.raw_box_exec._activate_user()
 
+        self.assertNotEquals(TestRawBoxExecuter.code, self.toolong_code)
+        self.assertNotEquals(TestRawBoxExecuter.code, self.tooshort_code)
+        self.assertEquals(TestRawBoxExecuter.code, self.correct_code)
+
+    def test_reset_pass(self):
+        mock_input.append(self.correct_user)
+
+        self.raw_box_exec._reset_password()
+
+        self.assertEquals(TestRawBoxExecuter.username, self.correct_user)
+
+    def test_reset_pass_invalid_user(self):
+        mock_input.append(self.correct_user)
+        mock_input.append(self.wrong_user3)
+        mock_input.append(self.wrong_user2)
+        mock_input.append(self.wrong_user1)
+        mock_input.append(self.wrong_user0)
+
+        self.raw_box_exec._reset_password()
+
+        self.assertNotEquals(TestRawBoxExecuter.username, self.wrong_user0)
+        self.assertNotEquals(TestRawBoxExecuter.username, self.wrong_user1)
+        self.assertNotEquals(TestRawBoxExecuter.username, self.wrong_user2)
+        self.assertNotEquals(TestRawBoxExecuter.username, self.wrong_user3)
+        self.assertEquals(TestRawBoxExecuter.username, self.correct_user)
+
+    def test_set_pass(self):
+        mock_input.append(self.correct_pwd)
+        mock_input.append(self.correct_pwd)
+        mock_input.append(self.correct_code)
+        mock_input.append(self.correct_user)
+        self.raw_box_exec._set_password()
+
+        self.assertEquals(TestRawBoxExecuter.code, self.correct_code)
+
+    def test_set_pass_invalid_email(self):
+        mock_input.append(self.correct_pwd)
+        mock_input.append(self.correct_pwd)
+        mock_input.append(self.correct_code)
+        mock_input.append(self.correct_user)
+        mock_input.append(self.wrong_user3)
+        mock_input.append(self.wrong_user2)
+        mock_input.append(self.wrong_user1)
+        mock_input.append(self.wrong_user0)
+
+        self.raw_box_exec._set_password()
+
+        self.assertNotEquals(TestRawBoxExecuter.username, self.wrong_user0)
+        self.assertNotEquals(TestRawBoxExecuter.username, self.wrong_user1)
+        self.assertNotEquals(TestRawBoxExecuter.username, self.wrong_user2)
+        self.assertNotEquals(TestRawBoxExecuter.username, self.wrong_user3)
+        self.assertEquals(TestRawBoxExecuter.username, self.correct_user)
+
+    def test_set_pass_invalid_code(self):
+        mock_input.append(self.correct_pwd)
+        mock_input.append(self.correct_pwd)
+        mock_input.append(self.correct_code)
+        mock_input.append(self.tooshort_code)
+        mock_input.append(self.toolong_code)
+        mock_input.append(self.correct_user)
+
+        self.raw_box_exec._set_password()
         self.assertNotEquals(TestRawBoxExecuter.code, self.toolong_code)
         self.assertNotEquals(TestRawBoxExecuter.code, self.tooshort_code)
         self.assertEquals(TestRawBoxExecuter.code, self.correct_code)
