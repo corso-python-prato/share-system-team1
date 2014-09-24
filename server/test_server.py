@@ -145,6 +145,12 @@ class TestFilesAPI(unittest.TestCase):
     test_file_name = os.path.join(
         root, "user_dirs", user_test, "random_file.txt"
     )
+    test_img_name = os.path.join(
+        root, "user_dirs", user_test, "image.png"
+    )
+    test_mp3_name = os.path.join(
+        root, "user_dirs", user_test, "audio.mp3"
+    )
 
     @classmethod
     def setUpClass(cls):
