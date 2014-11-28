@@ -668,9 +668,11 @@ class Files(Resource_with_auth):
     """This class (inheriting from Resource_with_auth) handles the api for files/ urls"""
 
     def _diffs(self):
-        """ Send a JSON with the timestamp of the last change in user
+        """This method send a JSON with the timestamp of the last change in user
         directories and an md5 for each file
-        Expected GET method without path """
+        Expected GET method without path
+        @return snapshot, HTTP_OK
+        """
         u = User.users[auth.username()]
         tree = {}
         for p, v in u.paths.iteritems():
@@ -698,9 +700,11 @@ class Files(Resource_with_auth):
         # return json.dumps(snapshot), HTTP_OK
 
     def _download(self, client_path):
-        """Download
-        Returns file content as a byte string
-        Expected GET method with path"""
+        """This method returns file content as a byte string
+        Expected GET method with path
+        @param client_path
+        @return execution of send_file function
+        """
         u = User.users[auth.username()]
         try:
             full_path = os.path.join(
@@ -712,16 +716,22 @@ class Files(Resource_with_auth):
         return send_file(full_path)
 
     def get(self, client_path=None):
+        """This method handles a GET request and chooses what to do with client_path parameter value
+        @param client_path
+        @return Exceution of _diff or _download function
+        """
         if not client_path:
             return self._diffs()
         else:
             return self._download(client_path)
 
     def put(self, client_path):
-        """ Update
-        Updates an existing file
+        """This method handles a PUT request to update an existing file
         Expected as POST data:
-        { "file_content" : <file>} """
+        { "file_content" : <file>}
+        @param client_path
+        @return a timestamp a http code if it does not abort
+        """
         u = User.users[auth.username()]
         try:
             server_path = u.paths[client_path][0]
@@ -742,10 +752,12 @@ class Files(Resource_with_auth):
         return u.timestamp, HTTP_CREATED
 
     def post(self, client_path):
-        """ Upload
-        Upload a new file
+        """This method handles a POST request to upload a new file
         Expected as POST data:
-        { "file_content" : <file>} """
+        { "file_content" : <file>}
+        @param client_path
+        @return a timestamp a http code if it does not abort
+        """
         u = User.users[auth.username()]
 
         if client_path in u.paths:
@@ -769,9 +781,14 @@ class Files(Resource_with_auth):
 
 
 class Actions(Resource_with_auth):
+    """This class (inheriting from Resource_with_auth) handles the api for actions/ urls"""
+
     def _delete(self):
-        """ Expected as POST data:
-        { "path" : <path>} """
+        """This method handles an user resource cancellation
+        Expected as POST data:
+        { "path" : <path>}
+        @return a timestamp or it aborts with a http code
+        """
         # check user and path
         u = User.users[auth.username()]
         client_path = request.form["path"]
@@ -790,16 +807,24 @@ class Actions(Resource_with_auth):
         return u.timestamp
 
     def _copy(self):
+        """This method call _transfer to copy an user resource
+        @return Excecution of _transfer method with keep_the_original set to True
+        """
         return self._transfer(keep_the_original=True)
 
     def _move(self):
+        """This method call _transfer to move an user resource
+        @return Excecution of _transfer method with keep_the_original set to False
+        """
         return self._transfer(keep_the_original=False)
 
     def _transfer(self, keep_the_original=True):
-        """ Moves or copy a file from src to dest
+        """This method moves or copy a file from src to dest
         depending on keep_the_original value
         Expected as POST data:
-        { "file_src": <path>, "file_dest": <path> }"""
+        { "file_src": <path>, "file_dest": <path> }
+        @param keep_the_original This parameter indicates if move or copy a resource. It is set to True as default
+        """
         u = User.users[auth.username()]
         client_src = request.form["file_src"]
         client_dest = request.form["file_dest"]
@@ -840,6 +865,10 @@ class Actions(Resource_with_auth):
     }
 
     def post(self, cmd):
+        """This method (POST request) execute one of the provivded commands
+        @param cmd
+        @return Excecution of cmd or aborting with a http code
+        """
         try:
             return Actions.commands[cmd](self)
         except KeyError:
@@ -847,7 +876,14 @@ class Actions(Resource_with_auth):
 
 
 class Shares(Resource_with_auth):
+    """This class (inheriting from Resource_with_auth) handles the api for shares/ urls"""
+
     def post(self, client_path, beneficiary):
+        """This method (POST request) shares a resource with a beneficiary user
+        @param client_path
+        @param beneficiary
+        @return a http code or False, http code
+        """
         owner = User.users[auth.username()]
 
         result = owner.add_share(client_path, beneficiary)
@@ -858,6 +894,13 @@ class Shares(Resource_with_auth):
 
     def _remove_beneficiary(self, owner, server_path, client_path,
                             beneficiary):
+        """This method removes the beneficiary from the shared resources list
+        @param owner
+        @param server_path
+        @param client_path
+        @param beneficiary
+        @return a http code or aborting with a http code
+        """
         # remove the beneficiary from the shared resources list
         try:
             ben_user = User.users[beneficiary]
@@ -883,6 +926,12 @@ class Shares(Resource_with_auth):
         return HTTP_OK
 
     def _remove_share(self, owner, server_path, client_path):
+        """This method remove a user's resource from the shares
+        @param owner
+        @param server_path
+        @param client_path
+        @return a http code or aborting with a http code
+        """
         try:
             for ben in User.shared_resources[server_path]:
                 self._remove_beneficiary(owner, server_path, client_path, ben)
@@ -893,6 +942,11 @@ class Shares(Resource_with_auth):
             return HTTP_OK
 
     def delete(self, client_path, beneficiary=None):
+        """This method (DELETE request) deletes a share or remove a beneficiary user from shares
+        @param client_path
+        @param beneficiary Set to None as default
+        @return Excecution of _remove_beneficiary or _remove_share or returns a http code
+        """
         owner = User.users[auth.username()]
         try:
             server_path = owner.paths[client_path][0]
@@ -907,6 +961,9 @@ class Shares(Resource_with_auth):
             return self._remove_share(owner, server_path, client_path)
 
     def get(self):
+        """This method (GET request) return a list of user's shared resources
+        @return The list (eventually empty) of shares and a http code
+        """
         me = User.users[auth.username()]
 
         my_shares = {}
@@ -934,6 +991,9 @@ class Shares(Resource_with_auth):
 
 
 def mail_config_init():
+    """This function load from .ini the configuration to send emails
+    @return a Mail object or raise a MissingConfigIni Exception
+    """
     config = ConfigParser.ConfigParser()
     if config.read(EMAIL_SETTINGS_INI):
         app.config.update(
@@ -947,8 +1007,11 @@ def mail_config_init():
 
 
 def send_mail(receiver, obj, content):
-    """ Send an email to the 'receiver', with the
-    specified object ('obj') and the specified 'content' """
+    """This function send an email to the 'receiver', with the
+    specified object ('obj') and the specified 'content'
+    @param obj The object of the email
+    @param content The content of the email
+    """
     mail = mail_config_init()
     msg = Message(
         obj,
