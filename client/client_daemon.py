@@ -292,7 +292,7 @@ class ServerCommunicator(object):
             logger.warning("{}".format(response.text))
             self.msg["details"].append("{}".format(response.text))
         elif response.status_code == requests.codes.conflict:
-            logger.warning("user: {} already exists!".format(username, password))
+            logger.warning("user: {} already exists!".format(username))
             self.msg["details"].append("User already exists")
         else:
             error = ("on create user:\t email: {}\n\nsend message:\t"
