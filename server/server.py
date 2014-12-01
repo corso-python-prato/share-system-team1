@@ -31,9 +31,14 @@ app = Flask(__name__)
 
 
 class ServerApi(Api):
+    """This class is a subclass of Api class from flask restful"""
     enable_report_mail = False
 
     def handle_error(self, e):
+        """This (ovverrided) method implements handling of unhandled errors
+        @param e Exception
+        @return a 500 error message response or use the default error handler 
+        """
         code = getattr(e, "code", 500)
         # not expected exception
         if code == 500 and ServerApi.enable_report_mail:
@@ -74,8 +79,10 @@ parser.add_argument("task", type=str)
 
 
 def load_emails():
-    # read in email_report.ini all e-mail and
-    # return them as a list
+    """This function reads in email_report.ini all e-mail 
+    and return them as a list
+    @return None or a list of emails
+    """
     try:
         with open(EMAIL_REPORT_INI, "r") as f:
             return f.read().split("\n")
@@ -84,11 +91,13 @@ def load_emails():
 
 
 def create_traceback_report(exc_params, testing=False):
-    """ this function takes as argument a tuple
-    (type, value, traceback) relative to a raised exception.
-    It returns two strings, the first one the object of email(s)
-    and the second one the body of the message"""
-
+    """This function creates the report with traceback 
+    of unhandled error to send via email(s)
+    @param exc_params It is a tuple (type, value, traceback) 
+    relative to a raised exception.
+    @return It returns two strings, the first one the object of email(s)
+    and the second one the body of the message
+    """
     # get exception info and the traceback object (stack of calls)
     exc_type, exc_msg, tb = exc_params
     if exc_type and exc_msg and tb:
@@ -134,9 +143,12 @@ def create_traceback_report(exc_params, testing=False):
 
 
 def to_md5(full_path=None, block_size=2 ** 20, file_object=False):
-    """ if path is a file, return a md5;
-    if path is a directory, return False
-    if file_object is defined file_object content md5"""
+    """This function generates a md5 for a file
+    @param full_path The full path of the file, set to None as default
+    @param block_size The size of the blocks to read from the file
+    @file_object The file object, set to False as default
+    @return False if the input path is a directory or the md5
+    """
     if file_object:
         m = hashlib.md5()
         for chunk in iter(lambda: file_object.read(block_size), b''):
@@ -153,11 +165,14 @@ def to_md5(full_path=None, block_size=2 ** 20, file_object=False):
 
 
 def can_write(username, server_path):
-    """
-    This sharing system is in read-only mode.
-    Check if an user is the owner of a file (or father directory).
-    (the server_path begins with his name)
+    """This function checks if an user 
+    it is the owner of a file (or father directory)
+    P.S.: This sharing system is in read-only mode. 
     root/shares is a reserved name.
+    @param username User to check
+    @param server_path The path of the file 
+    to check (the server_path begins with the user)
+    @return True if the User is the owner else return False
     """
     pieces = server_path.split('/')
     return (pieces[0] == username) and \
@@ -165,6 +180,10 @@ def can_write(username, server_path):
 
 
 def PasswordChecker(clear_password):
+    """This function checks if the password to create is secure
+    @param clear_password The password to examinate
+    @return the password if the test pass or an error message if the test fails
+    """
     # if the password is too short
     if len(clear_password) <= 5:
         return "This password is too short, the password " + \
@@ -188,12 +207,12 @@ def PasswordChecker(clear_password):
 
 
 class MissingConfigIni(Exception):
+    """This an Exception to raise when the config .ini is missing"""
     pass
 
 
 class User(object):
-    """
-    Maintaining two dictionaries:
+    """This class handles the users resouces maintaining two dictionaries:
         · paths = { client_path : [server_path, md5/None, timestamp] }
         None instead of the md5 means that the path is a directory.
         · shared_resources: { server_path : [ben1, ben2, ...] }
@@ -206,6 +225,7 @@ class User(object):
     # CLASS AND STATIC METHODS
     @staticmethod
     def user_class_init():
+        """This static method load users data from .json, if it exists"""
         try:
             ud = open(USERS_DATA, "r")
             saved = json.load(ud)
@@ -222,6 +242,10 @@ class User(object):
 
     @classmethod
     def save_users(cls, filename=None):
+        """This class method save in a .json the users data
+        @param filename This is the filename for the json, 
+        set to None as default.
+        """
         if not filename:
             filename = USERS_DATA
 
@@ -236,6 +260,12 @@ class User(object):
 
     # DYNAMIC METHODS
     def __init__(self, username, password, from_dict=None):
+        """The constructor
+        @param username 
+        @param password
+        @param from_dict An object containing user's data, 
+        set to None as default
+        """
         # if restoring the server:
         if from_dict:
             self.username = username
@@ -271,6 +301,7 @@ class User(object):
         User.save_users()
 
     def to_dict(self):
+        """This method returns a dictionary containing the user's data"""
         return {
             "psw": self.psw,
             "paths": self.paths,
@@ -278,6 +309,8 @@ class User(object):
         }
 
     def create_server_path(self, client_path):
+        """This method create a new path on the server for user
+        """
         # the client_path do not have to contain "../"
         if (client_path.startswith("../")) or ("/../" in client_path):
             abort(HTTP_BAD_REQUEST)
@@ -320,16 +353,19 @@ class User(object):
         return os.path.join(new_server_path, filename)
 
     def _get_shared_root(self, server_path):
-        """
-        From a server_path, generate a valid shared root.
+        """This method from a server_path, generate a valid shared root
+        @param server_path
+        @return the correct shared root
         """
         resource_name = server_path.split("/")[-1]
         return os.path.join("shares", self.username, resource_name)
 
     def _get_ben_path(self, server_path):
-        """
-        Search a shared father for the resource. If it exists, return the
-        shared resource name and the ben_path, else return False.
+        """This method search for a shared father for the resource. 
+        If it exists, return the shared resource name and the ben_path, 
+        else return False.
+        @param server_path
+        @return False or the shared resource name and the beneficiary path
         """
         for shared_server_path in User.shared_resources.iterkeys():
             if server_path.startswith(shared_server_path):
@@ -344,6 +380,15 @@ class User(object):
     def push_path(
             self, client_path, server_path, update_user_data=True,
             only_modify=False):
+        """This method updates the resources data
+        @param client_path
+        @param server_path
+        @param update_user_data If it is set on True the users' data are saved. 
+        It is set on True as default
+        @param only_modify If it is set on False 
+        the beneficiaries paths are updated. 
+        It is set on False as default
+        """
         md5 = to_md5(os.path.join(USERS_DIRECTORIES, server_path))
         now = time.time()
         file_meta = [server_path, md5, now]
@@ -365,9 +410,9 @@ class User(object):
             User.save_users()
 
     def rm_path(self, client_path):
-        """
-        Remove the path from the paths dictionary. If there are empty
-        directories, remove them from the filesystem.
+        """This method removes the path from the paths dictionary. 
+        If there are empty directories, remove them from the filesystem.
+        @param client_path
         """
         now = time.time()
         self.timestamp = now
@@ -417,12 +462,20 @@ class User(object):
         User.save_users()
 
     def delete_user(self, username):
+        """This method removes an user and all user's data
+        @param username
+        """
         user_root = self.paths[""][0]
         del User.users[username]
         shutil.rmtree(os.path.join(USERS_DIRECTORIES, user_root))
         User.save_users()
 
     def add_share(self, client_path, beneficiary):
+        """This method shares a resource with a beneficiary user
+        @param client_path
+        @param beneficiary
+        @return An error message or True
+        """
         if self.username == beneficiary:
             return "You can't share things with yourself."
         if len(client_path.split("/")) > 1:
@@ -461,12 +514,20 @@ class User(object):
 
 
 class Resource_with_auth(Resource):
+    """This class inherits from Resource and provides 
+    the login_required control to the subclasses
+    """
     method_decorators = [auth.login_required]
 
 
 class UsersApi(Resource):
+    """This class (inheriting from Resource) handles the api for Users/ urls"""
 
     def load_pending_users(self):
+        """This method load from file a json containing 
+        the pending users (still not activated)
+        @return pending The json with pending users inside
+        """
         pending = {}
         if os.path.isfile(PENDING_USERS):
             try:
@@ -478,6 +539,9 @@ class UsersApi(Resource):
         return pending
 
     def load_reset_requests(self):
+        """This method load from json the reset requests
+        @return reset_requests The json with reset requests
+        """
         reset_requests = {}
         if os.path.isfile(RESET_REQUESTS):
             try:
@@ -491,8 +555,7 @@ class UsersApi(Resource):
         return reset_requests
 
     def post(self, username):
-        """
-        Create a user registration request
+        """This method (POST request) creates a user registration request
         Expected {"psw": <password>}
         save pending as
         {<username>:
@@ -505,6 +568,8 @@ class UsersApi(Resource):
         if request.form["reset"] is True, it is a reset password request.
         In this case it saves request in a file, reset_requests, as
         {<username>: <resetting code>}
+        @param username
+        @return A http code with a return message
         """
         pending = self.load_pending_users()
         if request.form["reset"] == "True":
@@ -543,13 +608,16 @@ class UsersApi(Resource):
             return "User added to pending users", HTTP_CREATED
 
     def put(self, username):
-        """
-        Activate a pending user
+        """This method (PUT request) activates a pending user
         Expected
         {"code": <activation code>}
-        if request.form["reset"] is True, it is a set password request after reset one.
-        In this case it set a new password for the user (a pending or active one),
+        if request.form["reset"] is True, it is a 
+        set password request after reset one.
+        In this case it set a new password 
+        for the user (a pending or active one),
         if the reset code provided is correct.
+        @param username
+        @return A http code with a return message
         """
         pending = self.load_pending_users()
 
@@ -605,7 +673,9 @@ class UsersApi(Resource):
 
     @auth.login_required
     def delete(self):
-        """Delete the user who is making the request
+        """This method (DELETE request) deletes the user 
+        who is making the request
+        @return A http code with a return message
         """
         current_username = auth.username()
         User.users[current_username].delete_user(current_username)
@@ -613,10 +683,16 @@ class UsersApi(Resource):
 
 
 class Files(Resource_with_auth):
+    """This class (inheriting from Resource_with_auth) 
+    handles the api for files/ urls
+    """
+
     def _diffs(self):
-        """ Send a JSON with the timestamp of the last change in user
+        """This method send a JSON with the timestamp of the last change in user
         directories and an md5 for each file
-        Expected GET method without path """
+        Expected GET method without path
+        @return snapshot, HTTP_OK
+        """
         u = User.users[auth.username()]
         tree = {}
         for p, v in u.paths.iteritems():
@@ -644,9 +720,11 @@ class Files(Resource_with_auth):
         # return json.dumps(snapshot), HTTP_OK
 
     def _download(self, client_path):
-        """Download
-        Returns file content as a byte string
-        Expected GET method with path"""
+        """This method returns file content as a byte string
+        Expected GET method with path
+        @param client_path
+        @return execution of send_file function
+        """
         u = User.users[auth.username()]
         try:
             full_path = os.path.join(
@@ -658,16 +736,23 @@ class Files(Resource_with_auth):
         return send_file(full_path)
 
     def get(self, client_path=None):
+        """This method handles a GET request and chooses what to do with
+        client_path parameter value
+        @param client_path
+        @return Exceution of _diff or _download function
+        """
         if not client_path:
             return self._diffs()
         else:
             return self._download(client_path)
 
     def put(self, client_path):
-        """ Update
-        Updates an existing file
+        """This method handles a PUT request to update an existing file
         Expected as POST data:
-        { "file_content" : <file>} """
+        { "file_content" : <file>}
+        @param client_path
+        @return a timestamp a http code if it does not abort
+        """
         u = User.users[auth.username()]
         try:
             server_path = u.paths[client_path][0]
@@ -688,10 +773,12 @@ class Files(Resource_with_auth):
         return u.timestamp, HTTP_CREATED
 
     def post(self, client_path):
-        """ Upload
-        Upload a new file
+        """This method handles a POST request to upload a new file
         Expected as POST data:
-        { "file_content" : <file>} """
+        { "file_content" : <file>}
+        @param client_path
+        @return a timestamp a http code if it does not abort
+        """
         u = User.users[auth.username()]
 
         if client_path in u.paths:
@@ -715,9 +802,16 @@ class Files(Resource_with_auth):
 
 
 class Actions(Resource_with_auth):
+    """This class (inheriting from Resource_with_auth) 
+    handles the api for actions/ urls
+    """
+
     def _delete(self):
-        """ Expected as POST data:
-        { "path" : <path>} """
+        """This method handles an user resource cancellation
+        Expected as POST data:
+        { "path" : <path>}
+        @return a timestamp or it aborts with a http code
+        """
         # check user and path
         u = User.users[auth.username()]
         client_path = request.form["path"]
@@ -736,16 +830,28 @@ class Actions(Resource_with_auth):
         return u.timestamp
 
     def _copy(self):
+        """This method call _transfer to copy an user resource
+        @return Excecution of _transfer method 
+        with keep_the_original set to True
+        """
         return self._transfer(keep_the_original=True)
 
     def _move(self):
+        """This method call _transfer to move an user resource
+        @return Excecution of _transfer method 
+        with keep_the_original set to False
+        """
         return self._transfer(keep_the_original=False)
 
     def _transfer(self, keep_the_original=True):
-        """ Moves or copy a file from src to dest
+        """This method moves or copy a file from src to dest
         depending on keep_the_original value
         Expected as POST data:
-        { "file_src": <path>, "file_dest": <path> }"""
+        { "file_src": <path>, "file_dest": <path> }
+        @param keep_the_original This parameter indicates 
+        if move or copy a resource. 
+        It is set to True as default
+        """
         u = User.users[auth.username()]
         client_src = request.form["file_src"]
         client_dest = request.form["file_dest"]
@@ -786,6 +892,10 @@ class Actions(Resource_with_auth):
     }
 
     def post(self, cmd):
+        """This method (POST request) execute one of the provivded commands
+        @param cmd
+        @return Excecution of cmd or aborting with a http code
+        """
         try:
             return Actions.commands[cmd](self)
         except KeyError:
@@ -793,7 +903,16 @@ class Actions(Resource_with_auth):
 
 
 class Shares(Resource_with_auth):
+    """This class (inheriting from Resource_with_auth) 
+    handles the api for shares/ urls
+    """
+
     def post(self, client_path, beneficiary):
+        """This method (POST request) shares a resource with a beneficiary user
+        @param client_path
+        @param beneficiary
+        @return a http code or False, http code
+        """
         owner = User.users[auth.username()]
 
         result = owner.add_share(client_path, beneficiary)
@@ -804,6 +923,13 @@ class Shares(Resource_with_auth):
 
     def _remove_beneficiary(self, owner, server_path, client_path,
                             beneficiary):
+        """This method removes the beneficiary from the shared resources list
+        @param owner
+        @param server_path
+        @param client_path
+        @param beneficiary
+        @return a http code or aborting with a http code
+        """
         # remove the beneficiary from the shared resources list
         try:
             ben_user = User.users[beneficiary]
@@ -829,6 +955,12 @@ class Shares(Resource_with_auth):
         return HTTP_OK
 
     def _remove_share(self, owner, server_path, client_path):
+        """This method remove a user's resource from the shares
+        @param owner
+        @param server_path
+        @param client_path
+        @return a http code or aborting with a http code
+        """
         try:
             for ben in User.shared_resources[server_path]:
                 self._remove_beneficiary(owner, server_path, client_path, ben)
@@ -839,6 +971,13 @@ class Shares(Resource_with_auth):
             return HTTP_OK
 
     def delete(self, client_path, beneficiary=None):
+        """This method (DELETE request) deletes a share or remove 
+        a beneficiary user from shares
+        @param client_path
+        @param beneficiary Set to None as default
+        @return Excecution of _remove_beneficiary or _remove_share 
+        or returns a http code
+        """
         owner = User.users[auth.username()]
         try:
             server_path = owner.paths[client_path][0]
@@ -853,6 +992,9 @@ class Shares(Resource_with_auth):
             return self._remove_share(owner, server_path, client_path)
 
     def get(self):
+        """This method (GET request) return a list of user's shared resources
+        @return The list (eventually empty) of shares and a http code
+        """
         me = User.users[auth.username()]
 
         my_shares = {}
@@ -880,6 +1022,9 @@ class Shares(Resource_with_auth):
 
 
 def mail_config_init():
+    """This function load from .ini the configuration to send emails
+    @return a Mail object or raise a MissingConfigIni Exception
+    """
     config = ConfigParser.ConfigParser()
     if config.read(EMAIL_SETTINGS_INI):
         app.config.update(
@@ -893,8 +1038,11 @@ def mail_config_init():
 
 
 def send_mail(receiver, obj, content):
-    """ Send an email to the 'receiver', with the
-    specified object ('obj') and the specified 'content' """
+    """This function send an email to the 'receiver', with the
+    specified object ('obj') and the specified 'content'
+    @param obj The object of the email
+    @param content The content of the email
+    """
     mail = mail_config_init()
     msg = Message(
         obj,
