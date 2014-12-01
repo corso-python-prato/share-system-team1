@@ -52,7 +52,7 @@ def command_not_found(command):
 class CommunicatorSock(asyncore.dispatcher_with_send):
 
     def _executer(self, command):
-        """This function 
+        """This function handles the command execution
         @param command
         """
         pass
@@ -90,7 +90,7 @@ class CmdMessageHandler(CommunicatorSock):
         self.cmd = cmd
 
     def _executer(self, command):
-        """This function 
+        """This function handles the command execution
         @return 
         """
         return self.cmd.get(
