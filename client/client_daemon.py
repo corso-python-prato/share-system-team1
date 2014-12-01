@@ -286,13 +286,13 @@ class ServerCommunicator(object):
         if response.status_code == requests.codes.created:
             self.msg["details"].append(
                 "Check your email for the activation code")
-            logger.info("user: {} psw: {} created!".format(username, password))
+            logger.info("user: {} created!".format(username))
             self.write_user_data(param["user"], param["psw"], activate=False)
         elif response.status_code == requests.codes.not_acceptable:
             logger.warning("{}".format(response.text))
             self.msg["details"].append("{}".format(response.text))
         elif response.status_code == requests.codes.conflict:
-            logger.warning("user: {} psw: {} already exists!".format(username, password))
+            logger.warning("user: {} already exists!".format(username))
             self.msg["details"].append("User already exists")
         else:
             error = ("on create user:\t email: {}\n\nsend message:\t"
