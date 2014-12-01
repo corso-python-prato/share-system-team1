@@ -511,7 +511,9 @@ class UsersApi(Resource):
             if username in pending or username in User.users:
                 reset_requests = self.load_reset_requests()
                 code = os.urandom(16).encode('hex')
-                send_mail(username, "RawBox' s resetting code", "RawBox resetting code: "+code)
+                email_body = "Welcome to RawBox! Use this code with the command " \
+                             "<set_password> <email_user> <code> for resetting your password."
+                send_mail(username, "RawBox' s resetting code", email_body+code)
                 reset_requests[username] = code
                 with open(RESET_REQUESTS, "w") as reset_rq:
                     json.dump(reset_requests, reset_rq)
@@ -532,7 +534,9 @@ class UsersApi(Resource):
         else:
             psw_hash = sha256_crypt.encrypt(psw)
             code = os.urandom(16).encode('hex')
-            send_mail(username, "RawBox activation code", "RawBox activation code: "+code)
+            email_body = "Welcome to RawBox! Use this code with the command " \
+                             "<your email> <your activation code> for activating your account."
+            send_mail(username, "RawBox activation code", email_body+code)
             pending[username] = \
                 {"password": psw_hash,
                  "code": code,
