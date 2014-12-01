@@ -33,20 +33,30 @@ logger.setLevel(logging.DEBUG)
 
 
 def get_relpath(abs_path):
-    """form absolute path return relative path """
+    """This function return a relative path from an absolute one.
+    @param abs_path An absolute path
+    @return A relative path
+    """
+
     if abs_path.startswith(CONFIG_DIR_PATH):
         return abs_path[len(CONFIG_DIR_PATH) + 1:]
     return abs_path
 
 
 def get_abspath(rel_path):
-    """form relative path return relative absolute """
+    """This function return an absolute path from a relative one.
+    @param rel_path A relative path
+    @return An absolute path
+    """
+
     if not rel_path.startswith(CONFIG_DIR_PATH):
         return "/".join([CONFIG_DIR_PATH, rel_path])
     return rel_path
 
 
 def initialize_directory():
+    """This function initialize RawBox's directory."""
+
     shares_dir = os.path.join(CONFIG_DIR_PATH, "shares")
     try:
         os.makedirs(shares_dir)
@@ -55,8 +65,16 @@ def initialize_directory():
 
 
 class ServerCommunicator(object):
+    """This class has the responsibility to send requests to the Server."""
 
     def __init__(self, server_url, username, password, snapshot_manager):
+        """The constructor.
+        @param server_url Server URL
+        @param username A RawBox user's name (his email)
+        @param password RawBox user's password
+        @param snapshot_manager An instance of DirSnapshotManager
+        """
+
         if username and password:
             self.auth = HTTPBasicAuth(username, password)
         else:
@@ -69,6 +87,13 @@ class ServerCommunicator(object):
         }
 
     def write_user_data(self, user=None, psw=None, activate=False):
+        """This method writes user data in config.ini file.
+        @param user RawBox user's name. It is set to None as default
+        @param psw RawBox user's password. It is set to None as default
+        @param activate It indicates if the user is activated or not. It
+        is set to False as default
+        """
+
         config_ini = ConfigParser.ConfigParser()
         config_ini.read(FILE_CONFIG)
         if not activate:
@@ -81,6 +106,8 @@ class ServerCommunicator(object):
             config_ini.write(config_file)
 
     def delete_user_data(self):
+        """This method deletes user data from config.ini file."""
+
         config_ini = ConfigParser.ConfigParser()
         config_ini.read(FILE_CONFIG)
 
@@ -94,10 +121,22 @@ class ServerCommunicator(object):
             config_ini.write(config_file)
 
     def setExecuter(self, executer):
+        """This method sets the command executor of the daemon.
+        @param executer An instance of CommandExecuter
+        """
+
         self.executer = executer
 
     def _try_request(self, callback, success='', error='', retry_delay=2, *args, **kwargs):
-        """ try a request until it's a success """
+        """This method try a request until it's success.
+        @param callback Request Type to do
+        @param success String in case of success
+        @param error String in case of error
+        @param retry_delay Delay in case of exception threw
+        @param args Arguments of request
+        @param kwargs Arguments of request
+        @return request_result Request result
+        """
         while True:
             try:
                 request_result = callback(
@@ -115,7 +154,9 @@ class ServerCommunicator(object):
                 logger.warning(error)
 
     def synchronize(self, operation_handler):
-        """Synchronize client and server"""
+        """This method synchronize client and server folders.
+        @param operation_handler Operation occurred
+        """
 
         server_url = "{}/files/".format(self.server_url)
         request = {"url": server_url}
@@ -134,11 +175,18 @@ class ServerCommunicator(object):
             self.snapshot_manager.save_timestamp(server_timestamp)
 
     def get_url_relpath(self, abs_path):
-        """ form get_abspath return the relative path for url """
+        """This method from absolute path returns the relative path.
+        @param abs_path Absolute path
+        @return Relative Path
+        """
         return get_relpath(abs_path).replace(os.path.sep, '/')
 
     def download_file(self, dst_path):
-        """ download a file from server"""
+        """This method sends a message to the server for the downloading of a file.
+        @param dst_path File path
+        @return Local Path with request body in case of success
+        @return False in case of error
+        """
         error_log = "ERROR on download request " + dst_path
         success_log = "file downloaded! " + dst_path
 
@@ -157,7 +205,10 @@ class ServerCommunicator(object):
             return False, False
 
     def upload_file(self, dst_path, put_file=False):
-        """ upload a file to server """
+        """This method sends a message to the server fot the uploading of a file.
+        @param dst_path File Path
+        @param put_file Tells if the file already exists on the server or not
+        """
 
         file_object = ''
         try:
@@ -196,7 +247,9 @@ class ServerCommunicator(object):
             self.snapshot_manager.save_snapshot(float(r.text))
 
     def delete_file(self, dst_path):
-        """ send to server a message of file delete """
+        """This method sends a message to the server for the deleting of a file.
+        @param dst_path File Path
+        """
 
         error_log = "ERROR delete request " + dst_path
         success_log = "file deleted! " + dst_path
@@ -215,7 +268,10 @@ class ServerCommunicator(object):
             self.snapshot_manager.save_snapshot(float(r.text))
 
     def move_file(self, src_path, dst_path):
-        """ send to server a message of file moved """
+        """This method sends a message to server for moving a file.
+        @param src_path Source Path of the file
+        @param dst_path Destination Path of the file
+        """
 
         error_log = "ERROR move request " + dst_path
         success_log = "file moved! " + dst_path
@@ -238,7 +294,10 @@ class ServerCommunicator(object):
             self.snapshot_manager.save_snapshot(float(r.text))
 
     def copy_file(self, src_path, dst_path):
-        """ send to server a message of copy file"""
+        """This method sends a message to the server for copying a file.
+        @param Source Path of the file
+        @param Destination Path of the file
+        """
 
         error_log = "ERROR copy request " + dst_path
         success_log = "file copied! " + dst_path
@@ -261,6 +320,10 @@ class ServerCommunicator(object):
             self.snapshot_manager.save_snapshot(float(r.text))
 
     def create_user(self, param):
+        """This method sends a message to the server for creating a user.
+        @param param This parameter includes user email and password
+        @return msg A message that includes details of request
+        """
         self.msg["details"] = []
         error_log = "User creation error"
         success_log = "user created!"
@@ -286,13 +349,13 @@ class ServerCommunicator(object):
         if response.status_code == requests.codes.created:
             self.msg["details"].append(
                 "Check your email for the activation code")
-            logger.info("user: {} psw: {} created!".format(username, password))
+            logger.info("user: {} created!".format(username))
             self.write_user_data(param["user"], param["psw"], activate=False)
         elif response.status_code == requests.codes.not_acceptable:
             logger.warning("{}".format(response.text))
             self.msg["details"].append("{}".format(response.text))
         elif response.status_code == requests.codes.conflict:
-            logger.warning("user: {} psw: {} already exists!".format(username, password))
+            logger.warning("user: {} already exists!".format(username))
             self.msg["details"].append("User already exists")
         else:
             error = ("on create user:\t email: {}\n\nsend message:\t"
@@ -303,6 +366,10 @@ class ServerCommunicator(object):
         return self.msg
 
     def get_user(self, param):
+        """This method returns user data if user exists
+        @param param This parameter includes user email, password and reset flag.
+        @return msg A message that includes details of request
+        """
         self.msg["details"] = []
         error_log = "cannot get user data"
         success_log = "user data retrived"
@@ -325,7 +392,7 @@ class ServerCommunicator(object):
         self.msg["details"].append(eval(response.text))
 
         if response.status_code == 200:
-            self.msg["details"].append("User data retrived")
+            self.msg["details"].append("User data retrieved")
         elif response.status_code == 404:
             self.msg["details"].append("User not found")
         else:
@@ -334,6 +401,10 @@ class ServerCommunicator(object):
         return self.msg
 
     def delete_user(self, param):
+        """This method sends a message to the server for deleting user.
+        @param param Parameters are not used
+        @return msg A message that includes details of request
+        """
 
         self.msg["details"] = []
         error_log = "Cannot delete user"
@@ -362,7 +433,10 @@ class ServerCommunicator(object):
         return self.msg
 
     def activate_user(self, param):
-
+        """This method sends a message to the server for activating user.
+        @param param This parameter includes reset flag and activation code
+        @return msg A message that includes details of request
+        """
         self.msg["details"] = []
         error_log = "Cannot activate user"
         success_log = "User activated"
@@ -398,7 +472,10 @@ class ServerCommunicator(object):
         return self.msg
 
     def reset_password(self, param):
-
+        """This method sends a message to the server for resetting user password.
+        @param param This parameter includes reset flag.(In this case must be set to "True")
+        @return msg A message that includes details of request
+        """
         self.msg["details"] = []
         success_log = "Password resetted"
 
@@ -420,7 +497,12 @@ class ServerCommunicator(object):
         return self.msg
 
     def set_password(self, param):
-
+        """This method sends a message to the server for setting a new password
+        after resetting request.
+        @param param This parameter includes reset flag (In this case must be set to "True"),
+        activation code and new psw
+        @return msg A message that includes details of request
+        """
         self.msg["details"] = []
         success_log = "Password resetted"
         server_url = "{}/Users/{}/reset".format(self.server_url, param["user"])
@@ -446,8 +528,11 @@ class ServerCommunicator(object):
         return self.msg
 
     def add_share(self, param):
-        """ Called by cmdmanager.
-        Share a resource with a beneficiary """
+        """This method sends a message to the server for sharing a resource
+        with a beneficiary.
+        @param param This parameter includes path to share and the beneficiary
+        @return msg A message that includes details of request
+        """
         self.msg["details"] = []
         request = {
             "url": "{}/shares/{}/{}".format(
@@ -468,7 +553,10 @@ class ServerCommunicator(object):
         return self.msg
 
     def remove_share(self, param):
-        """Remove all the share"""
+        """This method sends a message to the server for removing of shares.
+        @param param This parameter includes path of shares
+        @return msg A message that includes details of request
+        """
         self.msg["details"] = []
         request = {
             "url": "{}/shares/{}".format(self.server_url, param["path"]),
@@ -490,7 +578,11 @@ class ServerCommunicator(object):
         return self.msg
 
     def remove_beneficiary(self, param):
-        """Remove user from share"""
+        """This method sends a message to the server for removing of a
+         beneficiary from shares.
+        @param param This parameter includes path of shares and beneficiary to remove
+        @return msg A message that includes details of request
+        """
         self.msg["details"] = []
         request = {
             "url": "{}/shares/{}/{}".format(
@@ -512,6 +604,10 @@ class ServerCommunicator(object):
         return self.msg
 
     def get_shares_list(self, param=None):
+        """This method sends a message to the server for getting the list of shares.
+        @param param Parameters are not used
+        @return msg A message that includes details of request
+        """
         self.msg["details"] = []
         error_log = "List shares error"
         success_log = "List shares downloaded!"
@@ -547,24 +643,32 @@ class ServerCommunicator(object):
 
 
 class FileSystemOperator(object):
+    """This class has the responsibility to do operations on the Client File System."""
 
     def __init__(self, event_handler, server_com, snapshot_manager):
+        """The constructor.
+        @param event_handler DirectoryEventHandler instance
+        @param server_com ServerCommunicator instance
+        @param snapshot_manager DirSnapshotManager instance
+        """
         self.snapshot_manager = snapshot_manager
         self.event_handler = event_handler
         self.server_com = server_com
 
     def add_event_to_ignore(self, path):
+        """This method allows to ignore an event.
+        @param path File Path to ignore
+        """
         self.event_handler.paths_ignored.append(path)
 
     def write_a_file(self, path):
-        """
-        write a file (download if exist or not [get and put])
-
-            send a path to ignore to watchdog
-            download the file from server
-            create directory chain
-            create file
-            when watchdog see the first event on this path ignore it
+        """This method  writes a file after its download (if it exists).
+            1: It sends a path to ignore to watchdog
+            2: It downloads the file from server
+            3: It creates directory chain
+            4: it creates the file
+            So, when watchdog see the first event on this path, ignore it.
+            @param path File Path of download
         """
         abs_path, content = self.server_com.download_file(path)
         if abs_path and content:
@@ -582,13 +686,13 @@ class FileSystemOperator(object):
                          ", not found on server".format(path))
 
     def move_a_file(self, origin_path, dst_path):
-        """
-        move a file
-
-            send a path to ignore to watchdog for origin and dst path
-            create directory chain for dst_path
-            move the file from origin_path to dst_path
-            when watchdog see the first event on this path ignore it
+        """This method moves a file from an origin path to a destination path.
+            1: It sends a path to ignore to watchdog (origin and dst path)
+            2: It creates directory chain for dst_path
+            3: It moves the file from origin_path to dst_path
+            So, when watchdog see the first event on this path, ignore it.
+            @param origin_path Path of the file to move
+            @param dst_path Destination path for the file to move
         """
         self.add_event_to_ignore(get_abspath(origin_path))
         self.add_event_to_ignore(get_abspath(dst_path))
@@ -601,14 +705,14 @@ class FileSystemOperator(object):
             {"src_path": get_abspath(origin_path), "dst_path": get_abspath(dst_path)})
 
     def copy_a_file(self, origin_path, dst_path):
-        """
-        copy a file
-
-            send a path to ignore to watchdog for dest path 
+        """This method copies a file in a specified path.
+            1: It sends a path to ignore to watchdog (dst path)
             (because copy is a creation event)
-            create directory chain for dst_path
-            copy the file from origin_path to dst_path
-            when watchdog see the first event on this path ignore it
+            2: It creates directory chain for dst_path
+            3: It copies the file of an origin_path in a dst_path
+            So, when watchdog see the first event on this path, ignore it.
+            @param origin_path Path of the file to copy
+            @param dst_path Path in which copy the file
         """
         self.add_event_to_ignore(get_abspath(dst_path))
         origin_path = get_abspath(origin_path)
@@ -622,12 +726,11 @@ class FileSystemOperator(object):
             {"src_path": get_abspath(origin_path), "dst_path": get_abspath(dst_path)})
 
     def delete_a_file(self, dst_path):
-        """
-        delete a file
-
-            send a dst_path to ignore to watchdog
-            delete file
-            when watchdog see the first event on this dst_path ignore it
+        """This method deletes a file in a specified path.
+            1: It sends a path to ignore to watchdog (dst path)
+            2: It deletes the file
+            So, when watchdog see the first event on this path, ignore it.
+            @param dst_path Path of the file to delete
         """
         self.add_event_to_ignore(get_abspath(dst_path))
         dst_path = get_abspath(dst_path)
@@ -643,7 +746,11 @@ class FileSystemOperator(object):
 
 
 def load_config():
-
+    """This method loads configuration data (Client Daemon data and Daemon User data)
+    from a .ini file.
+    @return config A dictionary containing all configuration data loaded
+    @return user_exists True if the user is activated and False if he isn't
+    """
     abs_path = os.path.dirname(os.path.abspath(__file__))
     crash_log_path = os.path.join(abs_path, "RawBox_crash_report.log")
     config_ini = ConfigParser.ConfigParser()
@@ -704,8 +811,13 @@ def load_config():
 
 
 class DirectoryEventHandler(PatternMatchingEventHandler):
+    """This class handles changes in the client file system."""
 
     def __init__(self, cmd, snap):
+        """The constructor.
+        @param cmd ServerCommunicator instance
+        @param snap DirSnapshotManager instance
+        """
         super(DirectoryEventHandler, self).__init__(
             ignore_patterns=[os.path.join(CONFIG_DIR_PATH, "shares/*")]
         )
@@ -714,10 +826,10 @@ class DirectoryEventHandler(PatternMatchingEventHandler):
         self.paths_ignored = []
 
     def _is_copy(self, abs_path):
-        """
-        check if a file_md5 already exists in my local snapshot
-        IF IS A COPY : return the first path of already exists file
-        ELSE: return False
+        """This method checks if a file_md5 already exists in my local snapshot
+        1: IF IS A COPY, return the first path of already exists file
+        2: ELSE, return False
+        @param abs_path Absolute Path of the file
         """
         file_md5 = self.snap.file_snapMd5(abs_path)
         if not file_md5:
@@ -727,12 +839,9 @@ class DirectoryEventHandler(PatternMatchingEventHandler):
         return False
 
     def on_moved(self, event):
-        """Called when a file or a directory is moved or renamed.
-
-        :param event:
-            Event representing file/directory movement.
-        :type event:
-            :class:`DirMovedEvent` or :class:`FileMovedEvent`
+        """This method is called when a file or a directory is moved or renamed.
+        @param event Event representing file/directory movement, of type
+        "DirMovedEvent" or "FileMovedEvent"
         """
         if event.src_path not in self.paths_ignored:
             if not event.is_directory:
@@ -743,12 +852,9 @@ class DirectoryEventHandler(PatternMatchingEventHandler):
             self.paths_ignored.remove(event.dest_path)
 
     def on_created(self, event):
-        """Called when a file or directory is created.
-
-        :param event:
-            Event representing file/directory creation.
-        :type event:
-            :class:`DirCreatedEvent` or :class:`FileCreatedEvent`
+        """This method is called when a file or directory is created.
+        @param event Event representing file/directory creation, of type
+        "DirCreatedEvent" or "FileCreatedEvent"
         """
         copy = False
         if event.src_path not in self.paths_ignored:
@@ -766,12 +872,9 @@ class DirectoryEventHandler(PatternMatchingEventHandler):
             self.paths_ignored.remove(event.src_path)
 
     def on_deleted(self, event):
-        """Called when a file or directory is deleted.
-
-        :param event:
-            Event representing file/directory deletion.
-        :type event:
-            :class:`DirDeletedEvent` or :class:`FileDeletedEvent`
+        """This method is called when a file or directory is deleted.
+        @param event Event representing file/directory deletion, of type
+        "DirDeletedEvent" or "FileDeletedEvent"
         """
         if event.src_path not in self.paths_ignored:
             if not event.is_directory:
@@ -781,14 +884,10 @@ class DirectoryEventHandler(PatternMatchingEventHandler):
             self.paths_ignored.remove(event.src_path)
 
     def on_modified(self, event):
-        """Called when a file or directory is modified.
-
-        :param event:
-            Event representing file/directory modification.
-        :type event:
-            :class:`DirModifiedEvent` or :class:`FileModifiedEvent`
+        """This method is called when a file or directory is modified.
+        @param event Event representing file/directory modification, of type
+        "DirModifiedEvent" or "FileModifiedEvent"
         """
-
         if event.src_path not in self.paths_ignored:
             if not event.is_directory:
                 self.cmd.upload_file(event.src_path, put_file=True)
@@ -798,16 +897,23 @@ class DirectoryEventHandler(PatternMatchingEventHandler):
 
 
 class DirSnapshotManager(object):
+    """This class has the responsibility to synchronize client and server"""
+
     def __init__(self, snapshot_file_path):
-        """ load the last global snapshot and 
-            create a instant_snapshot of local directory
+        """The constructor.
+        It loads the last global snapshot and creates an instant snapshot
+        of local directory.
+        @param snapshot_file_path Path of the snapshot
         """
         self.snapshot_file_path = snapshot_file_path
         self.last_status = self._load_status()
         self.local_full_snapshot = self.instant_snapshot()
 
     def local_check(self):
-        """ check id daemon is synchronized with local directory """
+        """This method checks if daemon is synchronized with local directory.
+        @return True if the local global snapshot is equal to the last global
+        snapshot, False if not
+        """
         local_global_snapshot = self.global_md5()
         if self.last_status['snapshot'] == "":
             return True
@@ -815,18 +921,27 @@ class DirSnapshotManager(object):
         return local_global_snapshot == last_global_snapthot
 
     def is_syncro(self, server_timestamp):
-        """ check if daemon timestamp is synchronized with server timestamp"""
+        """This method checks if daemon timestamp is synchronized with server timestamp.
+        @param server_timestamp
+        @return True if the server timestamp is equal to the client timestamp,
+        False if not
+        """
         server_timestamp = server_timestamp
         client_timestamp = self.last_status['timestamp']
         return server_timestamp == client_timestamp
 
     def _load_status(self):
-        """ load from file the last snapshot """
+        """This method loads the last snapshot from a file.
+        @return The last snapshot
+        """
         with open(self.snapshot_file_path) as f:
             return json.load(f)
 
     def file_snapMd5(self, file_path):
-        """ calculate the md5 of a file """
+        """This method calculates the md5 of a file.
+        @param file_path File with which calculate the md5
+        @return MD5 of the file
+        """
         file_path = get_abspath(file_path)
         file_md5 = hashlib.md5()
         if os.path.isdir(file_path):
@@ -839,14 +954,17 @@ class DirSnapshotManager(object):
         return file_md5.hexdigest()
 
     def global_md5(self):
-        """ calculate the global md5 of local_full_snapshot """
+        """This method calculates the global md5 of local_full_snapshot.
+        @return Global Md5"""
         for k, v in self.local_full_snapshot.items():
             v.sort()
         snap_list = sorted(list(self.local_full_snapshot.items()))
         return hashlib.md5(str(snap_list)).hexdigest()
 
     def instant_snapshot(self):
-        """ create a snapshot of directory """
+        """This method creates a snapshot of directory.
+        @return The snapshot of the directory
+        """
         dir_snapshot = {}
         for root, dirs, files in os.walk(CONFIG_DIR_PATH):
             for f in files:
@@ -860,7 +978,7 @@ class DirSnapshotManager(object):
         return dir_snapshot
 
     def save_snapshot(self, timestamp):
-        """ save snapshot to file """
+        """This method saves snapshot to file"""
         self.last_status['timestamp'] = float(timestamp)
         self.last_status['snapshot'] = self.global_md5()
 
@@ -869,12 +987,16 @@ class DirSnapshotManager(object):
                 json.dumps({"timestamp": float(timestamp), "snapshot": self.last_status['snapshot']}))
 
     def update_snapshot_upload(self, body):
-        """ update of local full snapshot by upload request"""
+        """This method updates the local full snapshot in case of upload request.
+        @param body
+        """
         self.local_full_snapshot[self.file_snapMd5(
             body['src_path'])] = [get_relpath(body["src_path"])]
 
     def update_snapshot_update(self, body):
-        """ update of local full snapshot by update request"""
+        """This method updates the local full snapshot in case of update request.
+        @param body
+        """
         # delete the old path from full snapshot
         self.update_snapshot_delete(body)
         new_file_md5 = self.file_snapMd5(body['src_path'])
@@ -888,19 +1010,25 @@ class DirSnapshotManager(object):
                 body['src_path'])]
 
     def update_snapshot_copy(self, body):
-        """ update of local full snapshot by copy request"""
+        """This method updates the local full snapshot in case of copy request.
+        @param body
+        """
         self.local_full_snapshot[self.file_snapMd5(
             body['src_path'])].append(get_relpath(body["dst_path"]))
 
     def update_snapshot_move(self, body):
-        """ update of local full snapshot by move request"""
+        """This method updates the local full snapshot in case of move request.
+        @param body
+        """
         paths_of_file = self.local_full_snapshot[self.file_snapMd5(
             get_abspath(body["dst_path"]))]
         paths_of_file.remove(get_relpath(body["src_path"]))
         paths_of_file.append(get_relpath(body["dst_path"]))
 
     def update_snapshot_delete(self, body):
-        """ update of local full snapshot by delete request"""
+        """This method updates the local full snapshot in case of delete request.
+        @param body
+        """
         md5_file = self.find_file_md5(self.local_full_snapshot, get_relpath(body['src_path']), False)
         logger.debug("find md5: {}".format(md5_file))
         if len(self.local_full_snapshot[md5_file]) == 1:
@@ -910,9 +1038,9 @@ class DirSnapshotManager(object):
         logger.debug("path deleted: " + get_relpath(body['src_path']))
 
     def save_timestamp(self, timestamp):
-        """
-            save timestamp to file only if getfile
-            timestamp is < than the last timestamp saved
+        """This method saves timestamp in a file only if last status timestamp is
+        older than the last timestamp saved.
+        @param timestamp New timestamp
         """
         if self.last_status['timestamp'] < timestamp:
             self.last_status['timestamp'] = timestamp
@@ -920,11 +1048,13 @@ class DirSnapshotManager(object):
                 f.write(json.dumps(self.last_status, f))
 
     def diff_snapshot_paths(self, snap_client, snap_server):
-        """
-            from 2 snapshot return 3 list of path difference:
-            list of new server path
-            list of new client path
-            list of equal path
+        """This method from 2 snapshot return 3 list of path difference:
+            1: list of new server path
+            2: list of new client path
+            3: list of equal path
+            @param snap_client Snapshot of client
+            @param snap_server Snapshot of server
+            @return new_client_paths, new_server_paths, equal_paths
         """
         client_paths = [val for subl in snap_client.values() for val in subl]
         server_paths = [val['path']
@@ -936,7 +1066,12 @@ class DirSnapshotManager(object):
         return new_client_paths, new_server_paths, equal_paths
 
     def find_file_md5(self, snapshot, new_path, is_server=True):
-        """ from snapshot and a path find the md5 of file inside snapshot"""
+        """This method from snapshot and a path find the md5 of file inside snapshot.
+        @param snapshot
+        @param new_path
+        @param is_server
+        @return md5 of the file
+        """
         for md5, paths in snapshot.items():
             for path in paths:
                 if is_server:
@@ -947,13 +1082,20 @@ class DirSnapshotManager(object):
                         return md5
 
     def check_files_timestamp(self, snapshot, new_path):
+        """This method checks if the files timestamp is older than global timestamp.
+        @param snapshot
+        @param new_path
+        """
         paths_timestamps = [val for subl in snapshot.values() for val in subl]
         for path_timestamp in paths_timestamps:
             if path_timestamp['path'] == new_path:
                 return path_timestamp['timestamp'] < self.last_status['timestamp']
 
     def synchronize_dispatcher(self, server_timestamp, server_snapshot):
-        """ return the list of command to do """
+        """This method returns the list of commands to do for the synchronization.
+        @param server_timestamp
+        @param server_snapshot
+        """
         new_client_paths, new_server_paths, equal_paths = self.diff_snapshot_paths(
             self.local_full_snapshot, server_snapshot)
         command_list = []
@@ -1041,14 +1183,20 @@ class DirSnapshotManager(object):
 
 
 class CommandExecuter(object):
-
-    """Execute a list of commands"""
+    """This class has the responsibility to handle commands to do for the synchronization."""
 
     def __init__(self, file_system_op, server_com):
+        """The constructor.
+        @param file_system_op FileSystemOperator instance
+        @param server_com ServerCommunicator instance
+        """
         self.local = file_system_op
         self.remote = server_com
 
     def synchronize_executer(self, command_list):
+        """This method executes a list of commands for the synchronization.
+        @param command_list List of commands
+        """
         logger.debug("EXECUTER\n")
 
         def error(*args, **kwargs):
@@ -1075,6 +1223,12 @@ class CommandExecuter(object):
 
 
 def logger_init(crash_repo_path, stdout_level, file_level, disabled=False):
+    """This method initializes log file.
+    @param crash_repo_path Log File path
+    @param stdout_level Logging level to standard out
+    @param file_level Logging level to file
+    @param disabled Disable all logs
+    """
     log_levels = {
         "DEBUG": logging.DEBUG,
         "INFO": logging.INFO,
@@ -1106,6 +1260,10 @@ def logger_init(crash_repo_path, stdout_level, file_level, disabled=False):
 
 
 def args_parse_init(stdout_level, file_level):
+    """This method initializes Client Daemon Arguments
+    @param stdout_level
+    @param file_level
+    """
     parser = argparse.ArgumentParser(description='RawBox client daemon', 
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("--std-log-level", required=False, 
