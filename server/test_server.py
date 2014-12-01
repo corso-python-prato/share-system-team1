@@ -1346,7 +1346,7 @@ class EmailTest(unittest.TestCase):
             self.assertEqual(len(outbox), 1)
             with open(server.PENDING_USERS, "r") as pending_file:
                 code = json.load(pending_file)[self.user]["code"]
-                self.assertEqual(outbox[0].body, code)
+                self.assertEqual(outbox[0].body, "RawBox activation code: "+code)
 
 
 class UserActions(unittest.TestCase):
