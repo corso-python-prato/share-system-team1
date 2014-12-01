@@ -21,8 +21,10 @@ EMAIL_REGEX = re.compile('[^@]+@[^@]+\.[^@]+')
 def take_input(message, password=False):
     """This function takes input data from console.
     @param message This is the input parameter
-    @param password This is a flag set to False as default. If it is true, the message is taken with getpass method
-    @return The input of the message with the right method (raw_input() or getpass.getpass())
+    @param password This is a flag set to False as default. If it is true,
+        the message is taken with getpass method
+    @return The input of the message with the right method (raw_input()
+        or getpass.getpass())
     """
 
     if not password:
@@ -32,8 +34,10 @@ def take_input(message, password=False):
 
 
 def take_valid_username(username=None):
-    """This function takes username as input and check it with EMAIL_REGEX.match.
-    @param username This is the username, set to None as default. If it is none, it is requested with take_input method
+    """This function takes username as input and check it
+    with EMAIL_REGEX.match.
+    @param username This is the username, set to None as default.
+    If it is none, it is requested with take_input method
     @return Username taken
     """
 
@@ -71,24 +75,32 @@ def check_shareable_path(path):
 
 
 class RawBoxExecuter(object):
-    """This class  contains all RawBox's functions that are called by the user using the command line interface."""
+    """This class contains all RawBox's functions that are called by the
+    user using the command line interface."""
 
     def __init__(self, comm_sock):
         """The constructor.
-        @param comm_sock Socket used by the Communication System to communicate with daemon.
+        @param comm_sock Socket used by the Communication System to
+        communicate with daemon.
         """
 
         self.comm_sock = comm_sock
 
     def _create_user(self, username=None):
-        """This method is used to create a new user. It sends a message to the Communication System.
-        @param username The new user's username, set to None as default. If it is None, it is requested with take_input method.
+        """This method is used to create a new user. It sends a message to
+        the Communication System.
+        @param username The new user's username, set to None as default.
+        If it is None, it is requested with take_input method.
         """
 
         command_type = 'create_user'
 
         username = take_valid_username(username)
-        password = take_input('insert your password: ', password=True)
+        password = take_input("\n"
+                "The password should be a combination of numbers with "
+                "a mix of uppercase, lowercase and special characters."
+                "\nPassword example = Rawbox1.0\n\n"
+                "Insert your password:", password=True)
         rpt_password = take_input('Repeat your password: ', password=True)
         while password != rpt_password:
             Message('WARNING', 'password not matched')
@@ -105,9 +117,12 @@ class RawBoxExecuter(object):
         self.print_response(self.comm_sock.read_message())
 
     def _activate_user(self, username=None, code=None):
-        """This method is used to activate a user previously created. It sends a message to the Communication System.
-        @param username The new user's username, set to None as default. If it is None, it is requested with take_input method.
-        @param code Activation code, set to None as default. If it is None, it is requested with take_input method.
+        """This method is used to activate a user previously created.
+        It sends a message to the Communication System.
+        @param username The new user's username, set to None as default.
+        If it is None, it is requested with take_input method.
+        @param code Activation code, set to None as default.
+        If it is None, it is requested with take_input method.
         """
 
         command_type = 'activate_user'
@@ -129,7 +144,8 @@ class RawBoxExecuter(object):
         self.print_response(self.comm_sock.read_message())
 
     def _delete_user(self):
-        """This method is used to delete a user. It sends a message to the Communication System."""
+        """This method is used to delete a user. It sends a message to
+        the Communication System."""
 
         command_type = 'delete_user'
 
@@ -137,7 +153,8 @@ class RawBoxExecuter(object):
         self.print_response(self.comm_sock.read_message())
 
     def _add_user(self, *args):
-        """This method is used to add one or more users to a group. It sends a message to the Communication System.
+        """This method is used to add one or more users to a group.
+        It sends a message to the Communication System.
          @param *args One or more users
         """
 
@@ -164,8 +181,10 @@ class RawBoxExecuter(object):
             self.print_response(self.comm_sock.read_message())
 
     def _reset_password(self, username=None):
-        """This method is used to send a reset request for the password. It sends a message to the Communication System.
-        @param username Username of the user the sends the reset request. If it is None, it is requested with take_input method.
+        """This method is used to send a reset request for the password.
+        It sends a message to the Communication System.
+        @param username Username of the user the sends the reset request.
+        If it is None, it is requested with take_input method.
         """
 
         if not username:
@@ -184,9 +203,12 @@ class RawBoxExecuter(object):
         self.print_response(self.comm_sock.read_message())
 
     def _set_password(self, username=None, code=None):
-        """This method is used to set a new password after a reset request. It sends a message to the Communication System.
-        @param username Username of the user that set a new password. If it is None, it is requested with take_input method.
-        @param code Activation code necessary to set a new password. If it is None, it is requested with take_input method.
+        """This method is used to set a new password after a reset request.
+        It sends a message to the Communication System.
+        @param username Username of the user that set a new password.
+        If it is None, it is requested with take_input method.
+        @param code Activation code necessary to set a new password.
+        If it is None, it is requested with take_input method.
         """
 
         if not username:
@@ -220,7 +242,8 @@ class RawBoxExecuter(object):
         self.print_response(self.comm_sock.read_message())
 
     def _add_share(self, path, beneficiary):
-        """This method is used to create a share. It sends a message to the Communication System.
+        """This method is used to create a share. It sends a message to the
+        Communication System.
         @param path The path used to create a share.
         @param beneficiary User beneficiary of sharing
         """
@@ -233,7 +256,8 @@ class RawBoxExecuter(object):
         self.print_response(self.comm_sock.read_message())
 
     def _remove_share(self, path):
-        """This method is used to remove a share. It sends a message to the Communication System.
+        """This method is used to remove a share. It sends a message to the
+        Communication System.
         @param path Share's path to remove.
         """
 
@@ -244,7 +268,8 @@ class RawBoxExecuter(object):
         self.print_response(self.comm_sock.read_message())
 
     def _remove_beneficiary(self, path, beneficiary):
-        """This method is used to remove a beneficiary from the share. It sends a message to the Communication System.
+        """This method is used to remove a beneficiary from the share.
+        It sends a message to the Communication System.
         @param path Share's path.
         @param beneficiary Beneficiary to remove.
         """
@@ -296,7 +321,8 @@ class RawBoxCmd(cmd.Cmd):
 
     def __init__(self, executer):
         """The constructor.
-        @param executer An instance of RawBoxExecuter that contains all RawBox's functions.
+        @param executer An instance of RawBoxExecuter that contains all
+        RawBox's functions.
         """
 
         cmd.Cmd.__init__(self)
@@ -326,7 +352,8 @@ class RawBoxCmd(cmd.Cmd):
             Message('INFO', self.do_create.__doc__)
 
     def do_activate(self, line):
-        """It is the user activation command available for the user, previously creation.
+        """It is the user activation command available for the user,
+        previously creation.
         activate <email> <code>
         """
 
@@ -339,16 +366,22 @@ class RawBoxCmd(cmd.Cmd):
             if not user:
                 Message('INFO', self.do_activate.__doc__)
             else:
-                self.error("You have to specify: <your email> <your activation code>")
+                self.error("You have to specify:"
+                    "<your email><your activation code>")
 
     def do_delete(self, line):
         """It is the user deletion command available for the user."""
 
-        if take_input("are you sure? [yes/no] ") == "yes":
-            self.executer._delete_user()
+        if line:
+            self.error("Delete command don't takes parameters")
+        else:
+            if take_input("Are you sure to delete your account?"
+                          "[yes/no] ") == "yes":
+                self.executer._delete_user()
 
     def do_add_share(self, line):
-        """It is the share creation command available for the user. It shares a resource with a beneficiary.
+        """It is the share creation command available for the user.
+        It shares a resource with a beneficiary.
         Expected: add_share <path> <beneficiary>
         (the path starts from the RawBox root)
         """
@@ -379,7 +412,8 @@ class RawBoxCmd(cmd.Cmd):
             Message("INFO", self.do_remove_share.__doc__)
 
     def do_remove_beneficiary(self, line):
-        """It is the command for the removal of a beneficiary from a share available for the user.
+        """It is the command for the removal of a beneficiary from a share
+        available for the user.
         Expected: remove_beneficiary <path> <beneficiary>
         """
 
